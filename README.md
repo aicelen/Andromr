@@ -11,6 +11,7 @@ Andromr uses **Kivy** and **KivyMD** for the UI, with **Buildozer** to generate 
 
 ## Build
 *Note: Buildozer is really fragile and support by me is limited.*
+
 Andromr is built with buildozer under WSL. If you are new to buildozer you can follow this [tutorial](https://www.youtube.com/watch?v=pzsvN3fuBA0) for setting buildozer up.
 
 #### Setting up OpenCV:
