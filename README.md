@@ -11,8 +11,9 @@ Andromr uses **Kivy** and **KivyMD** for the UI, with **Buildozer** to generate 
 
 ## Build
 *Note: Buildozer is really fragile and support by me is limited.*
-Andromr is built with buildozer under WSL. If you are new to buildozer you can follow this [tutorial](https://www.youtube.com/watch?v=pzsvN3fuBA0) for setting buildozer up.
 
+Andromr is built with buildozer under WSL. If you are new to buildozer you can follow this [tutorial](https://www.youtube.com/watch?v=pzsvN3fuBA0) for setting buildozer up.
+You also need to copy the .tflite models into your folder.
 #### Setting up OpenCV:
 1.  Download the `opencv-android-sdk` (version 4.7.0) from [opencv.org](https://opencv.org/)
 3.  Copy the `native` folder from the SDK into a new folder named `opencv`, placed at the same level as your `buildozer.spec` file.
