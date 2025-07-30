@@ -1,83 +1,109 @@
-#custom integration of the agglomerative clustering without sklearn because Android doesn't work with scipy (10% Fortran)
-#porbably not efficent; but is only active for short periods of time
-
 import numpy as np
-from math import dist #distance
+import heapq
+from pykdtree.kdtree import KDTree
 
 
 class AgglomerativeClustering():
+    """
+    Implementation of Agglomerative Clustering using KDTree and heapq for better performance.
+    Used because Scipy doesn't work on Android.
+
+    Parameters
+    -------
+    data : np.ndarray
+        Points in a 2D space. Array has shape (x, 2).
+    distance_threshold : int
+        Maximum distance between two points of the same group.
+
+    Methods
+    -------
+    run() -> np.ndarray
+        Run the algorithm. 
+        Returns labels.
+    get_labels() -> np.ndarray
+        Get cluster labels.
+        Returns labels.
+    """
+
     def __init__(self, data, distance_threshold):
-        self.data = data
+        self.data = data # np array num_elements, 2
         self.distance_threshold = distance_threshold
-        self.distance_map = self.generate_dist_map(data)
-        self.label_map = np.zeros((len(data)), #size
-                            dtype = int #datatype
-                            )
+        self._fill_heapq()
+        self.result = np.zeros(len(data), dtype=int)
+        self.cur_group_idx = 0
 
-    def generate_dist_map(self, data):
-        distances = np.zeros((len(data),len(data)), #size
-                            dtype = float #datatype
-                            )
+    def _fill_heapq(self):
+        """
+        Fill the list with all relevant distances
+        """
+
+        distances, indices = KDTree(self.data).query(self.data, k=len(self.data))
+
+        # Create a mask for all the points that are close enough to another one
+        rows, cols = np.where((distances <= self.distance_threshold) & (distances > 0))
+
+        # Remoce duplicates
+        mask = rows < indices[rows, cols]
+
+        # Creates tuples of (distance, point1_index, point2_index)
+        self.dist_heapq = list(zip(distances[rows[mask], cols[mask]], rows[mask], indices[rows[mask], cols[mask]]))
         
-        for x in range(len(data)):
-            for y in range(len(data)):
-                if not x==y:
-                    distances[x][y] = dist(data[x], data[y])
-                else:
-                    distances[x][y] = np.inf
-
-        return(distances)
+        # Convert to heapq for better performance in future steps
+        heapq.heapify(self.dist_heapq)
     
+    def _add_idx_to_data(self, x, y):
+        """
+        Add the group_id to two points
+        """
 
-    def update_dist_map(self, idx_x, idx_y):
-        self.distance_map[idx_x][idx_y] = np.inf
-        
+        group_idx = self.cur_group_idx
+        if self.result[x] != 0 and self.result[y] != 0:
+            # connect both groups
+            self.result[self.result == self.result[y]] = self.result[x]
+            return
+        elif self.result[x] != 0:
+            group_idx = self.result[x]
+        elif self.result[y] != 0:
+            group_idx = self.result[y]
+           
+        self.result[x] = group_idx
+        self.result[y] = group_idx
+        self.cur_group_idx += 1
 
-
-    def min_element(self):
-        #get min of arrayd
-        return (np.unravel_index(np.argmin(self.distance_map), self.distance_map.shape))
-
-    def replace_zeros(self):
-        cur_label = np.max(self.label_map)
-        for i in range(len(self.label_map)):
-            if self.label_map[i] == 0:
+    def _remove_zeros(self):
+        """
+        Changes zeros to a unique leabel from self.result
+        """
+        cur_label = np.max(self.result)
+        for i in range(len(self.result)):
+            if self.result[i] == 0:
                 cur_label += 1
-                self.label_map[i] = cur_label
-            
+                self.result[i] = cur_label
 
-    def generate_labels(self):
-        min_idx_x, min_idx_y = self.min_element()
-        min_idx_x, min_idx_y = int(min_idx_x), int(min_idx_y)
 
-        label_idx = 1
-        
-        while self.distance_threshold > self.distance_map[min_idx_x][min_idx_y]:
-            #check if we bind to cluster
-            if self.label_map[min_idx_x] == 0 and self.label_map[min_idx_y] == 0:
-                #no label
-                self.label_map[min_idx_x] = label_idx
-                self.label_map[min_idx_y] = label_idx
-                label_idx += 1 #new label
+    def _clean_labels_up(self):
+        # Merging
+        unique_labels, inverse = np.unique(self.result, return_inverse=True)
+        self.result = inverse.reshape(self.result.shape)
+                
+    def run(self):
+        """
+        Run the algorithm. 
+        Returns labels (np.ndarray).
+        """
+        while self.dist_heapq:
+            self._add_idx_to_data(self.dist_heapq[0][1], self.dist_heapq[0][2]) # Grab from the first element the x and y 
+            heapq.heappop(self.dist_heapq)
 
-            elif self.label_map[min_idx_x] != 0 and self.label_map[min_idx_y] == 0:
-                #set y to label
-                self.label_map[min_idx_y] = self.label_map[min_idx_x]
 
-            elif self.label_map[min_idx_x] == 0 and self.label_map[min_idx_y] != 0:
-                self.label_map[min_idx_x] = self.label_map[min_idx_y]
+        self._remove_zeros()
+        self._clean_labels_up()
 
-            elif self.label_map[min_idx_x] != 0 and self.label_map[min_idx_y] != 0:
-                # Merge clusters
-                cluster_label = self.label_map[min_idx_x]
-                for i in range(len(self.label_map)):
-                    if self.label_map[i] == self.label_map[min_idx_y]:
-                        self.label_map[i] = cluster_label
-
-            
-            self.update_dist_map(min_idx_x, min_idx_y)
-            min_idx_x, min_idx_y = self.min_element()
-        self.replace_zeros()
+        return self.result
     
     def get_labels(self):
-        return self.label_map
+        """
+        Get cluster labels.
+        Returns labels (np.ndarray).
+        """
+        return self.result

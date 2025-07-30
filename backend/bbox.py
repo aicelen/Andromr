@@ -38,8 +38,7 @@ def merge_nearby_bbox(bboxes: List[BBox], distance: float, x_factor: int = 1, y_
     centers[:, 1] *= y_factor  # Increase/decrease the y distance
 
     model = AgglomerativeClustering(centers, distance_threshold=distance)
-    model.generate_labels()
-    labels = np.unique(model.get_labels())
+    labels = np.unique(model.run())
 
     new_box = []
     #extract th position of groups from data
