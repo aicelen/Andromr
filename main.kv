@@ -1,0 +1,330 @@
+#:import os os
+
+ScreenManager:
+    LandingPage:
+    CameraPage:
+    EditImagePage:
+    ProgressPage:
+    SettingsPage:
+    LicensePage:
+    TermsPageButton:
+    TermsPage:
+    
+<LandingPage>:
+    name: "landing"
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+        ScrollView:
+            id: scroll_view
+            size_hint_y: 0.75
+            BoxLayout:
+                id: scroll_box
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(10)
+                spacing: dp(10)
+                
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1  
+            MDFloatingActionButton:
+                icon: "cog"
+                on_release: app.change_screen("settings")
+
+            Widget:
+
+            MDFloatingActionButton:
+                id: gen_xml
+                icon: "upload"
+                on_release: app.change_screen('camera')
+
+
+<CameraPage>:
+    name: "camera"
+    orientation: 'vertical'
+    size: root.width, root.height
+    KvCam:
+        id: camera_pre
+        fit_mode: 'contain'
+        play: True
+
+    MDIconButton: 
+        id: img_taker
+        icon: "circle-slice-8"
+        size_hint_x: None
+        pos_hint: {'center_x': 0.5}
+        on_release: app.capture()
+        icon_size: "80dp"  
+
+<EditImagePage>:
+    name: "image_page"
+
+    MDBoxLayout:
+        id: image_box
+    
+    
+    MDBoxLayout:
+        id: btn_box
+        orientation: "horizontal"
+        padding: dp(10)
+        spacing: dp(10)
+
+        MDRaisedButton:
+            text: "Crop!"
+            size_hint: None, None
+            pos_hint: {'center_x': 0.5}
+            on_release: app.crop()
+        
+        Widget:
+        
+        MDRaisedButton:
+            text: "Start without cropping"
+            size_hint: None, None
+            pos_hint: {'center_x': 0.5}
+            on_release: app.start_inference(app.img_path)
+        
+        Widget:
+
+        MDRaisedButton:
+            text: "Retry"
+            size_hint: None, None
+            pos_hint: {'center_x': 0.5}
+            on_release: app.change_screen("camera")
+    
+    MovableMDIconButton:
+        id: btn0
+        icon: "circle-medium"
+        size_hint: None, None
+        pos: 30, 30
+        ripple_scale: 0
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1  # Red
+
+    UnmovableMDIconButton:
+        id: btn1
+        icon: "circle-medium"
+        size_hint: None, None
+        pos: 30, 30
+        disabled: True 
+        opacity: 0
+        ripple_scale: 0
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1  # Red
+
+    UnmovableMDIconButton:
+        id: btn2 
+        icon: "circle-medium"
+        size_hint: None, None
+        pos: 30, 30
+        disabled: True 
+        opacity: 0
+        ripple_scale: 0
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1  # Red
+
+    MovableMDIconButton:
+        id: btn3
+        icon: "circle-medium"
+        size_hint: None, None
+        pos: 30, 30
+        ripple_scale: 0
+        theme_text_color: "Custom"
+        text_color: 1, 0, 0, 1  # Red
+        
+    LineDrawer:
+        id: line_drawer
+
+<ProgressPage>:
+    name: "progress"
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: dp(20)
+        padding: dp(10)
+        
+        Widget:
+
+        MDTextField:
+            id: title
+            hint_text: "Title"
+            mode: "round"
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            spacing: dp(20)
+            padding: dp(10)
+
+            MDTextField:
+                id: beat
+                hint_text: "Beat"
+                mode: "round"
+                helper_text: "Only natural numbers (1,2,3...)"
+                helper_text_mode: "on_focus"
+
+
+            MDTextField:
+                id: division
+                hint_text: "Beat Type"
+                mode: "round"
+                helper_text: "Only natural numbers"
+                helper_text_mode: "on_focus"
+
+
+        Widget:
+
+        MDProgressBar:
+            id: progress_bar
+            size_hint_y: None
+            height: dp(10)  # Set the height of the progress bar
+            pos_hint: {"center_x": 0.5}
+
+        MDLabel:
+            id: progress_label
+            text: "0%"
+            halign: 'center'
+            size_hint_y: None
+            height: self.texture_size[1]  # Ensure the label only takes the needed height
+
+<SettingsPage>:
+    name: "settings"
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: dp(25)
+
+        MDBoxLayout:
+            MDLabel:
+                id: l_threads
+                text: "Use GPU - Currently not working"
+                
+
+            MDCheckbox:
+                id: cb_gpu
+                active: False
+                size_hint_x: None
+                pos_hint: {'center_y': 0.5}
+                ripple_scale: 0
+
+        
+
+        MDBoxLayout:
+            MDLabel:
+                id: l_step_size
+                text: "Quality"
+                
+
+            MDIconButton:
+                id: inf_step_size
+                icon: "information-slab-circle-outline"
+                size_hint_x: None
+                pos_hint: {'center_y': 0.5}
+                on_release: app.show_info("High values mean higher quality but longer processing time.\nDefault: 1")
+                ripple_scale: 0
+
+        MDSlider:
+            id: s_step_size
+            min: 1
+            max: 5
+            value: app.step_size_to_quality(app.step_size)
+            step: 1
+            show_off: False
+            
+        Widget:
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            MDRaisedButton:
+                text: "Licenses"
+                on_release: app.change_screen('licensepage')
+            
+            Widget:
+
+            MDRaisedButton:
+                text: "Terms+Conditions"
+                on_release: app.change_screen('termspage')
+
+            Widget:
+
+            MDRaisedButton:
+                text: "Apply"
+                on_release: app.apply_settings(root.ids.cb_gpu.active, root.ids.s_step_size.value)
+
+
+<LicensePage>:
+    name: 'licensepage'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(10)
+        spacing: dp(10)
+        Licenses:
+            id: rv_lp
+        MDRaisedButton:
+            text: 'Back'
+            size_hint_y: None
+            height: '40dp'
+            on_release: app.change_screen('settings')
+            padding: dp(10)
+            spacing: dp(10)
+
+<TermsPageButton>:
+    name: 'termspagebutton'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(10)
+        spacing: dp(10)        
+        Terms_Conditions:
+            id: rv_tpb
+        MDRaisedButton:
+            text: 'I read and agree to the Terms and Conditions'
+            size_hint_y: None
+            height: '40dp'
+            on_release: app.agree_t_c()
+            padding: dp(10)
+            spacing: dp(10)
+
+<TermsPage>:
+    name: 'termspage'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(10)
+        spacing: dp(10)        
+        Terms_Conditions:
+            id: rv_tp
+        MDRaisedButton:
+            text: 'Back'
+            size_hint_y: None
+            height: '40dp'
+            on_release: app.change_screen('settings')
+            padding: dp(10)
+            spacing: dp(10)
+
+
+<Licenses>:
+    viewclass: 'WrappedLabel'
+    RecycleBoxLayout:
+        key_size: 'size'   
+        default_size: None, None
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+
+<Terms_Conditions>:
+    viewclass: 'WrappedLabel'
+    RecycleBoxLayout:
+        key_size: 'size'   
+        default_size: None, None
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+
+<WrappedLabel@Label>:
+    markup: True
+    font_size: '10sp'
+    text_size: self.width, None
+    size_hint_y: None
+    halign: 'left'
+    valign: 'top'
+    padding: 10, 10
