@@ -27,7 +27,7 @@ source.include_exts = py,png,jpg,kv,atlas,json,pkl,txt,tflite
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-#source.exclude_dirs = tests, bin, venv
+source.exclude_dirs = bin, .gradle, .buildozer, .recipes, .vscode
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -42,17 +42,17 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, matplotlib, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree
+requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/data/icon.png
+presplash.filename = %(source.dir)s/data/icon.jpg
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/data/icon.png
+icon.filename = %(source.dir)s/data/icon.jpg
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse
