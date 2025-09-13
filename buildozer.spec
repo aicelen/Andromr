@@ -42,7 +42,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, matplotlib, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib 
+requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, matplotlib, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -112,7 +112,7 @@ android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MANAGE_EXTE
 android.api = 35
 
 # (int) Minimum API your APK / AAB will support.
-android.minapi = 21
+android.minapi = 24
 
 # (int) Android SDK version to use
 #android.sdk = 33
