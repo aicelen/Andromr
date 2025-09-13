@@ -21,26 +21,25 @@ class Encoder:
         return output[0]
 
 class EncoderDual:
-    def __init__(self, path: str, use_gpu: bool) -> None:
-        path = r"C:\Users\ennoa\Documents\Python\Github Local\homr\homr\transformer\cnn_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+    def __init__(self, cnn_path: str, transformer_path, use_gpu: bool) -> None:
         if use_gpu:
             try:
-                self.cnn_encoder = ort.InferenceSession(path, providers=["CUDAExecutionProvider"])
+                self.cnn_encoder = ort.InferenceSession(cnn_path, providers=["CUDAExecutionProvider"])
             except Exception:
-                self.cnn_encoder = ort.InferenceSession(path)
+                self.cnn_encoder = ort.InferenceSession(cnn_path)
 
         else:
-            self.cnn_encoder = ort.InferenceSession(path)
+            self.cnn_encoder = ort.InferenceSession(cnn_path)
 
-        path = r"C:\Users\ennoa\Documents\Python\Github Local\homr\homr\transformer\transformer_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+        
         if use_gpu:
             try:
-                self.transformer_encoder = ort.InferenceSession(path, providers=["CUDAExecutionProvider"])
+                self.transformer_encoder = ort.InferenceSession(transformer_path, providers=["CUDAExecutionProvider"])
             except Exception:
-                self.transformer_encoder = ort.InferenceSession(path)
+                self.transformer_encoder = ort.InferenceSession(transformer_path)
 
         else:
-            self.transformer_encoder = ort.InferenceSession(path)
+            self.transformer_encoder = ort.InferenceSession(transformer_path)
 
         self.cnn_input_name = self.cnn_encoder.get_inputs()[0].name
         self.cnn_output_name = self.cnn_encoder.get_outputs()[0].name
@@ -52,6 +51,6 @@ class EncoderDual:
         embeddings = self.cnn_encoder.run([self.cnn_output_name], {self.cnn_input_name: x})
         t1 = perf_counter()
         output = self.transformer_encoder.run([self.cnn_output_name], {self.cnn_input_name: embeddings[0]})
-        print(perf_counter() - t0)
-        print(perf_counter() - t1)
+        print(f"Inference time CNN part of Encoder: {round(perf_counter() - t0, 3)}s")
+        print(f"Inference time Transformer part of Encoder: {round(perf_counter() - t1, 3)}s")
         return output[0]

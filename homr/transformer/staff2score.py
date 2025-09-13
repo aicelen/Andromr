@@ -19,7 +19,11 @@ class Staff2Score:
 
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = EncoderDual(self.config.filepaths.encoder_path, use_gpu)
+        self.encoder = EncoderDual(
+            self.config.filepaths.encoder_cnn_path, 
+            self.config.filepaths.encoder_transformer_path,
+            use_gpu
+        )
         self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path, use_gpu)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):

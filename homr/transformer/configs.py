@@ -11,6 +11,12 @@ class FilePaths:
         self.encoder_path = os.path.join(
             workspace, "encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
         )  # noqa: E501
+        self.encoder_cnn_path = os.path.join(
+            workspace, "cnn_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+        )  # noqa: E501
+        self.encoder_transformer_path = os.path.join(
+            workspace, "transformer_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+        )  # noqa: E501
         self.decoder_path = os.path.join(
             workspace, "decoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
         )  # noqa: E501

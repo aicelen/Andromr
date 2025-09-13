@@ -1,7 +1,5 @@
-import argparse
 import glob
 import os
-import sys
 from concurrent.futures import Future
 from dataclasses import dataclass
 
@@ -41,12 +39,9 @@ from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
 from homr.staff_parsing import parse_staffs
 from homr.staff_position_save_load import load_staff_positions, save_staff_positions
-from homr.title_detection import detect_title, download_ocr_weights
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 from homr.xml_generator import XmlGeneratorArguments, generate_xml
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 class PredictedSymbols:
@@ -168,9 +163,8 @@ def process_image(  # noqa: PLR0915
             multi_staffs = load_staff_positions(
                 debug, image, staff_position_files, config.selected_staff
             )
-            title = ""
         else:
-            multi_staffs, image, debug, title_future = detect_staffs_in_image(image_path, config)
+            multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
         result_staffs = parse_staffs(
@@ -180,11 +174,8 @@ def process_image(  # noqa: PLR0915
         result_staffs = maintain_accidentals(result_staffs)
         result_staffs = correct_rhythm(result_staffs)
 
-        title = title_future.result(60)
-        eprint("Found title:", title)
-
         eprint("Writing XML")
-        xml = generate_xml(xml_generator_args, result_staffs, title)
+        xml = generate_xml(xml_generator_args, result_staffs, title="")
         xml.write(xml_file)
 
         eprint(
@@ -258,7 +249,6 @@ def detect_staffs_in_image(
     )
     if len(staffs) == 0:
         raise Exception("No staffs found")
-    title_future = detect_title(debug, staffs[0])
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
 
     global_unit_size = np.mean([staff.average_unit_size for staff in staffs])
@@ -297,7 +287,7 @@ def detect_staffs_in_image(
         "notes", multi_staffs, notes, rests, accidentals
     )
 
-    return multi_staffs, predictions.preprocessed, debug, title_future
+    return multi_staffs, predictions.preprocessed, debug
 
 
 def get_all_image_files_in_folder(folder: str) -> list[str]:
@@ -344,84 +334,14 @@ def download_weights() -> None:
                 if os.path.exists(downloaded_zip):
                     os.remove(downloaded_zip)
 
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="homer", description="An optical music recognition (OMR) system"
-    )
-    parser.add_argument("image", type=str, nargs="?", help="Path to the image to process")
-    parser.add_argument(
-        "--init",
-        action="store_true",
-        help="Downloads the models if they are missing and then exits. "
-        + "You don't have to call init before processing images, "
-        + "it's only useful if you want to prepare for example a Docker image.",
-    )
-    parser.add_argument("--debug", action="store_true", help="Enable debug output")
-    parser.add_argument(
-        "--cache", action="store_true", help="Read an existing cache file or create a new one"
-    )
-    parser.add_argument(
-        "--output-large-page",
-        action="store_true",
-        help="Adds instructions to the musicxml so that it gets rendered on larger pages",
-    )
-    parser.add_argument(
-        "--output-metronome", type=int, help="Adds a metronome to the musicxml with the given bpm"
-    )
-    parser.add_argument(
-        "--output-tempo", type=int, help="Adds a tempo to the musicxml with the given bpm"
-    )
-    parser.add_argument(
-        "--write-staff-positions",
-        action="store_true",
-        help="Writes the position of all detected staffs to a txt file.",
-    )
-    parser.add_argument(
-        "--read-staff-positions",
-        action="store_true",
-        help="Reads the position of all staffs from a txt file instead"
-        + " of running the built-in staff detection.",
-    )
-    args = parser.parse_args()
-
-    download_weights()
-    if args.init:
-        download_ocr_weights()
-        eprint("Init finished")
-        return
-
+def main(path):
     config = ProcessingConfig(
-        args.debug, args.cache, args.write_staff_positions, args.read_staff_positions, -1
-    )
-
+            False, False, False, False, -1
+        )
     xml_generator_args = XmlGeneratorArguments(
-        args.output_large_page, args.output_metronome, args.output_tempo
+        False, False, False
     )
-
-    if not args.image:
-        eprint("No image provided")
-        parser.print_help()
-        sys.exit(1)
-    elif os.path.isfile(args.image):
-        process_image(args.image, config, xml_generator_args)
-    elif os.path.isdir(args.image):
-        image_files = get_all_image_files_in_folder(args.image)
-        eprint("Processing", len(image_files), "files:", image_files)
-        error_files = []
-        for image_file in image_files:
-            eprint("=========================================")
-            try:
-                process_image(image_file, config, xml_generator_args)
-                eprint("Finished", image_file)
-            except Exception as e:
-                eprint(f"An error occurred while processing {image_file}: {e}")
-                error_files.append(image_file)
-        if len(error_files) > 0:
-            eprint("Errors occurred while processing the following files:", error_files)
-    else:
-        raise ValueError(f"{args.image} is not a valid file or directory")
-
+    process_image(path, config, xml_generator_args)
 
 if __name__ == "__main__":
-    main()
+    main('test_img.png')
