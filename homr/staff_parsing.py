@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
-from time import perf_counter
+from PIL import Image
 
 from homr import constants
 from homr.debug import Debug
 from homr.image_utils import crop_image_and_return_new_top
-from homr.model import MultiStaff, NoteGroup, Staff
+from homr.model import MultiStaff, Staff
 from homr.results import (
     ResultChord,
     ResultClef,
@@ -15,7 +15,6 @@ from homr.results import (
     move_pitch_to_clef,
 )
 from homr.simple_logging import eprint
-from homr.staff_dewarping import StaffDewarping, dewarp_staff_image
 from homr.staff_parsing_tromr import parse_staff_tromr
 from homr.staff_regions import StaffRegions
 from homr.transformer.configs import default_config
@@ -172,79 +171,29 @@ def prepare_staff_image(
         (int(staff_image.shape[1] * scaling_factor), int(staff_image.shape[0] * scaling_factor)),
     )
     region = np.round(region * scaling_factor)
-    eprint("Dewarping staff", index)
+
     region_step1 = np.array(region) + np.array([-10, -50, 10, 50])
     staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step1)
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
-    staff = _dewarp_staff(staff, None, top_left, scaling_factor)
-    dewarp = dewarp_staff_image(staff_image, staff, index, debug)
-    staff_image = (255 * dewarp.dewarp(staff_image)).astype(np.uint8)
     staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step2)
     scaling_factor = 1
-
-    eprint("Dewarping staff", index, "done")
 
     staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
     staff_image = center_image_on_canvas(staff_image, image_dimensions)
     debug.write_image_with_fixed_suffix(f"_staff-{index}_input.jpg", staff_image)
-    if debug.debug:
-        transformed_staff = _dewarp_staff(staff, dewarp, top_left, scaling_factor)
-        transformed_staff_image = staff_image.copy()
-        for symbol in transformed_staff.symbols:
-            center = symbol.center
-            cv2.circle(transformed_staff_image, (int(center[0]), int(center[1])), 5, (0, 0, 255))
-            if isinstance(symbol, NoteGroup):
-                for note in symbol.notes:
-                    cv2.circle(
-                        transformed_staff_image,
-                        (int(note.center[0]), int(note.center[1])),
-                        3,
-                        (255, 255, 0),
-                    )
-            cv2.putText(
-                transformed_staff_image,
-                type(symbol).__name__,
-                (int(center[0]), int(center[1])),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.3,
-                (0, 0, 255),
-                1,
-            )
-        debug.write_image_with_fixed_suffix(
-            f"_staff-{index}_debug_annotated.jpg", transformed_staff_image
-        )
     return staff_image, staff
-
-
-def _dewarp_staff(
-    staff: Staff, dewarp: StaffDewarping | None, region: NDArray, scaling: float
-) -> Staff:
-    """
-    Applies the same transformation on the staff coordinates as we did on the image.
-    """
-
-    def transform_coordinates(point: tuple[float, float]) -> tuple[float, float]:
-        x, y = point
-        x -= region[0]
-        y -= region[1]
-        if dewarp is not None:
-            x, y = dewarp.dewarp_point((x, y))
-        x = x * scaling
-        y = y * scaling
-        return x, y
-
-    return staff.transform_coordinates(transform_coordinates)
 
 
 def parse_staff_image(
     debug: Debug, index: int, staff: Staff, image: NDArray, regions: StaffRegions
 ) -> ResultStaff | None:
-    t0 = perf_counter()
     staff_image, transformed_staff = prepare_staff_image(
         debug, index, staff, image, regions=regions
     )
-    print(f"Dewarp Time {perf_counter() - t0}")
+    Image.fromarray(staff_image).save('input.png')
+
+
     attention_debug = debug.build_attention_debug(staff_image, f"_staff-{index}_output.jpg")
     eprint("Running TrOmr inference on staff image", index)
     result = parse_staff_tromr(

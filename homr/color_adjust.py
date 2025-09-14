@@ -2,7 +2,6 @@ import math
 
 import cv2
 import numpy as np
-import scipy
 
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
@@ -21,10 +20,12 @@ def get_dominant_color(gray_scale: NDArray, color_range: range, default: int | N
         return 0 if default is None else default
 
     bins = np.bincount(masked_gray_scale.flatten())
-    center_of_mass = scipy.ndimage.measurements.center_of_mass(bins)[0]
-
+    center_of_mass = center_of_mass_np(bins)
     return int(center_of_mass)
 
+def center_of_mass_np(arr: NDArray):
+    positions = np.arange(len(arr))
+    return np.sum(positions * arr) / np.sum(arr)
 
 def apply_clahe(channel: NDArray) -> NDArray:
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))

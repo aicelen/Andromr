@@ -1,12 +1,11 @@
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 import cv2
 import cv2.typing as cvt
 import numpy as np
-from scipy import ndimage
 
 from homr import constants
 from homr.image_utils import crop_image
@@ -89,11 +88,6 @@ class BoundingBox(AnyPolygon):
             2,
         )
 
-    def rotate_and_extract(self, img: NDArray, angle: float) -> NDArray:
-        rotated = ndimage.rotate(
-            crop_image(img, self.box[0], self.box[1], self.box[2] + 1, self.box[3] + 1), angle
-        )
-        return cast(NDArray, rotated)
 
     def extract(self, img: NDArray) -> NDArray:
         return crop_image(img, self.box[0], self.box[1], self.box[2] + 1, self.box[3] + 1)

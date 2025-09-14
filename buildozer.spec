@@ -27,7 +27,7 @@ source.include_exts = py,png,jpg,kv,atlas,json,pkl,txt,tflite
 #source.exclude_exts = spec
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = bin, .gradle, .buildozer, .recipes, .vscode
+source.exclude_dirs = bin, .gradle, .buildozer, .recipes, .vscode, training, 
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
