@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import PIL.Image
-from skimage import transform
+from custom_skimage._geometric import PiecewiseAffineTransform
+from custom_skimage._warps import warp
 
 from homr.debug import Debug
 from homr.model import Staff
@@ -10,13 +11,13 @@ from homr.type_definitions import NDArray
 
 
 class StaffDewarping:
-    def __init__(self, tform: transform.PiecewiseAffineTransform | None):
+    def __init__(self, tform: PiecewiseAffineTransform | None):
         self.tform = tform
 
     def dewarp(self, image: NDArray, fill_color: int = 1, order: int = 1) -> NDArray:
         if self.tform is None:
             return image
-        return transform.warp(
+        return warp(
             image,
             self.tform.inverse,
             output_shape=image.shape,
@@ -71,7 +72,7 @@ def calculate_span_and_optimal_points(
     return span_points, optimal_points
 
 
-class FastPiecewiseAffineTransform(transform.PiecewiseAffineTransform):
+class FastPiecewiseAffineTransform(PiecewiseAffineTransform):
     """
     From https://github.com/scikit-image/scikit-image/pull/6963/files
     """
@@ -120,7 +121,7 @@ def calculate_dewarp_transformation(
     source_conc = np.concatenate(source)
     destination_conc = np.concatenate(destination)
 
-    tform = FastPiecewiseAffineTransform() if fast else transform.PiecewiseAffineTransform()
+    tform = FastPiecewiseAffineTransform() if fast else PiecewiseAffineTransform()
     tform.estimate(source_conc, destination_conc)
     return StaffDewarping(tform)
 

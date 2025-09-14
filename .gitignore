@@ -1,0 +1,28 @@
+# dev folders
+/.buildozer/
+/.gradle/
+/.venv/
+/.vscode/
+/bin/
+/opencv/
+/build/
+
+#pycache
+**/__pycache__/
+*.py[co]
+
+# test file
+test.py
+
+# file extensions
+*.pth
+*.onnx
+*.pt
+*.tflite
+*.png
+*.pkl
+*Zone.Identifier
+*.musicxml
+*.so
+*.pyd
+*.c

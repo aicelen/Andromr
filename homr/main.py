@@ -1,6 +1,5 @@
 import glob
 import os
-from concurrent.futures import Future
 from dataclasses import dataclass
 
 import cv2
@@ -206,7 +205,7 @@ def process_image(  # noqa: PLR0915
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
-) -> tuple[list[MultiStaff], NDArray, Debug, Future[str]]:
+) -> tuple[list[MultiStaff], NDArray, Debug]:
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache
     )
