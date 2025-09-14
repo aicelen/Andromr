@@ -3,9 +3,12 @@ import math
 import textwrap
 from abc import ABC, abstractmethod
 import warnings
+from time import perf_counter
 
 import numpy as np
-from scipy.spatial import Delaunay # here we need to work
+
+#from scipy.spatial import Delaunay as Delaunay2D # here we need to work
+from custom_scipy.delaunay.delaunay2D import Delaunay2D
 from scipy.spatial.transform import Rotation
 
 from custom_skimage._shared.utils import (
@@ -1674,14 +1677,13 @@ class PiecewiseAffineTransform(_GeometricTransform):
 
         # forward piecewise affine
         # triangulate input positions into mesh
-        self._tesselation = Delaunay(src)
-
+        self._tesselation = Delaunay2D(src)
         fail_matrix = np.full((D + 1, D + 1), np.nan)
 
         # find affine mapping from source positions to destination
         self.affines = []
         messages = []
-        for i, tri in enumerate(self._tesselation.simplices):
+        for i, tri in enumerate(self._tesselation.exportTriangles()):
             affine = AffineTransform.from_estimate(src[tri, :], dst[tri, :])
             if not affine:
                 messages.append(f'Failure at forward simplex {i}: {affine}')
@@ -1690,10 +1692,10 @@ class PiecewiseAffineTransform(_GeometricTransform):
 
         # inverse piecewise affine
         # triangulate input positions into mesh
-        self._inverse_tesselation = Delaunay(dst)
+        self._inverse_tesselation = Delaunay2D(dst)
         # find affine mapping from source positions to destination
         self.inverse_affines = []
-        for i, tri in enumerate(self._inverse_tesselation.simplices):
+        for i, tri in enumerate(self._inverse_tesselation.exportTriangles()):
             affine = AffineTransform.from_estimate(dst[tri, :], src[tri, :])
             if not affine:
                 messages.append(f'Failure at inverse simplex {i}: {affine}')
@@ -1722,12 +1724,15 @@ class PiecewiseAffineTransform(_GeometricTransform):
         out = np.empty_like(coords, np.float64)
 
         # determine triangle index for each coordinate
+        t0 = perf_counter()
         simplex = self._tesselation.find_simplex(coords)
+        print(f"Simplex took: {perf_counter() - t0}s")
+        print(len(simplex))
 
         # coordinates outside of mesh
         out[simplex == -1, :] = -1
 
-        for index in range(len(self._tesselation.simplices)):
+        for index in range(len(self._tesselation.exportTriangles())):
             # affine transform for triangle
             affine = self.affines[index]
             # all coordinates within triangle

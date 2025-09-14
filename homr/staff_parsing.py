@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from time import perf_counter
 
 from homr import constants
 from homr.debug import Debug
@@ -239,9 +240,11 @@ def _dewarp_staff(
 def parse_staff_image(
     debug: Debug, index: int, staff: Staff, image: NDArray, regions: StaffRegions
 ) -> ResultStaff | None:
+    t0 = perf_counter()
     staff_image, transformed_staff = prepare_staff_image(
         debug, index, staff, image, regions=regions
     )
+    print(f"Dewarp Time {perf_counter() - t0}")
     attention_debug = debug.build_attention_debug(staff_image, f"_staff-{index}_output.jpg")
     eprint("Running TrOmr inference on staff image", index)
     result = parse_staff_tromr(

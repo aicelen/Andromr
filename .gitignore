@@ -5,7 +5,8 @@
 /.vscode/
 /bin/
 /opencv/
-/build/
+build/
+/test_delaunay/
 
 #pycache
 **/__pycache__/
@@ -26,3 +27,5 @@ test.py
 *.so
 *.pyd
 *.c
+*.o
+_warps_cy.c

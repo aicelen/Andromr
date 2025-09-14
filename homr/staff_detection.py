@@ -3,7 +3,7 @@ from collections.abc import Generator, Iterable
 import cv2
 import cv2.typing as cvt
 import numpy as np
-from scipy import signal
+from scipy.signal import find_peaks
 
 from homr import constants
 from homr.bounding_boxes import (
@@ -594,7 +594,7 @@ def find_horizontal_lines(
 
     count = np.insert(count, [0, len(count)], [0, 0])  # type: ignore
     norm = (count - np.mean(count)) / np.std(count)
-    centers, _ = signal.find_peaks(norm, height=line_threshold, distance=unit_size, prominence=1)
+    centers, _ = find_peaks(norm, height=line_threshold, distance=unit_size, prominence=1)
     centers -= 1
     norm = norm[1:-1]  # Remove prepend / append
     _valid_centers, groups = filter_line_peaks(centers, norm)

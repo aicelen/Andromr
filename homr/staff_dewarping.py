@@ -9,6 +9,7 @@ from homr.model import Staff
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
+from time import perf_counter
 
 class StaffDewarping:
     def __init__(self, tform: PiecewiseAffineTransform | None):
@@ -79,9 +80,9 @@ class FastPiecewiseAffineTransform(PiecewiseAffineTransform):
 
     def __call__(self, coords):  # type: ignore
         coords = np.asarray(coords)
-
+        t0 = perf_counter()
         simplex = self._tesselation.find_simplex(coords)
-
+        print(perf_counter() - t0)
         affines = np.stack([affine.params for affine in self.affines])[simplex]
 
         points = np.c_[coords, np.ones((coords.shape[0], 1))]
@@ -139,7 +140,7 @@ def dewarp_staff_image(image: NDArray, staff: Staff, index: int, debug: Debug) -
                     cv2.circle(debug_img, [int(point[0]), int(point[1])], 5, (255, 0, 0), -1)
 
             debug.write_image_with_fixed_suffix(f"_staff-{index}_debug_span_points.png", debug_img)
-        return calculate_dewarp_transformation(image, span_points, optimal_points)
+        return calculate_dewarp_transformation(image, span_points, optimal_points, fast=False)
     except Exception as e:
         eprint("Dewarping failed for staff", index, "with error", e)
     return StaffDewarping(None)
