@@ -9,7 +9,7 @@ from kivy.utils import platform
 
 
 if platform == 'android':
-    from jnius import autoclass
+    from jnius import autoclass # type: ignore
 
     # Import Java classes
     OrtSession = autoclass('ai.onnxruntime.OrtSession')
@@ -127,6 +127,7 @@ if platform == 'android':
             Frees up memory. Should be called when a model isn't used anymore
             """
             self.session.close()
+
 else:
     import onnxruntime as ort
     class OnnxModel:

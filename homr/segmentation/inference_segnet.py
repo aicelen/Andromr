@@ -6,32 +6,11 @@ from time import perf_counter
 
 import cv2
 import numpy as np
-import onnxruntime as ort
 
-from homr.segmentation.config import segmentation_version, segnet_path_onnx
+from homr.inference_engine.tflite_model import TensorFlowModel
+from homr.segmentation.config import segmentation_version, segnet_path_tflite
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
-
-
-class Segnet:
-    def __init__(self, model_path: str, use_gpu: bool) -> None:
-        if use_gpu:
-            try:
-                self.model = ort.InferenceSession(model_path, providers=["CUDAExecutionProvider"])
-            except Exception as e:
-                eprint(
-                    "Error while trying to load model using CUDA. You probably don't have a compatible gpu"  # noqa: E501
-                )
-                eprint(e)
-                self.model = ort.InferenceSession(model_path)
-        else:
-            self.model = ort.InferenceSession(model_path)
-        self.input_name = self.model.get_inputs()[0].name  # size: [batch_size, 3, 320, 320]
-        self.output_name = self.model.get_outputs()[0].name
-
-    def run(self, input_data: NDArray) -> NDArray:
-        out = self.model.run([self.output_name], {self.input_name: input_data})[0]
-        return out
 
 
 class ExtractResult:
@@ -84,13 +63,12 @@ def merge_patches(
 
 
 def inference(
-    image_org: NDArray, batch_size: int, step_size: int, use_gpu: bool, win_size: int
+    image_org: NDArray, step_size: int, use_gpu: bool, win_size: int
 ) -> tuple[NDArray, NDArray, NDArray, NDArray, NDArray]:
     """
     Inference function for the segementation model.
     Args:
         image_org(NDArray): Array of the input image
-        batch_size(int): Mainly for speeding up GPU performance. Minimal impact on CPU speed.
         step_size(int): How far the window moves between to input images.
         use_gpu(bool): Use gpu for inference. Only for debugging purposes.
         win_size(int): Debug only.
@@ -103,42 +81,29 @@ def inference(
     if step_size < 0:
         step_size = win_size // 2
 
-    model = Segnet(segnet_path_onnx, use_gpu)
+    model = TensorFlowModel(segnet_path_tflite, 8)
     data = []
-    batch = []
-    image = np.transpose(image_org, (2, 0, 1)).astype(np.float32)
-    for y_loop in range(0, image.shape[1], step_size):
-        if y_loop + win_size > image.shape[1]:
-            y = image.shape[1] - win_size
+    image = image_org.astype(np.float32)
+    for y_loop in range(0, image.shape[0], step_size):
+        if y_loop + win_size > image.shape[0]:
+            y = image.shape[0] - win_size
         else:
             y = y_loop
-        for x_loop in range(0, image.shape[2], step_size):
-            if x_loop + win_size > image.shape[2]:
-                x = image.shape[2] - win_size
+        for x_loop in range(0, image.shape[1], step_size):
+            if x_loop + win_size > image.shape[1]:
+                x = image.shape[1] - win_size
             else:
                 x = x_loop
-            hop = image[:, y : y + win_size, x : x + win_size]
-            batch.append(hop)
+            hop = image[y : y + win_size, x : x + win_size, :]
 
-            # When there
-            if batch_size == len(batch):
-                # run model
-                batch_out = model.run(np.stack(batch, axis=0))
-                for out in batch_out:
-                    out_filtered = np.argmax(out, axis=0)
-                    data.append(out_filtered)
-                # reset the batch list so it is not full anymore
-                batch = []
+            hop = np.expand_dims(hop, axis=0)
+            out = model.run(hop)
+            out_filtered = np.argmax(out, axis=-1)
+            out_filtered = np.squeeze(out_filtered, axis=0)
+            data.append(out_filtered)
 
-    # There might still be something in the batch list
-    # So we run inference one more time
-    if batch:
-        batch_out = model.run(np.stack(batch, axis=0))
-        for out in batch_out:
-            out_max = np.argmax(out, axis=0)
-            data.append(out_max)
 
-    eprint(f"Segnet Inference time: {perf_counter()- t0}; batch_size of {batch_size}")
+    eprint(f"Segnet Inference time: {perf_counter()- t0}")
 
     merged = merge_patches(
         data, (int(image_org.shape[0]), int(image_org.shape[1])), win_size, step_size
@@ -161,7 +126,6 @@ def extract(
     original_image: NDArray,
     img_path_str: str,
     use_cache: bool = False,
-    batch_size: int = 8,
     step_size: int = -1,
     use_gpu: bool = True,
     win_size: int = 320,
@@ -194,7 +158,6 @@ def extract(
     if not loaded_from_cache:
         staff, symbols, stems_rests, notehead, clefs_keys = inference(
             original_image,
-            batch_size=batch_size,
             step_size=step_size,
             use_gpu=use_gpu,
             win_size=win_size,

@@ -8,7 +8,7 @@ import numpy as np
 from kivy.utils import platform
 
 if platform == 'android':
-    from jnius import autoclass
+    from jnius import autoclass # type: ignore
 
     File = autoclass('java.io.File')
     Interpreter = autoclass('org.tensorflow.lite.Interpreter')
@@ -23,7 +23,7 @@ if platform == 'android':
     InterpreterApiOptions = autoclass('org.tensorflow.lite.InterpreterApi$Options')
 
     class TensorFlowModel():
-        def load(self, model_filename, num_threads=None):
+        def __init__(self, model_filename, num_threads=None):
             model = File(model_filename)
             options = InterpreterOptions()
             if num_threads is not None:
@@ -45,7 +45,7 @@ if platform == 'android':
                 self.interpreter.resizeInput(0, shape)
                 self.allocate_tensors()
 
-        def pred(self, x):
+        def run(self, x):
             # assumes one input and one output for now
             input = ByteBuffer.wrap(x.tobytes())
             output = TensorBuffer.createFixedSize(self.output_shape,
@@ -58,7 +58,7 @@ else:
     import tensorflow as tf
 
     class TensorFlowModel:
-        def load(self, model_filename, num_threads=None):
+        def __init__(self, model_filename, num_threads=None):
             self.interpreter = tf.lite.Interpreter(model_filename,
                                                    num_threads=num_threads)
             self.interpreter.allocate_tensors()
@@ -71,7 +71,7 @@ else:
         def get_input_shape(self):
             return self.interpreter.get_input_details()[0]['shape']
 
-        def pred(self, x):
+        def run(self, x):
             # assumes one input and one output for now
             self.interpreter.set_tensor(
                 self.interpreter.get_input_details()[0]['index'], x)

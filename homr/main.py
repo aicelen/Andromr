@@ -343,4 +343,4 @@ def main(path, cache=False):
     process_image(path, config, xml_generator_args)
 
 if __name__ == "__main__":
-    main('test_img.png', cache=True)
+    main('test_img.png', cache=False)

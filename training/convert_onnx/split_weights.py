@@ -87,8 +87,3 @@ def remove_score_decoder_weights(full_state_dict: dict[str, Any]) -> dict[str, A
             transformer_state_dict[new_key] = value
 
     return transformer_state_dict
-
-
-if __name__ == "__main__":
-    #split_weights(os.path.join("transformer", FilePaths().checkpoint))
-    split_weights_encoder(r"C:\Users\ennoa\Documents\Python\Github Local\homr\encoder_weights.pt")
