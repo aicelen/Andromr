@@ -18,3 +18,4 @@ onnx_graphsurgeon==0.5.8
 psutil==7.0.0
 ai_edge_litert==1.4.0
 sng4onnx==1.0.4
+editdistance==0.8.1

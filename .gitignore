@@ -6,7 +6,7 @@
 /bin/
 /opencv/
 build/
-/test_delaunay/
+/datasets/
 
 #tflite model folders
 /segnet_155/
@@ -34,3 +34,6 @@ test.py
 *.o
 _warps_cy.c
 *.npy
+
+# dev files
+onnx_ser.txt
