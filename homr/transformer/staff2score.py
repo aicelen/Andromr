@@ -20,7 +20,7 @@ class Staff2Score:
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
         self.encoder = EncoderDual(
-            self.config.filepaths.encoder_cnn_path, 
+            self.config.filepaths.encoder_cnn_path_tflite, 
             self.config.filepaths.encoder_transformer_path,
             use_gpu
         )
@@ -71,7 +71,7 @@ class ConvertToArray:
 
     def __call__(self, image: NDArray) -> NDArray:
         arr = np.array(image) / 255
-        arr = arr[np.newaxis, np.newaxis, :, :]
+        arr = arr[np.newaxis, :, :, np.newaxis]
         return self.normalize(arr).astype(np.float32)
 
 

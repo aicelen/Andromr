@@ -1,4 +1,4 @@
-import onnxruntime as ort
+import numpy as np
 from time import perf_counter
 
 from homr.type_definitions import NDArray
@@ -12,29 +12,19 @@ class EncoderDual:
         Encoder for better performance on android (LiteRT is faster for CNNs 
         while Onnx is faster for transformers)
         """
-        if use_gpu:
-            try:
-                self.cnn_encoder = ort.InferenceSession(cnn_path, providers=["CUDAExecutionProvider"])
-            except Exception:
-                self.cnn_encoder = ort.InferenceSession(cnn_path)
-
-        else:
-            self.cnn_encoder = ort.InferenceSession(cnn_path)
-
-        
+        self.cnn_encoder = TensorFlowModel(cnn_path, num_threads=8)
         self.transformer_encoder = OnnxModel(transformer_path)
-
-        self.cnn_input_name = self.cnn_encoder.get_inputs()[0].name
-        self.cnn_output_name = self.cnn_encoder.get_outputs()[0].name
 
     def generate(self, x: NDArray) -> NDArray:
         t0 = perf_counter()
-        embeddings = self.cnn_encoder.run([self.cnn_output_name], {self.cnn_input_name: x})
+        out = self.cnn_encoder.run(x)
         t1 = perf_counter()
 
-        input_dict = {"input": embeddings[0]}
-        output_dict = {"output": [1,641,312]}
+        embeddings = np.transpose(out, (0, 3, 1, 2))
+
+        input_dict = {"input": embeddings}
+        output_dict = {"output": [1, 641, 312]}
         output = self.transformer_encoder.run(input_dict, output_dict)
-        print(f"Inference time CNN part of Encoder: {round(perf_counter() - t0, 3)}s")
+        print(f"Inference time CNN part of Encoder: {round(t1 - t0, 3)}s")
         print(f"Inference time Transformer part of Encoder: {round(perf_counter() - t1, 3)}s")
         return output[0]
