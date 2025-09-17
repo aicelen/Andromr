@@ -13,9 +13,9 @@ try:
 except:
     try:
         from custom_scipy.src import peak_finding_utils
-    except:
+    except Exception as e:
         raise ImportError(
-            "Couldn't import peak_finding_utils. Make sure to compile the .pyx file to .so (Linux) or .pyd (Windows)"
+            f"Couldn't import peak_finding_utils. Make sure to compile the .pyx file to .so (Linux) or .pyd (Windows). {e}"
             )
 
 from math import ceil

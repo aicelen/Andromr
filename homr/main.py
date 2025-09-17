@@ -333,9 +333,9 @@ def download_weights() -> None:
                 if os.path.exists(downloaded_zip):
                     os.remove(downloaded_zip)
 
-def main(path):
+def main(path, cache=False):
     config = ProcessingConfig(
-            False, False, False, False, -1
+            False, cache, False, False, -1
         )
     xml_generator_args = XmlGeneratorArguments(
         False, False, False
@@ -343,4 +343,4 @@ def main(path):
     process_image(path, config, xml_generator_args)
 
 if __name__ == "__main__":
-    main('test_img.png')
+    main('test_img.png', cache=True)

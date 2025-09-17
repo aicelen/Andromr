@@ -36,16 +36,16 @@ from datetime import datetime
 
 # Imports from own code
 from get_theme import get_sys_theme
-from oemer import main as oemer
+from homr.main import main as homr
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from save_file import save_to_external_storage
-from android_camera_api import take_picture
 from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners
 
 
 # Ask for permissions on android
 if platform == "android":
+    from android_camera_api import take_picture
     from jnius import autoclass # pylint: disable=import-error # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # pylint: disable=import-error # type: ignore
     required_permissions = [Permission.CAMERA]
@@ -613,7 +613,7 @@ class Andromr(MDApp):
         """
         try:
             # run oemer
-            return_path = oemer(path, appdata.use_gpu, output_path)
+            return_path = homr(path, appdata.use_gpu, output_path)
 
 
             if self.root.get_screen('progress').ids.title.text == "":

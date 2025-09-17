@@ -2,19 +2,19 @@ from math import ceil
 from typing import Any
 
 import numpy as np
-import onnxruntime as ort
 
 from homr.results import TransformerChord
 from homr.transformer.configs import Config
 from homr.transformer.split_merge_symbols import SymbolMerger
 from homr.transformer.utils import softmax
 from homr.type_definitions import NDArray
+from homr.inference_engine.onnx_model import OnnxModel
 
 
 class ScoreDecoder:
     def __init__(
         self,
-        transformer: ort.InferenceSession,
+        transformer: OnnxModel,
         config: Config,
         ignore_index: int = -100,
     ):
@@ -56,10 +56,11 @@ class ScoreDecoder:
             context = kwargs["context"]
 
             inputs = {"rhythms": x_rhythm, "pitchs": x_pitch, "lifts": x_lift, "context": context}
+            outputs = {"out_rhythms": [1, _position_in_seq, 93], "out_pitchs": [1, _position_in_seq, 71], "out_lifts": [1, _position_in_seq, 5]}
 
             rhythmsp, pitchsp, liftsp = self.net.run(
-                output_names=["out_rhythms", "out_pitchs", "out_lifts"],  # noqa: E501
-                input_feed=inputs,
+                inputs=inputs,
+                outputs=outputs
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
@@ -164,11 +165,11 @@ def get_decoder(config: Config, path: str, use_gpu: bool) -> ScoreDecoder:
     """
     if use_gpu:
         try:
-            onnx_transformer = ort.InferenceSession(path, providers=["CUDAExecutionProvider"])
+            onnx_transformer = OnnxModel(path, providers=["CUDAExecutionProvider"])
         except Exception:
-            onnx_transformer = ort.InferenceSession(path)
+            onnx_transformer = OnnxModel(path)
 
     else:
-        onnx_transformer = ort.InferenceSession(path)
+        onnx_transformer = OnnxModel(path)
 
     return ScoreDecoder(onnx_transformer, config=config)
