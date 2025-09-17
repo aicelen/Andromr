@@ -612,7 +612,7 @@ class Andromr(MDApp):
 
         """
         try:
-            # run oemer
+            # run homr
             return_path = homr(path, appdata.use_gpu, output_path)
 
 

@@ -32,7 +32,7 @@ from homr.resize import resize_image
 from homr.rest_detection import add_rests_to_staffs
 from homr.results import ResultStaff
 from homr.rhythm_rules import correct_rhythm
-from homr.segmentation.config import segnet_path_onnx
+from homr.segmentation.config import segnet_path_tflite
 from homr.segmentation.inference_segnet import extract
 from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
@@ -193,7 +193,7 @@ def process_image(  # noqa: PLR0915
 
         eprint("Result was written to", xml_file)
 
-        return result_staffs
+        return xml_file
     except:
         if os.path.exists(xml_file):
             os.remove(xml_file)
@@ -305,11 +305,12 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
 
 
 def download_weights() -> None:
-    base_url = "https://github.com/liebharc/homr/releases/download/onnx_checkpoints/"
+    base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
     models = [
-        segnet_path_onnx,
-        default_config.filepaths.encoder_path,
-        default_config.filepaths.decoder_path,
+        segnet_path_tflite,
+        default_config.filepaths.encoder_cnn_path_tflite,
+        default_config.filepaths.encoder_transformer_path,
+        default_config.filepaths.decoder_path
     ]
     missing_models = [model for model in models if not os.path.exists(model)]
 
@@ -334,13 +335,15 @@ def download_weights() -> None:
                     os.remove(downloaded_zip)
 
 def main(path, cache=False):
+    download_weights()
     config = ProcessingConfig(
             False, cache, False, False, -1
         )
     xml_generator_args = XmlGeneratorArguments(
         False, False, False
     )
-    process_image(path, config, xml_generator_args)
+    out_path = process_image(path, config, xml_generator_args)
+    return out_path
 
 if __name__ == "__main__":
     main('test_img.png', cache=False)

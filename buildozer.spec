@@ -18,23 +18,23 @@ package.domain = com.aicelen.andromr
 source.dir = .
 
 # (list) Source files to include (leave empty to include all the files)
-source.include_exts = py,png,jpg,kv,atlas,json,pkl,txt,tflite
+source.include_exts = py, jpg, kv, atlas, json, pkl, txt
 
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
 
 # (list) Source files to exclude (leave empty to not exclude anything)
-#source.exclude_exts = spec
+source.exclude_exts = npy, 
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = bin, .gradle, .buildozer, .recipes, .vscode, training, 
+source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, cnn_encoder_188, datasets, segnet_155, training, validation 
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.1
+version = 1.0
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -42,7 +42,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree
+requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree, musicxml, requests
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -103,7 +103,7 @@ fullscreen = 0
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE, CAMERA
+android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE, CAMERA, INTERNET
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = camera2
@@ -209,7 +209,7 @@ android.ndk = 25b
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = com.google.ai.edge.litert:litert:1.4.0, com.google.ai.edge.litert:litert-support:1.4.0
+android.gradle_dependencies = com.google.ai.edge.litert:litert:1.4.0, com.google.ai.edge.litert:litert-support:1.4.0, com.microsoft.onnxruntime:onnxruntime-android:1.22.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
