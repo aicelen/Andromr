@@ -6,7 +6,7 @@ from homr.inference_engine.onnx_model import OnnxModel
 from homr.inference_engine.tflite_model import TensorFlowModel
 
 class EncoderDual:
-    def __init__(self, cnn_path: str, transformer_path, use_gpu: bool) -> None:
+    def __init__(self, cnn_path: str, transformer_path) -> None:
         """
         Special dual encoder splitting the CNN and Transformer part of the 
         Encoder for better performance on android (LiteRT is faster for CNNs 

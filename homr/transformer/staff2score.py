@@ -17,14 +17,13 @@ class Staff2Score:
     Inference class for Tromr. Use predict() for prediction
     """
 
-    def __init__(self, use_gpu: bool = True) -> None:
+    def __init__(self) -> None:
         self.config = Config()
         self.encoder = EncoderDual(
             self.config.filepaths.encoder_cnn_path_tflite, 
             self.config.filepaths.encoder_transformer_path,
-            use_gpu
         )
-        self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path, use_gpu)
+        self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
             raise RuntimeError(
@@ -86,7 +85,7 @@ def test_transformer_on_image(path_to_img: str) -> None:
     """
     from PIL import Image
 
-    model = Staff2Score(False)
+    model = Staff2Score()
     image = Image.open(path_to_img)
     out = model.predict(np.array(image))
     eprint(out)

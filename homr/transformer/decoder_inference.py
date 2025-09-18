@@ -159,17 +159,9 @@ def detokenize(tokens: NDArray, vocab: Any) -> list[str]:
     return toks
 
 
-def get_decoder(config: Config, path: str, use_gpu: bool) -> ScoreDecoder:
+def get_decoder(config: Config, path: str) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    if use_gpu:
-        try:
-            onnx_transformer = OnnxModel(path, providers=["CUDAExecutionProvider"])
-        except Exception:
-            onnx_transformer = OnnxModel(path)
-
-    else:
-        onnx_transformer = OnnxModel(path)
-
+    onnx_transformer = OnnxModel(path)
     return ScoreDecoder(onnx_transformer, config=config)

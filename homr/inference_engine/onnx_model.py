@@ -26,10 +26,8 @@ if platform == 'android':
 
     class OnnxModel:
         def __init__(
-                self, 
-                model_path: str, 
-                use_nnapi: bool = False, 
-                use_xnnpack: bool = False
+                self,
+                model_path: str
             ):
             """
             Inference class of .onnx models for kivy apps on android using native Java APIs.
@@ -38,22 +36,14 @@ if platform == 'android':
             ----------
             model_path: str
                 Path to the .onnx model you want to run inference on.
-            num_threads: int = None
-                How many threads the model inference should use. Usually best performance 
-                is achieved by using all big cores of the SOC. Defaults to 1.
-            use_nnapi: bool = False
-                Neural Networks API can provide significant speed ups although it is 
-                often not compatible with the models and is not further developed.
-            use_xnnpack: bool = False
-                Should speed up inference time for some models.
             """
             self.env = OrtEnvironment.getEnvironment()
             so = OrtSessionOptions()
 
-            if use_nnapi:
+            if appdata.use_nnapi:
                 so.addNnapi()
 
-            if use_xnnpack:
+            if appdata.use_xnnpack:
                 xnnpack_map = HashMap()
                 xnnpack_map.put("intra_op_num_threads", str(appdata.threads or 2))
                 so.addXnnpack(xnnpack_map)

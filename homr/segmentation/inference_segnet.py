@@ -62,14 +62,13 @@ def merge_patches(
 
 
 def inference(
-    image_org: NDArray, step_size: int, use_gpu: bool, win_size: int
+    image_org: NDArray, step_size: int, win_size: int
 ) -> tuple[NDArray, NDArray, NDArray, NDArray, NDArray]:
     """
     Inference function for the segementation model.
     Args:
         image_org(NDArray): Array of the input image
         step_size(int): How far the window moves between to input images.
-        use_gpu(bool): Use gpu for inference. Only for debugging purposes.
         win_size(int): Debug only.
 
     Returns:
@@ -126,14 +125,12 @@ def extract(
     img_path_str: str,
     use_cache: bool = False,
     step_size: int = -1,
-    use_gpu: bool = True,
     win_size: int = 320,
 ) -> ExtractResult:
     img_path = Path(img_path_str)
     staff, symbols, stems_rests, notehead, clefs_keys = inference(
         original_image,
         step_size=step_size,
-        use_gpu=use_gpu,
         win_size=win_size,
     )
     original_image = cv2.resize(original_image, (staff.shape[1], staff.shape[0]))
