@@ -192,41 +192,23 @@ ScreenManager:
     MDBoxLayout:
         orientation: "vertical"
         padding: dp(25)
-
         MDBoxLayout:
-            MDLabel:
-                id: l_threads
-                text: "Use GPU - Currently not working"
-                
-
-            MDCheckbox:
-                id: cb_gpu
-                active: False
-                size_hint_x: None
-                pos_hint: {'center_y': 0.5}
-                ripple_scale: 0
-
-        
-
-        MDBoxLayout:
-            MDLabel:
-                id: l_step_size
-                text: "Quality"
-                
+            MDLabel: l_threads
+                text: "Threads"
 
             MDIconButton:
-                id: inf_step_size
+                id: inf_threads
                 icon: "information-slab-circle-outline"
                 size_hint_x: None
                 pos_hint: {'center_y': 0.5}
-                on_release: app.show_info("High values mean higher quality but longer processing time.\nDefault: 1")
+                on_release: app.show_info("Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
                 ripple_scale: 0
 
         MDSlider:
-            id: s_step_size
+            id: s_threads
             min: 1
-            max: 5
-            value: app.step_size_to_quality(app.step_size)
+            max: 8
+            value: 2
             step: 1
             show_off: False
             
@@ -248,7 +230,7 @@ ScreenManager:
 
             MDRaisedButton:
                 text: "Apply"
-                on_release: app.apply_settings(root.ids.cb_gpu.active, root.ids.s_step_size.value)
+                on_release: app.apply_settings(root.ids.s_threads.value)
 
 
 <LicensePage>:
@@ -279,7 +261,7 @@ ScreenManager:
             text: 'I read and agree to the Terms and Conditions'
             size_hint_y: None
             height: '40dp'
-            on_release: app.agree_t_c()
+            on_release: app.agree_oss_license()
             padding: dp(10)
             spacing: dp(10)
 

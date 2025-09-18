@@ -253,7 +253,6 @@ class Andromr(MDApp):
         Initializes all the attributes of the class needed
         """
         self.title = "Andromr"
-        self.step_size = appdata.step_size
 
         # generate folders
         os.makedirs(Path(f"{APP_PATH}/data/generated_xmls"), exist_ok=True)
@@ -270,9 +269,6 @@ class Andromr(MDApp):
             self.theme_cls.theme_style = 'Light' # default theme
 
         self.theme_cls.material_style = "M3" # m3 looks cool
-
-        #set variables from globals to use in the .kv file
-        self.step_size = appdata.step_size
 
 
     def change_screen(self, screen_name):
@@ -294,18 +290,13 @@ class Andromr(MDApp):
         # update the scrollview on the landing page
         if screen_name == "landing":
             self.update_scrollview()
-
-
-
-
     
 
-    def agree_t_c(self):
+    def agree_oss_license(self):
         '''Function that is triggered when the user agreed to the terms and conditions'''
         appdata.agreed = True
         appdata.save_settings()
         self.change_screen('landing')
-
 
 
     def update_scrollview(self):
@@ -598,12 +589,12 @@ class Andromr(MDApp):
         self.root.get_screen('progress').ids.beat.text = ""
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.oemer_backend_call, args=(path_to_image, f"{APP_PATH}/data/generated_xmls"), daemon=True)
+        self.ml_thread = Thread(target=self.oemer_backend_call, args=(path_to_image), daemon=True)
         self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
         self.ml_thread.start()
         self.progress_thread.start()
 
-    def oemer_backend_call(self, path: str, output_path: str):
+    def oemer_backend_call(self, path: str):
         """
         calls the oemer (optical music recognition software) and returns when finished to the landing page
         Args:
@@ -659,40 +650,6 @@ class Andromr(MDApp):
             self.root.get_screen('progress').ids.progress_label.text = f"{round(appdata.progress, 1)}%"
             sleep(0.1) # we dont need this to update every frame
 
-    #takes all the values in the settings tab and hands them over to global variables
-    def apply_settings(self, use_gpu: bool, step_size: int):
-        """
-        Applies the given values to the variables used and saves them to a .pkl file
-        Args:
-            use_gpu(bool): use gpu or not
-            step_size(int): describes the distance the immage section travels after each input to the tflite models
-        """
-
-        # user sees quality setting ranging from 1 to 5; needs to be converted to step_size
-        quality_to_step_size = {
-            1: 256, # fastest
-            2: 224,
-            3: 192,
-            4: 160,
-            5: 128 # slowest
-        }
-        appdata.step_size = quality_to_step_size[step_size]
-        appdata.use_gpu = use_gpu
-        appdata.save_settings()
-        self.change_screen("landing")
-    
-    def step_size_to_quality(self, step_size):
-        """
-        converts the step_size to quality to display it to the user
-        """
-        quality_from_step_size = {
-            256: 1,
-            224: 2,
-            192: 3,
-            160: 4,
-            128: 5
-        }
-        return quality_from_step_size[step_size]
 
     def delete_element(self, index: int):
         """

@@ -6,7 +6,7 @@ Made by aicelen 2025 released under MIT license.
 import numpy as np
 from time import perf_counter
 from kivy.utils import platform
-
+from globals import appdata
 
 if platform == 'android':
     from jnius import autoclass # type: ignore
@@ -28,7 +28,6 @@ if platform == 'android':
         def __init__(
                 self, 
                 model_path: str, 
-                num_threads: int = None, 
                 use_nnapi: bool = False, 
                 use_xnnpack: bool = False
             ):
@@ -56,11 +55,11 @@ if platform == 'android':
 
             if use_xnnpack:
                 xnnpack_map = HashMap()
-                xnnpack_map.put("intra_op_num_threads", str(num_threads or 2))
+                xnnpack_map.put("intra_op_num_threads", str(appdata.threads or 2))
                 so.addXnnpack(xnnpack_map)
 
-            elif num_threads is not None:
-                so.setIntraOpNumThreads(num_threads)
+            else:
+                so.setIntraOpNumThreads(appdata.threads)
                 so.setInterOpNumThreads(1)
         
             self.session = self.env.createSession(model_path, so)

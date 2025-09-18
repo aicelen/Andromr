@@ -16,8 +16,7 @@ class AppData():
             #if not existing: create file
             print('error')
             with open(Path(APP_PATH+'/data/saved_settings.pkl'), 'wb') as f:
-                dump([256, # step_size
-                    False, # use gpu
+                dump([2, # threads
                     False # agreed
                     ], f)
 
@@ -25,15 +24,14 @@ class AppData():
             with open(Path(APP_PATH+'/data/saved_settings.pkl'), 'rb') as f:
                 saved_settings = load(f)
 
-        self.step_size = saved_settings[0]
-        self.use_gpu = saved_settings[1]
-        self.agreed = saved_settings[2]
+        self.threads = saved_settings[0]
+        self.agreed = saved_settings[1]
         self.progress = 0
 
     def save_settings(self):
         try:
             with open(Path(APP_PATH+'/data/saved_settings.pkl'), 'wb') as f:
-                dump([self.step_size, self.use_gpu, self.agreed], f)
+                dump([self.threads, self.agreed], f)
 
         except Exception as e:
             print(f"failed to save settings {e}")

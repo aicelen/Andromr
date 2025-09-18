@@ -6,6 +6,7 @@ https://github.com/teticio/kivy-tensorflow-helloworld/blob/main/model.py
 
 import numpy as np
 from kivy.utils import platform
+from globals import appdata
 
 if platform == 'android':
     from jnius import autoclass # type: ignore
@@ -23,11 +24,10 @@ if platform == 'android':
     InterpreterApiOptions = autoclass('org.tensorflow.lite.InterpreterApi$Options')
 
     class TensorFlowModel():
-        def __init__(self, model_filename, num_threads=None):
+        def __init__(self, model_filename):
             model = File(model_filename)
             options = InterpreterOptions()
-            if num_threads is not None:
-                options.setNumThreads(num_threads)
+            options.setNumThreads(appdata.threads)
             self.interpreter = Interpreter(model, options)
             self.allocate_tensors()
 
