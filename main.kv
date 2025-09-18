@@ -1,5 +1,3 @@
-#:import os os
-
 ScreenManager:
     LandingPage:
     CameraPage:
@@ -192,8 +190,22 @@ ScreenManager:
     MDBoxLayout:
         orientation: "vertical"
         padding: dp(25)
+
         MDBoxLayout:
-            MDLabel: l_threads
+            MDLabel:
+                id: label_xnnpack
+                text: "Use xnnpack to accelerate models"
+
+            MDCheckbox:
+                id: checkbox_xnnpack
+                active: app.appdata.xnnpack
+                size_hint_x: None
+                pos_hint: {'center_y': 0.5}
+                ripple_scale: 0
+
+        MDBoxLayout:
+            MDLabel:
+                id: l_threads
                 text: "Threads"
 
             MDIconButton:
@@ -205,10 +217,10 @@ ScreenManager:
                 ripple_scale: 0
 
         MDSlider:
-            id: s_threads
+            id: slider_threads
             min: 1
             max: 8
-            value: 2
+            value: app.appdata.threads
             step: 1
             show_off: False
             
@@ -217,20 +229,20 @@ ScreenManager:
         MDBoxLayout:
             orientation: "horizontal"
             MDRaisedButton:
-                text: "Licenses"
+                text: "OSS Licenses"
                 on_release: app.change_screen('licensepage')
             
             Widget:
 
             MDRaisedButton:
-                text: "Terms+Conditions"
+                text: "License"
                 on_release: app.change_screen('termspage')
 
             Widget:
 
             MDRaisedButton:
                 text: "Apply"
-                on_release: app.apply_settings(root.ids.s_threads.value)
+                on_release: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active)
 
 
 <LicensePage>:
@@ -255,7 +267,7 @@ ScreenManager:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)        
-        Terms_Conditions:
+        OSS_License:
             id: rv_tpb
         MDRaisedButton:
             text: 'I read and agree to the Terms and Conditions'
@@ -271,7 +283,7 @@ ScreenManager:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)        
-        Terms_Conditions:
+        OSS_License:
             id: rv_tp
         MDRaisedButton:
             text: 'Back'

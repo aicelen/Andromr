@@ -79,7 +79,7 @@ def inference(
     if step_size < 0:
         step_size = win_size // 2
 
-    model = TensorFlowModel(segnet_path_tflite, 8)
+    model = TensorFlowModel(segnet_path_tflite)
     data = []
     image = image_org.astype(np.float32)
     for y_loop in range(0, image.shape[0], step_size):

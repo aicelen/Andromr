@@ -40,10 +40,7 @@ if platform == 'android':
             self.env = OrtEnvironment.getEnvironment()
             so = OrtSessionOptions()
 
-            if appdata.use_nnapi:
-                so.addNnapi()
-
-            if appdata.use_xnnpack:
+            if appdata.xnnpack:
                 xnnpack_map = HashMap()
                 xnnpack_map.put("intra_op_num_threads", str(appdata.threads or 2))
                 so.addXnnpack(xnnpack_map)
@@ -123,10 +120,7 @@ else:
     class OnnxModel:
         def __init__(
             self, 
-            model_path: str, 
-            num_threads: int = None, 
-            use_nnapi: bool = False, 
-            use_xnnpack: bool = False
+            model_path: str
         ):
             self.model = ort.InferenceSession(model_path)
         

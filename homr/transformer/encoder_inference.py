@@ -12,7 +12,7 @@ class EncoderDual:
         Encoder for better performance on android (LiteRT is faster for CNNs 
         while Onnx is faster for transformers)
         """
-        self.cnn_encoder = TensorFlowModel(cnn_path, num_threads=8)
+        self.cnn_encoder = TensorFlowModel(cnn_path)
         self.transformer_encoder = OnnxModel(transformer_path)
 
     def generate(self, x: NDArray) -> NDArray:

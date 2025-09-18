@@ -253,6 +253,7 @@ class Andromr(MDApp):
         Initializes all the attributes of the class needed
         """
         self.title = "Andromr"
+        self.appdata = appdata
 
         # generate folders
         os.makedirs(Path(f"{APP_PATH}/data/generated_xmls"), exist_ok=True)
@@ -589,14 +590,14 @@ class Andromr(MDApp):
         self.root.get_screen('progress').ids.beat.text = ""
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.oemer_backend_call, args=(path_to_image), daemon=True)
+        self.ml_thread = Thread(target=self.homr_call, args=(path_to_image, ), daemon=True)
         self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
         self.ml_thread.start()
         self.progress_thread.start()
 
-    def oemer_backend_call(self, path: str):
+    def homr_call(self, path: str):
         """
-        calls the oemer (optical music recognition software) and returns when finished to the landing page
+        calls the homr (optical music recognition software) and returns when finished to the landing page
         Args:
             path(str): path to the image
             output_path(str): path where the musicxml is stored
@@ -629,7 +630,7 @@ class Andromr(MDApp):
             # and update self.files (needed for the scorllview)
             self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
             self.text_lables =  [os.path.splitext(file)[0] for file in self.files]
-        
+
         except Exception as e:
             # if anything fails during transcription it prints the error
             print(e)
@@ -643,7 +644,7 @@ class Andromr(MDApp):
 
     def update_progress_bar(self):
         """
-        Update the progress bar used while running oemer
+        Update the progress bar used while running homr
         """
         while appdata.progress != 100:
             self.root.get_screen('progress').ids.progress_bar.value = appdata.progress
@@ -671,14 +672,19 @@ class Andromr(MDApp):
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
-    def capture(self, filename='taken_img.png'): # if you wonder why it saves to png; oemer "hates" jpg compression artifacts, everything below 90 messed things up  
+    def capture(self, filename='taken_img.png'):
         '''Take an image'''
         try:
             os.remove(filename)
-        except:
+        except Exception:
             print("couldn't be removed")
         take_picture(self.root.get_screen('camera').ids.camera_pre, self.img_taken, filename)
 
+    def save_settings(self, use_xnnpack, num_threads):
+        appdata.threads = int(num_threads)
+        appdata.xnnpack = use_xnnpack
+        appdata.save_settings()
+        self.change_screen('landing')
 
     def on_start(self):
         # Runs from the start of Kivy
