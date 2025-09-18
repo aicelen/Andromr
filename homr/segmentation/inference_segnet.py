@@ -1,5 +1,4 @@
 import hashlib
-import lzma
 import os
 from pathlib import Path
 from time import perf_counter
@@ -131,49 +130,12 @@ def extract(
     win_size: int = 320,
 ) -> ExtractResult:
     img_path = Path(img_path_str)
-    f_name = os.path.splitext(img_path.name)[0]
-    npy_path = img_path.parent / f"{f_name}.npy"
-    loaded_from_cache = False
-    if npy_path.exists() and use_cache:
-        eprint("Found a cache")
-        file_hash = hashlib.sha256(original_image).hexdigest()  # type: ignore
-        with lzma.open(npy_path, "rb") as f:
-            staff = np.load(f)
-            notehead = np.load(f)
-            symbols = np.load(f)
-            stems_rests = np.load(f)
-            clefs_keys = np.load(f)
-            cached_file_hash = f.readline().decode().strip()
-            model_name = f.readline().decode().strip()
-            if cached_file_hash == "" or model_name == "":
-                eprint("Cache is missing meta information, skipping cache")
-            elif file_hash != cached_file_hash:
-                eprint("File hash mismatch, skipping cache")
-            elif model_name != segmentation_version:
-                eprint("Models have been updated, skipping cache")
-            else:
-                loaded_from_cache = True
-                eprint("Loading from cache")
-
-    if not loaded_from_cache:
-        staff, symbols, stems_rests, notehead, clefs_keys = inference(
-            original_image,
-            step_size=step_size,
-            use_gpu=use_gpu,
-            win_size=win_size,
-        )
-        if use_cache:
-            eprint("Saving cache")
-            file_hash = hashlib.sha256(original_image).hexdigest()  # type: ignore
-            with lzma.open(npy_path, "wb") as f:
-                np.save(f, staff)
-                np.save(f, notehead)
-                np.save(f, symbols)
-                np.save(f, stems_rests)
-                np.save(f, clefs_keys)
-                f.write((file_hash + "\n").encode())
-                f.write((segmentation_version + "\n").encode())
-
+    staff, symbols, stems_rests, notehead, clefs_keys = inference(
+        original_image,
+        step_size=step_size,
+        use_gpu=use_gpu,
+        win_size=win_size,
+    )
     original_image = cv2.resize(original_image, (staff.shape[1], staff.shape[0]))
 
     return ExtractResult(

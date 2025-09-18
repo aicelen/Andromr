@@ -337,7 +337,7 @@ def download_weights() -> None:
 def main(path, cache=False):
     download_weights()
     config = ProcessingConfig(
-            False, cache, False, False, -1
+            False, False, False, False, -1
         )
     xml_generator_args = XmlGeneratorArguments(
         False, False, False
