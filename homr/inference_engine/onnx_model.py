@@ -22,6 +22,7 @@ if platform == 'android':
     OnnxJavaType = autoclass('ai.onnxruntime.OnnxJavaType')
     Array = autoclass('java.util.Arrays')
     ByteOrder = autoclass('java.nio.ByteOrder')
+    OrtSessionResult = autoclass("ai.onnxruntime.OrtSession$Result")
 
     class OnnxModel:
         def __init__(
@@ -47,7 +48,6 @@ if platform == 'android':
             use_xnnpack: bool = False
                 Should speed up inference time for some models.
             """
-            print('initializing onnx model')
             self.env = OrtEnvironment.getEnvironment()
             so = OrtSessionOptions()
 

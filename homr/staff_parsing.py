@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from PIL import Image
 
 from homr import constants
 from homr.debug import Debug
@@ -171,20 +170,15 @@ def prepare_staff_image(
         (int(staff_image.shape[1] * scaling_factor), int(staff_image.shape[0] * scaling_factor)),
     )
     region = np.round(region * scaling_factor)
-    print('prepare_staff_image 50%')
     region_step1 = np.array(region) + np.array([-10, -50, 10, 50])
     staff_image, top_left = crop_image_and_return_new_top(staff_image, region_step1[0], region_step1[1], region_step1[2], region_step1[3])
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
-    print('0')
     top_left = top_left / scaling_factor
     staff_image, top_left = crop_image_and_return_new_top(staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3])
     scaling_factor = 1
-    print('1')
 
     staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
-    print('2')
     staff_image = center_image_on_canvas(staff_image, image_dimensions)
-    print('prepare_staff_image finished')
     return staff_image, staff
 
 
@@ -194,7 +188,6 @@ def parse_staff_image(
     staff_image, transformed_staff = prepare_staff_image(
         debug, index, staff, image, regions=regions
     )
-    print('prepared staff')
     attention_debug = debug.build_attention_debug(staff_image, f"_staff-{index}_output.jpg")
     eprint("Running TrOmr inference on staff image", index)
     result = parse_staff_tromr(

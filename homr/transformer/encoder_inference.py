@@ -22,7 +22,7 @@ class EncoderDual:
 
         embeddings = np.transpose(out, (0, 3, 1, 2))
 
-        input_dict = {"input": embeddings}
+        input_dict = {"input": embeddings.astype(np.float32)}
         output_dict = {"output": [1, 641, 312]}
         output = self.transformer_encoder.run(input_dict, output_dict)
         print(f"Inference time CNN part of Encoder: {round(t1 - t0, 3)}s")

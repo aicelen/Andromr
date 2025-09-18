@@ -53,10 +53,10 @@ class ScoreDecoder:
             x_lift = out_lift[:, -self.max_seq_len :]
             x_pitch = out_pitch[:, -self.max_seq_len :]
             x_rhythm = out_rhythm[:, -self.max_seq_len :]
-            context = kwargs["context"]
+            context = kwargs["context"].astype(np.float32)
 
             inputs = {"rhythms": x_rhythm, "pitchs": x_pitch, "lifts": x_lift, "context": context}
-            outputs = {"out_rhythms": [1, _position_in_seq, 93], "out_pitchs": [1, _position_in_seq, 71], "out_lifts": [1, _position_in_seq, 5]}
+            outputs = {"out_rhythms": [1, _position_in_seq+1, 93], "out_pitchs": [1, _position_in_seq+1, 71], "out_lifts": [1, _position_in_seq+1, 5]}
 
             rhythmsp, pitchsp, liftsp = self.net.run(
                 inputs=inputs,
