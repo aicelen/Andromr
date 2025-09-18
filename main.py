@@ -35,7 +35,7 @@ from PIL import Image as PILImage
 from datetime import datetime
 
 # Imports from own code
-from get_theme import get_sys_theme
+from utils import get_sys_theme
 from homr.main import main as homr
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
@@ -187,10 +187,10 @@ class LineDrawer(Widget):
 
             Line(points=points, width=1.5)
 
-class Terms_Conditions(RecycleView):
+class OSS_License(RecycleView):
     # shows the terms and conditions using a recycling view widget for better performance
     def __init__(self, **kwargs):
-        super(Terms_Conditions, self).__init__(**kwargs)
+        super(OSS_License, self).__init__(**kwargs)
 
         def estimate_height(text, font_size=10, width=300, padding=20):
             # Very rough estimate: average characters per line
