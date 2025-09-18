@@ -71,7 +71,7 @@ def fill_hole(gt: NDArray, tar_color: int) -> NDArray:
     return tar
 
 
-def close_lines(img: cv2.typing.MatLike) -> cv2.typing.MatLike:
+def close_lines(img):
     # Use hough transform to find lines
     width = img.shape[1]
     lines = cv2.HoughLinesP(

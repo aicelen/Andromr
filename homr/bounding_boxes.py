@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from typing import Any, TypeVar
 
 import cv2
-import cv2.typing as cvt
 import numpy as np
 
 from homr import constants
@@ -25,7 +24,7 @@ def rotate_point_around_center(
 
 
 def calculate_edges_of_rotated_rectangle(
-    box: cvt.RotatedRect,
+    box,
 ) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float], tuple[float, float]]:
     half_size = np.array([box[1][0] / 2, box[1][1] / 2])
     center = box[0]
@@ -41,7 +40,7 @@ def calculate_edges_of_rotated_rectangle(
     )
 
 
-def do_polygons_overlap(poly1: cvt.MatLike, poly2: cvt.MatLike) -> bool:
+def do_polygons_overlap(poly1, poly2) -> bool:
     # Check if any point of one ellipse is inside the other ellipse
     for point in poly1:
         if cv2.pointPolygonTest(poly2, (float(point[0]), float(point[1])), False) >= 0:  # type: ignore
@@ -69,7 +68,7 @@ class BoundingBox(AnyPolygon):
     A bounding box in the format of (x1, y1, x2, y2)
     """
 
-    def __init__(self, box: cvt.Rect, contours: cvt.MatLike, debug_id: int = 0):
+    def __init__(self, box, contours, debug_id: int = 0):
         self.debug_id = debug_id
         self.contours = contours
         self.box = box
@@ -177,13 +176,12 @@ class BoundingBox(AnyPolygon):
 
 class AngledBoundingBox(AnyPolygon):
     def __init__(
-        self, box: cvt.RotatedRect, contours: cvt.MatLike, polygon: Any, debug_id: int = 0
+        self, box, contours, polygon: Any, debug_id: int = 0
     ):
         super().__init__(polygon)
         self.debug_id = debug_id
         self.contours = contours
         angle = box[2]
-        self.box: cvt.RotatedRect
         if angle > 135:  # noqa: PLR2004
             angle = angle - 180
             self.box = ((box[0][0], box[0][1]), (box[1][0], box[1][1]), angle)
@@ -293,7 +291,7 @@ class AngledBoundingBox(AnyPolygon):
 
 
 class RotatedBoundingBox(AngledBoundingBox):
-    def __init__(self, box: cvt.RotatedRect, contours: cvt.MatLike, debug_id: int = 0):
+    def __init__(self, box, contours, debug_id: int = 0):
         super().__init__(box, contours, cv2.boxPoints(box).astype(np.int64), debug_id)
 
     def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
@@ -456,7 +454,7 @@ class RotatedBoundingBox(AngledBoundingBox):
 
 
 class BoundingEllipse(AngledBoundingBox):
-    def __init__(self, box: cvt.RotatedRect, contours: cvt.MatLike, debug_id: int = 0):
+    def __init__(self, box, contours, debug_id: int = 0):
         super().__init__(
             box,
             contours,
@@ -517,13 +515,13 @@ def create_bounding_boxes(img: NDArray) -> list[BoundingBox]:
     return boxes
 
 
-def create_bounding_box(contour: cvt.MatLike, debug_id: int) -> BoundingBox:
+def create_bounding_box(contour, debug_id: int) -> BoundingBox:
     x, y, w, h = cv2.boundingRect(contour)
     box = (x, y, x + w, y + h)
     return BoundingBox(box, contour, debug_id=debug_id)
 
 
-def _has_box_valid_size(box: cvt.RotatedRect) -> bool:
+def _has_box_valid_size(box) -> bool:
     return (
         not math.isnan(box[1][0]) and not math.isnan(box[1][1]) and box[1][0] > 0 and box[1][1] > 0
     )
@@ -558,7 +556,7 @@ def create_rotated_bounding_boxes(
     return _get_box_for_whole_group(merge_overlaying_bounding_boxes(boxes))
 
 
-def create_rotated_bounding_box(contour: cvt.MatLike, debug_id: int) -> RotatedBoundingBox:
+def create_rotated_bounding_box(contour, debug_id: int) -> RotatedBoundingBox:
     box = cv2.minAreaRect(contour)
     return RotatedBoundingBox(box, contour, debug_id=debug_id)
 

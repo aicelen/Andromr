@@ -24,7 +24,7 @@ source.include_exts = py, jpg, kv, atlas, json, pkl, txt
 #source.include_patterns = assets/*,images/*.png
 
 # (list) Source files to exclude (leave empty to not exclude anything)
-source.exclude_exts = npy, 
+source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
 source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, cnn_encoder_188, datasets, segnet_155, training, validation 
@@ -42,7 +42,7 @@ version = 1.0
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, cython, ni_label, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree, musicxml, requests
+requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree, musicxml, requests
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -115,7 +115,7 @@ android.api = 35
 android.minapi = 24
 
 # (int) Android SDK version to use
-#android.sdk = 33
+android.sdk = 24
 
 # (str) Android NDK version to use
 android.ndk = 25b
@@ -312,7 +312,7 @@ android.allow_backup = True
 # android.no-byte-compile-python = False
 
 # (str) The format used to package the app for release mode (aab or apk or aar).
-android.release_artifact = apk
+#android.release_artifact = apk
 
 # (str) The format used to package the app for debug mode (apk or aar).
 # android.debug_artifact = apk
@@ -328,7 +328,7 @@ android.release_artifact = apk
 #p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-p4a.branch = develop
+#p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
@@ -337,7 +337,7 @@ p4a.branch = develop
 #p4a.source_dir =
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
-local_recipes = ./python-for-android/pythonforandroid/recipes/ni_label, ./python-for-android/pythonforandroid/recipes/peak_finding_utils
+local_recipes = ./python-for-android/pythonforandroid/recipes/peak_finding_utils
 
 # (str) Filename to the hook for p4a
 #p4a.hook =
