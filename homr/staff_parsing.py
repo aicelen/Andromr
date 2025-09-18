@@ -326,7 +326,8 @@ def parse_staffs(
                 eprint("Ignoring staff due to selected_staff argument", i)
                 i += 1
                 continue
-            result_staff = parse_staff_image(debug, i, staff, image, regions)
+            print('running tromr')
+            result_staff = parse_staff_image(debug, i, staff, image, regions) # tromr call
             if result_staff is None:
                 eprint("Staff was filtered out", i)
                 i += 1

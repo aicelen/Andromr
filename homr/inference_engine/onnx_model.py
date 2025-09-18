@@ -47,6 +47,7 @@ if platform == 'android':
             use_xnnpack: bool = False
                 Should speed up inference time for some models.
             """
+            print('initializing onnx model')
             self.env = OrtEnvironment.getEnvironment()
             so = OrtSessionOptions()
 

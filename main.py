@@ -201,7 +201,7 @@ class Terms_Conditions(RecycleView):
             return int(lines * line_height) + padding
 
 
-        with open(Path(f"{APP_PATH}/data/terms_and_conditions.txt"), 'r') as file:
+        with open(Path(f"{APP_PATH}/data/license.txt"), 'r') as file:
             lines = [line.strip() for line in file if line.strip()]
         
         
@@ -613,7 +613,7 @@ class Andromr(MDApp):
         """
         try:
             # run homr
-            return_path = homr(path, appdata.use_gpu, output_path)
+            return_path = homr(path)
 
 
             if self.root.get_screen('progress').ids.title.text == "":

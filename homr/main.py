@@ -166,9 +166,13 @@ def process_image(  # noqa: PLR0915
             multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
+        print('Starting parsing staffs')
+
         result_staffs = parse_staffs(
             debug, multi_staffs, image, selected_staff=config.selected_staff
         )
+
+        print('Completed parsing staffs')
 
         result_staffs = maintain_accidentals(result_staffs)
         result_staffs = correct_rhythm(result_staffs)
