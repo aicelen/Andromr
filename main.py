@@ -717,7 +717,7 @@ class Andromr(MDApp):
             print("couldn't be removed")
         take_picture(self.root.get_screen('camera').ids.camera_pre, self.img_taken, filename)
 
-    def save_settings(self, use_xnnpack, num_threads):
+    def save_settings(self, num_threads, use_xnnpack):
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack
         appdata.save_settings()

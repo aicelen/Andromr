@@ -37,3 +37,6 @@ _warps_cy.c
 
 # dev files
 onnx_ser.txt
+
+# include
+!icon.png
