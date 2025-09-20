@@ -726,10 +726,6 @@ class Andromr(MDApp):
     def on_start(self):
         # Runs from the start of Kivy
         self.update_scrollview()
-    
-    def on_stop(self):
-        # When leaving we should save everything we ajusted in the settigns
-        appdata.save_settings()
 
 if __name__ == "__main__":
     Andromr().run()

@@ -18,7 +18,7 @@ package.domain = com.aicelen.andromr
 source.dir = .
 
 # (list) Source files to include (leave empty to include all the files)
-source.include_exts = py, jpg, kv, atlas, json, pkl, txt
+source.include_exts = py, png, kv, atlas, json, pkl, txt
 
 # (list) List of inclusions using pattern matching
 #source.include_patterns = assets/*,images/*.png
@@ -49,10 +49,10 @@ requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typin
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/data/icon.jpg
+presplash.filename = %(source.dir)s/data/icon.png
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/data/icon.jpg
+icon.filename = %(source.dir)s/data/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse
@@ -82,7 +82,7 @@ osx.kivy_version = 2.3.0
 #
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 0
+fullscreen = 1
 
 # (string) Presplash background color (for android toolchain)
 # Supported formats are: #RRGGBB #AARRGGBB or one of the following names:
