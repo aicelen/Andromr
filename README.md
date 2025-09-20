@@ -38,5 +38,8 @@ Early 2026: Release of Andromr in PlayStore
 
 Mid 2026: NPU support for LiteRT Next
 
+## Known Issues
+- Navigation bar on the bottom overlays the Accept License button
+
 ## License
 Andromr is open-sourced under the AGPL 3.0 license.
