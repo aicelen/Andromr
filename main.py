@@ -580,6 +580,7 @@ class Andromr(MDApp):
         self.root.get_screen('progress').ids.title.text = ""
         self.root.get_screen('progress').ids.division.text = ""
         self.root.get_screen('progress').ids.beat.text = ""
+        appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
         self.ml_thread = Thread(target=self.homr_call, args=(path_to_image, ), daemon=True)
@@ -597,6 +598,7 @@ class Andromr(MDApp):
         try:
             # run homr
             return_path = homr(path)
+            appdata.homr_running = False
 
             if self.root.get_screen('progress').ids.title.text == "":
                 # if there's no user given title we give it a unique id based on time
@@ -626,9 +628,6 @@ class Andromr(MDApp):
             print(e)
             # and switches back to the landing screen as if nothing ever happend
 
-        # set the progress to 100 to stop the while loop in self.update_progress_bar()
-        appdata.progress = 100
-
         # switch to landing screen
         Clock.schedule_once(lambda dt:self.change_screen("landing"))
 
@@ -636,11 +635,11 @@ class Andromr(MDApp):
         """
         Update the progress bar used while running homr
         """
-        while appdata.progress != 100:
-            self.root.get_screen('progress').ids.progress_bar.value = appdata.progress
-            self.root.get_screen('progress').ids.progress_label.text = f"{round(appdata.progress, 1)}%"
-            sleep(0.1) # we dont need this to update every frame
-    
+        while appdata.homr_running:
+            self.root.get_screen('progress').ids.progress_bar.value = appdata.homr_progress
+            self.root.get_screen('progress').ids.progress_label.text = appdata.homr_state
+            sleep(0.1)
+
     def update_download_bar(self, camera_page):
         """
         Update the progress bar used while downloading models

@@ -30,7 +30,12 @@ class AppData():
         self.xnnpack= saved_settings[1]
         self.agreed = saved_settings[2]
 
-        self.progress = 0
+        # Homr
+        self.homr_running = True
+        self.homr_progress = 0
+        self.homr_state = "Segementation"
+
+        # Download
         self.download_running = True
         self.download_progress = 0
         self.downloaded_assets = "0/4"

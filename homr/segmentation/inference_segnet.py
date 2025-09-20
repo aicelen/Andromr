@@ -1,15 +1,15 @@
-import hashlib
-import os
 from pathlib import Path
 from time import perf_counter
+from math import ceil
 
 import cv2
 import numpy as np
 
 from homr.inference_engine.tflite_model import TensorFlowModel
-from homr.segmentation.config import segmentation_version, segnet_path_tflite
+from homr.segmentation.config import segnet_path_tflite
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
+from globals import appdata
 
 
 class ExtractResult:
@@ -76,8 +76,8 @@ def inference(
     """
     eprint("Starting Inference.")
     t0 = perf_counter()
-    if step_size < 0:
-        step_size = win_size // 2
+    num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
+    progress_increment = 100/num_steps
 
     model = TensorFlowModel(segnet_path_tflite)
     data = []
@@ -99,6 +99,9 @@ def inference(
             out_filtered = np.argmax(out, axis=-1)
             out_filtered = np.squeeze(out_filtered, axis=0)
             data.append(out_filtered)
+            
+            # Update progress bar value
+            appdata.homr_progress += progress_increment
 
 
     eprint(f"Segnet Inference time: {perf_counter()- t0}")

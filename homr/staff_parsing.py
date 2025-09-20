@@ -18,6 +18,7 @@ from homr.staff_parsing_tromr import parse_staff_tromr
 from homr.staff_regions import StaffRegions
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
+from globals import appdata
 
 
 def _have_all_the_same_number_of_staffs(staffs: list[MultiStaff]) -> bool:
@@ -315,13 +316,14 @@ def parse_staffs(
     for voice in range(number_of_voices):
         staffs_for_voice = [staff.staffs[voice] for staff in staffs]
         result_for_voice = []
+        progress_increment = 100/(len(staffs_for_voice) * number_of_voices)
         for staff_index, staff in enumerate(staffs_for_voice):
             if selected_staff >= 0 and staff_index != selected_staff:
                 eprint("Ignoring staff due to selected_staff argument", i)
                 i += 1
                 continue
-            print('running tromr')
             result_staff = parse_staff_image(debug, i, staff, image, regions) # tromr call
+            appdata.homr_progress += progress_increment
             if result_staff is None:
                 eprint("Staff was filtered out", i)
                 i += 1

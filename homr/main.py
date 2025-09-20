@@ -1,6 +1,7 @@
 import glob
 import os
 from dataclasses import dataclass
+from time import perf_counter
 
 import cv2
 import numpy as np
@@ -153,21 +154,13 @@ def process_image(  # noqa: PLR0915
     xml_file = replace_extension(image_path, ".musicxml")
     debug_cleanup: Debug | None = None
     try:
-        if config.read_staff_positions:
-            image = cv2.imread(image_path)
-            if image is None:
-                raise ValueError("Failed to read " + image_path)
-            image = resize_image(image)
-            debug = Debug(image, image_path, config.enable_debug)
-            staff_position_files = replace_extension(image_path, ".txt")
-            multi_staffs = load_staff_positions(
-                debug, image, staff_position_files, config.selected_staff
-            )
-        else:
-            multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
+        multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
         print('Starting parsing staffs')
+
+        appdata.homr_state = "Transforming"
+        appdata.homr_progress = 1
 
         result_staffs = parse_staffs(
             debug, multi_staffs, image, selected_staff=config.selected_staff
@@ -211,9 +204,13 @@ def process_image(  # noqa: PLR0915
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
 ) -> tuple[list[MultiStaff], NDArray, Debug]:
+    appdata.homr_state = "Segementing"
+    appdata.homr_progress = 1
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache
     )
+    appdata.homr_state = "Extracting"
+    appdata.homr_progress = 1
     symbols = predict_symbols(debug, predictions)
 
     symbols.staff_fragments = break_wide_fragments(symbols.staff_fragments)
@@ -227,6 +224,8 @@ def detect_staffs_in_image(
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
+    
+    appdata.homr_progress = 7
 
     average_note_head_height = float(
         np.median([notehead.notehead.size[1] for notehead in noteheads_with_stems])
@@ -248,9 +247,13 @@ def detect_staffs_in_image(
     debug.write_bounding_boxes(
         "anchor_input", symbols.staff_fragments + bar_line_boxes + symbols.clefs_keys
     )
+
+    appdata.homr_progress = 10
+
     staffs = detect_staff(
         debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
     )
+    appdata.homr_progress = 90
     if len(staffs) == 0:
         raise Exception("No staffs found")
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
@@ -290,7 +293,7 @@ def detect_staffs_in_image(
     debug.write_all_bounding_boxes_alternating_colors(
         "notes", multi_staffs, notes, rests, accidentals
     )
-
+    appdata.homr_progress = 100
     return multi_staffs, predictions.preprocessed, debug
 
 
@@ -349,6 +352,7 @@ def check_for_missing_models() -> list:
     return missing_models
 
 def homr(path, cache=False):
+    t0 = perf_counter()
     config = ProcessingConfig(
             False, False, False, False, -1
         )
@@ -356,6 +360,7 @@ def homr(path, cache=False):
         False, False, False
     )
     out_path = process_image(path, config, xml_generator_args)
+    eprint(f"Homr took {perf_counter() - t0} seconds.")
     return out_path
 
 if __name__ == "__main__":

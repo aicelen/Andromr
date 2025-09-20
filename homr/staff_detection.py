@@ -14,7 +14,7 @@ from homr.debug import Debug
 from homr.model import Staff, StaffPoint
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
-
+from globals import appdata
 
 def prepare_staff_image(img: NDArray) -> NDArray:
     """
@@ -678,14 +678,18 @@ def detect_staff(
     """
     staff_anchors = find_staff_anchors(staff_fragments, clefs_keys, are_clefs=True)
     eprint("Found " + str(len(staff_anchors)) + " clefs")
+    appdata.homr_progress = 15
 
     possible_other_clefs = predict_other_anchors_from_clefs(staff_anchors, image)
     eprint("Found " + str(len(possible_other_clefs)) + " possible other clefs")
     staff_anchors.extend(find_staff_anchors(staff_fragments, possible_other_clefs, are_clefs=True))
+    appdata.homr_progress = 20
 
     staff_anchors.extend(
         find_staff_anchors(staff_fragments, likely_bar_or_rests_lines, are_clefs=False)
     )
+    appdata.homr_progress = 25
+
 
     staff_anchors = filter_unusual_anchors(staff_anchors)
     eprint("Found " + str(len(staff_anchors)) + " staff anchors")
@@ -694,6 +698,8 @@ def detect_staff(
     raw_staffs_with_possible_duplicates = find_raw_staffs_by_connecting_line_fragments(
         staff_anchors, staff_fragments
     )
+    appdata.homr_progress = 60
+
     eprint("Found " + str(len(raw_staffs_with_possible_duplicates)) + " staffs")
     raw_staffs = remove_duplicate_staffs(raw_staffs_with_possible_duplicates)
     if len(raw_staffs_with_possible_duplicates) != len(raw_staffs):
@@ -705,10 +711,12 @@ def detect_staff(
     debug.write_bounding_boxes_alternating_colors(
         "raw_staffs", raw_staffs + likely_bar_or_rests_lines + clefs_keys
     )
+    appdata.homr_progress = 75
 
     staffs = resample_staffs(raw_staffs)
 
     staffs = filter_edge_of_vision(staffs, image.shape)
+    appdata.homr_progress = 85
 
     staffs = sort_staffs_top_to_bottom(staffs)
 
