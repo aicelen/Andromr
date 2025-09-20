@@ -42,6 +42,7 @@ from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 from homr.xml_generator import XmlGeneratorArguments, generate_xml
 
+from globals import appdata
 
 class PredictedSymbols:
     def __init__(
@@ -310,6 +311,34 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
 
 def download_weights() -> None:
     base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
+    missing_models = check_for_missing_models()
+    if len(missing_models) == 0:
+        return
+
+    eprint("Downloading", len(missing_models), "models - this is only required once")
+    for idx, model in enumerate(missing_models):
+        base_name = os.path.basename(model).split(".")[0]
+        eprint(f"Downloading {base_name}")
+        try:
+            zip_name = base_name + ".zip"
+            download_url = base_url + zip_name
+            downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
+            download_utils.download_file(download_url, downloaded_zip)
+
+            destination_dir = os.path.dirname(model)
+            download_utils.unzip_file(downloaded_zip, destination_dir)
+        finally:
+            if os.path.exists(downloaded_zip):
+                os.remove(downloaded_zip)
+
+        appdata.downloaded_assets = f"{idx+1}/{len(missing_models)}"
+
+    appdata.download_running = False
+
+def check_for_missing_models() -> list:
+    """
+    Checks for missing models and returns a list with all the links to the missing models.
+    """
     models = [
         segnet_path_tflite,
         default_config.filepaths.encoder_cnn_path_tflite,
@@ -317,29 +346,9 @@ def download_weights() -> None:
         default_config.filepaths.decoder_path
     ]
     missing_models = [model for model in models if not os.path.exists(model)]
+    return missing_models
 
-    if len(missing_models) == 0:
-        return
-
-    eprint("Downloading", len(missing_models), "models - this is only required once")
-    for model in missing_models:
-        if not os.path.exists(model) or True:
-            base_name = os.path.basename(model).split(".")[0]
-            eprint(f"Downloading {base_name}")
-            try:
-                zip_name = base_name + ".zip"
-                download_url = base_url + zip_name
-                downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
-                download_utils.download_file(download_url, downloaded_zip)
-
-                destination_dir = os.path.dirname(model)
-                download_utils.unzip_file(downloaded_zip, destination_dir)
-            finally:
-                if os.path.exists(downloaded_zip):
-                    os.remove(downloaded_zip)
-
-def main(path, cache=False):
-    download_weights()
+def homr(path, cache=False):
     config = ProcessingConfig(
             False, False, False, False, -1
         )
@@ -350,4 +359,4 @@ def main(path, cache=False):
     return out_path
 
 if __name__ == "__main__":
-    main('test_img.png', cache=False)
+    homr('test_img.png', cache=False)

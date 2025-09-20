@@ -1,7 +1,6 @@
 # main file of the app
 # Andromr class is the main class of the app
 
-
 # Kivy imports
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -34,9 +33,8 @@ from time import sleep
 from PIL import Image as PILImage
 from datetime import datetime
 
-# Imports from own code
 from utils import get_sys_theme
-from homr.main import main as homr
+from homr.main import download_weights, homr, check_for_missing_models
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from save_file import save_to_external_storage
@@ -87,6 +85,8 @@ class TermsPageButton(Screen):
 class EditImagePage(Screen):
     pass
 
+class DownloadPage(Screen):
+    pass
 
 # Custom widget classes
 class KvCam(Camera):
@@ -278,13 +278,6 @@ class Andromr(MDApp):
         Args:
             screen_name(str): name of the screen you want to change to
         """
-
-        # start the camera
-        if screen_name == "camera":
-            self.sm.get_screen('camera').ids.camera_pre.play = True
-        else:
-            self.sm.get_screen('camera').ids.camera_pre.play = False
-
         #set screen
         self.sm.current = screen_name
 
@@ -356,7 +349,6 @@ class Andromr(MDApp):
         """
         crop the displayed image based on the positions of the buttons
         """
-        
         # get button positions
         pos_btns = [self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn0.center), 
                     self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn1.center), 
@@ -601,12 +593,10 @@ class Andromr(MDApp):
         Args:
             path(str): path to the image
             output_path(str): path where the musicxml is stored
-
         """
         try:
             # run homr
             return_path = homr(path)
-
 
             if self.root.get_screen('progress').ids.title.text == "":
                 # if there's no user given title we give it a unique id based on time
@@ -650,7 +640,55 @@ class Andromr(MDApp):
             self.root.get_screen('progress').ids.progress_bar.value = appdata.progress
             self.root.get_screen('progress').ids.progress_label.text = f"{round(appdata.progress, 1)}%"
             sleep(0.1) # we dont need this to update every frame
+    
+    def update_download_bar(self, camera_page):
+        """
+        Update the progress bar used while downloading models
+        """
+        while appdata.download_running:
+            self.root.get_screen('downloadpage').ids.download_bar.value = int(appdata.download_progress)
+            self.root.get_screen('downloadpage').ids.download_label.text = str(appdata.downloaded_assets)
+            sleep(0.02)
+        if camera_page:
+            Clock.schedule_once(lambda dt: self.change_screen('camera'))
+        else:
+            Clock.schedule_once(lambda dt: self.change_screen('settings'))
 
+    def start_download(self, camera_page=False):
+        self.dialog_download.dismiss()
+        download = Thread(target=download_weights, daemon=True)
+        update = Thread(target=self.update_download_bar, args=(camera_page, ),daemon=True)
+        download.start()
+        update.start()
+        Clock.schedule_once(lambda dt: self.change_screen('downloadpage'))
+
+    def check_download_assets(self, camera_page=False):
+        """
+        If not all tflite models are downloaded it will create a Dialog informing the user
+        that the App wants to download something. If the user allows to the app will switch 
+        to a Screen displaying a Progressbar. 
+        If all tflite models are downloaded it will directly switch to the camera screen.
+        """
+        if check_for_missing_models():
+            self.dialog_download = MDDialog(
+            text="You need to download assets before converting an image to .musicxml. You can also download later in the settings tab.",
+            buttons=[
+                MDFlatButton(
+                    id="cancel",
+                    text="CANCEL",
+                    on_release=lambda dt: self.dialog_download.dismiss()
+                ),
+                MDFlatButton(
+                    text="DOWNLOAD NOW",
+                    on_release=lambda dt: self.start_download(camera_page)
+                ),
+                ]
+            )
+            self.dialog_download.open()
+        elif camera_page:
+            self.change_screen("camera")
+        else:
+            self.show_toast('You already downloaded all assets')
 
     def delete_element(self, index: int):
         """

@@ -31,6 +31,9 @@ class AppData():
         self.agreed = saved_settings[2]
 
         self.progress = 0
+        self.download_running = True
+        self.download_progress = 0
+        self.downloaded_assets = "0/4"
 
     def save_settings(self):
         with open(Path(APP_PATH+'/data/saved_settings.pkl'), 'wb') as f:

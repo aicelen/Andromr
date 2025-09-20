@@ -4,6 +4,7 @@ ScreenManager:
     EditImagePage:
     ProgressPage:
     SettingsPage:
+    DownloadPage:
     LicensePage:
     TermsPageButton:
     TermsPage:
@@ -37,7 +38,7 @@ ScreenManager:
             MDFloatingActionButton:
                 id: gen_xml
                 icon: "upload"
-                on_release: app.change_screen('camera')
+                on_release: app.check_download_assets(camera_page=True)
 
 
 <CameraPage>:
@@ -75,15 +76,15 @@ ScreenManager:
             size_hint: None, None
             pos_hint: {'center_x': 0.5}
             on_release: app.crop()
-        
+
         Widget:
-        
+
         MDRaisedButton:
             text: "Start without cropping"
             size_hint: None, None
             pos_hint: {'center_x': 0.5}
             on_release: app.start_inference(app.img_path)
-        
+
         Widget:
 
         MDRaisedButton:
@@ -91,7 +92,7 @@ ScreenManager:
             size_hint: None, None
             pos_hint: {'center_x': 0.5}
             on_release: app.change_screen("camera")
-    
+
     MovableMDIconButton:
         id: btn0
         icon: "circle-medium"
@@ -225,6 +226,9 @@ ScreenManager:
             show_off: False
             
         Widget:
+        MDRaisedButton:
+            text: "Download assets (100MB)"
+            on_release: app.check_download_assets()
 
         MDBoxLayout:
             orientation: "horizontal"
@@ -244,6 +248,26 @@ ScreenManager:
                 text: "Apply"
                 on_release: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active)
 
+<DownloadPage>
+    name: "downloadpage"
+    MDBoxLayout:
+        orientation: "vertical"
+        spacing: dp(20)
+        padding: dp(10)
+        Widget:
+
+        MDProgressBar:
+            id: download_bar
+            size_hint_y: None
+            height: dp(10)
+            pos_hint: {"center_x": 0.5}
+
+        MDLabel:
+            id: download_label
+            text: "0/4"
+            halign: 'center'
+            size_hint_y: None
+            height: self.texture_size[1]
 
 <LicensePage>:
     name: 'licensepage'
