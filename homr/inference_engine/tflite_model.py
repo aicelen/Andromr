@@ -28,6 +28,7 @@ if platform == 'android':
             model = File(model_filename)
             options = InterpreterOptions()
             options.setNumThreads(appdata.threads)
+            options.setUseXNNPACK(True)
             self.interpreter = Interpreter(model, options)
             self.allocate_tensors()
 
