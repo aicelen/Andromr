@@ -20,7 +20,7 @@ def calc_symbol_error_rate_for_list(
     if onnx:
         from homr.transformer.staff2score import Staff2Score as Staff2ScoreOnnx
 
-        model = Staff2ScoreOnnx(False)
+        model = Staff2ScoreOnnx()
         result_file = "onnx_ser.txt"
 
     else:
