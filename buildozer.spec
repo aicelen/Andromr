@@ -34,7 +34,7 @@ source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build,
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.0
+version = 1.1
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
