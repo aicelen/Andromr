@@ -52,12 +52,18 @@ if platform == "android":
             return np.reshape(np.array(output.getFloatArray()), self.output_shape)
 
 else:
-    import tensorflow as tf
+    if platform == 'win':
+        import tensorflow as tf
+        Interpreter = tf.lite.Interpreter
+
+    else:
+        # ai-edege-litert is only available on Linux/WSL and MacOS 
+        from ai_edge_litert.interpreter import Interpreter
 
     class TensorFlowModel:
         def __init__(self, model_filename, num_threads=None):
-            self.interpreter = tf.lite.Interpreter(
-                model_filename, num_threads=num_threads
+            self.interpreter = Interpreter(
+                model_filename, num_threads=12
             )
             self.interpreter.allocate_tensors()
 
