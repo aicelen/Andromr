@@ -1,9 +1,6 @@
-import os
 from typing import Any
 
 import torch
-
-from homr.transformer.configs import FilePaths
 
 
 def split_weights_encoder(input_path: str) -> None:
@@ -22,11 +19,16 @@ def split_weights_encoder(input_path: str) -> None:
         if key.startswith("patch_embed."):
             # Remove encoder starting
             key = key.replace("patch_embed.", "")
-            #key = key.replace("backbone.", "")
+            # key = key.replace("backbone.", "")
             # And add it to a seperate dict
             cnn_encoder[key] = value
 
-        elif key.startswith("blocks.") or key.startswith("norm.") or key.startswith("pos_embed") or key.startswith("cls_token"):
+        elif (
+            key.startswith("blocks.")
+            or key.startswith("norm.")
+            or key.startswith("pos_embed")
+            or key.startswith("cls_token")
+        ):
             key = f"encoder.{key}"
             transformer_encoder[key] = value
         else:

@@ -21,8 +21,12 @@ primus_distorted_train_index = os.path.join(primus, "distored_index.txt")
 if not os.path.exists(primus):
     eprint("Downloading Camera-PrIMuS from https://grfia.dlsi.ua.es/primus/")
     primus_archive = os.path.join(dataset_root, "CameraPrIMuS.tgz")
-    download_file("https://grfia.dlsi.ua.es/primus/packages/CameraPrIMuS.tgz", primus_archive)
-    untar_file(primus_archive, dataset_root)  # the archive contains already a Corpus folder
+    download_file(
+        "https://grfia.dlsi.ua.es/primus/packages/CameraPrIMuS.tgz", primus_archive
+    )
+    untar_file(
+        primus_archive, dataset_root
+    )  # the archive contains already a Corpus folder
 
 
 def _replace_suffix(path: Path, suffix: str) -> Path | None:
@@ -88,7 +92,9 @@ def _convert_dataset(
         file_number = 0
         with multiprocessing.Pool(8) as p:
             for result in p.imap_unordered(
-                _convert_and_distort_file if distort else _convert_file_without_distortions,
+                _convert_and_distort_file
+                if distort
+                else _convert_file_without_distortions,
                 glob_result,
             ):
                 f.writelines(result)
@@ -101,7 +107,9 @@ def convert_primus_dataset() -> None:
     eprint("Indexing PrIMuS dataset")
     _convert_dataset(Path(primus).rglob("*.png"), primus_train_index, distort=True)
     eprint("Indexing PrIMuS Distorted dataset")
-    _convert_dataset(Path(primus).rglob("*_distorted.jpg"), primus_distorted_train_index)
+    _convert_dataset(
+        Path(primus).rglob("*_distorted.jpg"), primus_distorted_train_index
+    )
     eprint("Done indexing")
 
 

@@ -10,7 +10,9 @@ from termcolor import colored
 
 parser = argparse.ArgumentParser(description="Show examples from a dataset index")
 parser.add_argument("index", type=str, help="Index file name")
-parser.add_argument("number_of_images", type=int, help="Number of images to show at once")
+parser.add_argument(
+    "number_of_images", type=int, help="Number of images to show at once"
+)
 parser.add_argument(
     "--sorted",
     action="store_true",
@@ -42,12 +44,16 @@ if not args.sorted:
 
 if args.min_ser is not None:
     index_lines = [
-        line for line in index_lines if int(line.split(",")[ser_position]) >= args.min_ser
+        line
+        for line in index_lines
+        if int(line.split(",")[ser_position]) >= args.min_ser
     ]
 
 if args.max_ser is not None:
     index_lines = [
-        line for line in index_lines if int(line.split(",")[ser_position]) <= args.max_ser
+        line
+        for line in index_lines
+        if int(line.split(",")[ser_position]) <= args.max_ser
     ]
 
 

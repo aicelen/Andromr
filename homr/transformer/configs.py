@@ -12,10 +12,12 @@ class FilePaths:
             workspace, "cnn_encoder_188_wi_8_afp32.tflite"
         )  # noqa: E501
         self.encoder_transformer_path = os.path.join(
-            workspace, "transformer_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+            workspace,
+            "transformer_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx",
         )  # noqa: E501
         self.decoder_path = os.path.join(
-            workspace, "decoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx"
+            workspace,
+            "decoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx",
         )  # noqa: E501
         self.checkpoint = os.path.join(
             root_dir,
@@ -90,10 +92,18 @@ class Config:
         self.decoder_heads = 8
         self.temperature = 0.01
         self.decoder_args = DecoderArgs()
-        self.lift_vocab = json.load(open(self.filepaths.lifttokenizer))["model"]["vocab"]
-        self.pitch_vocab = json.load(open(self.filepaths.pitchtokenizer))["model"]["vocab"]
-        self.note_vocab = json.load(open(self.filepaths.notetokenizer))["model"]["vocab"]
-        self.rhythm_vocab = json.load(open(self.filepaths.rhythmtokenizer))["model"]["vocab"]
+        self.lift_vocab = json.load(open(self.filepaths.lifttokenizer))["model"][
+            "vocab"
+        ]
+        self.pitch_vocab = json.load(open(self.filepaths.pitchtokenizer))["model"][
+            "vocab"
+        ]
+        self.note_vocab = json.load(open(self.filepaths.notetokenizer))["model"][
+            "vocab"
+        ]
+        self.rhythm_vocab = json.load(open(self.filepaths.rhythmtokenizer))["model"][
+            "vocab"
+        ]
         self.noteindexes = self._get_values_of_keys_starting_with("note-")
         self.restindexes = self._get_values_of_keys_starting_with(
             "rest-"
@@ -102,7 +112,9 @@ class Config:
         self.barlineindex = self.rhythm_vocab["barline"]
 
     def _get_values_of_keys_starting_with(self, prefix: str) -> list[int]:
-        return [value for key, value in self.rhythm_vocab.items() if key.startswith(prefix)]
+        return [
+            value for key, value in self.rhythm_vocab.items() if key.startswith(prefix)
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         return {

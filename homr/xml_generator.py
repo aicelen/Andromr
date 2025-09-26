@@ -16,7 +16,9 @@ from homr.results import (
 
 
 class XmlGeneratorArguments:
-    def __init__(self, large_page: bool | None, metronome: int | None, tempo: int | None):
+    def __init__(
+        self, large_page: bool | None, metronome: int | None, tempo: int | None
+    ):
         self.large_page = large_page
         self.metronome = metronome
         self.tempo = tempo
@@ -115,7 +117,9 @@ def build_rest(model_rest: ResultChord) -> mxl.XMLNote:
     return note
 
 
-def build_note(model_note: ResultNote, voice: int, is_chord: bool = False) -> mxl.XMLNote:
+def build_note(
+    model_note: ResultNote, voice: int, is_chord: bool = False
+) -> mxl.XMLNote:
     note = mxl.XMLNote()
     if is_chord:
         note.add_child(mxl.XMLChord())
@@ -161,11 +165,15 @@ def build_note_group(note_group: ResultChord) -> list[mxl.XMLNote]:
 
     if note_group.duration.duration < last_duration:
         backup = mxl.XMLBackup()
-        backup.add_child(mxl.XMLDuration(value_=int(last_duration - note_group.duration.duration)))
+        backup.add_child(
+            mxl.XMLDuration(value_=int(last_duration - note_group.duration.duration))
+        )
         result.append(backup)
     elif note_group.duration.duration > last_duration:
         backup = mxl.XMLForward()
-        backup.add_child(mxl.XMLDuration(value_=int(note_group.duration.duration - last_duration)))
+        backup.add_child(
+            mxl.XMLDuration(value_=int(note_group.duration.duration - last_duration))
+        )
         result.append(backup)
     return result
 
@@ -204,7 +212,10 @@ def build_add_time_direction(args: XmlGeneratorArguments) -> mxl.XMLDirection | 
 
 
 def build_measure(
-    args: XmlGeneratorArguments, measure: ResultMeasure, is_first_part: bool, measure_number: int
+    args: XmlGeneratorArguments,
+    measure: ResultMeasure,
+    is_first_part: bool,
+    measure_number: int,
 ) -> mxl.XMLMeasure:
     result = mxl.XMLMeasure(number=str(measure_number))
     is_first_measure = measure_number == 1
@@ -227,7 +238,9 @@ def build_measure(
     return result
 
 
-def build_part(args: XmlGeneratorArguments, staff: ResultStaff, index: int) -> mxl.XMLPart:
+def build_part(
+    args: XmlGeneratorArguments, staff: ResultStaff, index: int
+) -> mxl.XMLPart:
     part = mxl.XMLPart(id=get_part_id(index))
     measure_number = 1
     is_first_part = index == 0

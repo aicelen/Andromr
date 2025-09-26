@@ -18,7 +18,9 @@ class NoteheadWithStem(DebugDrawable):
         self.stem = stem
         self.stem_direction = stem_direction
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.notehead.draw_onto_image(img, color)
         if self.stem is not None:
             self.stem.draw_onto_image(img, color)
@@ -107,7 +109,9 @@ def split_clumps_of_noteheads(
         size = (box[2] - box[0], box[3] - box[1])
         notehead = NoteheadWithStem(
             BoundingEllipse(
-                (center, size, 0), notehead.notehead.contours, notehead.notehead.debug_id
+                (center, size, 0),
+                notehead.notehead.contours,
+                notehead.notehead.debug_id,
             ),
             notehead.stem,
             notehead.stem_direction,
@@ -168,7 +172,9 @@ def _group_notes_on_staff(staff: Staff) -> None:
         for group in groups:
             for grouped_note in group:
                 if _are_notes_likely_a_chord(
-                    note, grouped_note, constants.tolerance_note_grouping(staff.average_unit_size)
+                    note,
+                    grouped_note,
+                    constants.tolerance_note_grouping(staff.average_unit_size),
                 ):
                     group_found = True
                     group.append(note)
@@ -184,7 +190,10 @@ def _group_notes_on_staff(staff: Staff) -> None:
 
 
 def add_notes_to_staffs(
-    staffs: list[Staff], noteheads: list[NoteheadWithStem], symbols: NDArray, notehead_pred: NDArray
+    staffs: list[Staff],
+    noteheads: list[NoteheadWithStem],
+    symbols: NDArray,
+    notehead_pred: NDArray,
 ) -> list[Note]:
     result = []
     for staff in staffs:
@@ -200,7 +209,9 @@ def add_notes_to_staffs(
                 or notehead_chunk.notehead.size[1] < 0.5 * point.average_unit_size
             ):
                 continue
-            for notehead in split_clumps_of_noteheads(notehead_chunk, notehead_pred, staff):
+            for notehead in split_clumps_of_noteheads(
+                notehead_chunk, notehead_pred, staff
+            ):
                 point = staff.get_at(center[0])
                 if point is None:
                     continue
@@ -212,7 +223,9 @@ def add_notes_to_staffs(
                 ):
                     continue
                 position = point.find_position_in_unit_sizes(notehead.notehead)
-                note = Note(notehead.notehead, position, notehead.stem, notehead.stem_direction)
+                note = Note(
+                    notehead.notehead, position, notehead.stem, notehead.stem_direction
+                )
                 result.append(note)
                 staff.add_symbol(note)
     number_of_notes = 0

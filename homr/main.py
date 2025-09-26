@@ -38,12 +38,13 @@ from homr.segmentation.inference_segnet import extract
 from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
 from homr.staff_parsing import parse_staffs
-from homr.staff_position_save_load import load_staff_positions, save_staff_positions
+from homr.staff_position_save_load import save_staff_positions
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 from homr.xml_generator import XmlGeneratorArguments, generate_xml
 
 from globals import appdata
+
 
 class PredictedSymbols:
     def __init__(
@@ -67,8 +68,12 @@ def get_predictions(
     original: NDArray, preprocessed: NDArray, img_path: str, enable_cache: bool
 ) -> InputPredictions:
     result = extract(preprocessed, img_path, step_size=320, use_cache=enable_cache)
-    original_image = cv2.resize(original, (result.staff.shape[1], result.staff.shape[0]))
-    preprocessed_image = cv2.resize(preprocessed, (result.staff.shape[1], result.staff.shape[0]))
+    original_image = cv2.resize(
+        original, (result.staff.shape[1], result.staff.shape[0])
+    )
+    preprocessed_image = cv2.resize(
+        preprocessed, (result.staff.shape[1], result.staff.shape[0])
+    )
     return InputPredictions(
         original=original_image,
         preprocessed=preprocessed_image,
@@ -129,7 +134,9 @@ def predict_symbols(debug: Debug, predictions: InputPredictions) -> PredictedSym
     eprint("Creating bounds for bar_lines")
     bar_line_img = prepare_bar_line_image(predictions.stems_rest)
     debug.write_threshold_image("bar_line_img", bar_line_img)
-    bar_lines = create_rotated_bounding_boxes(bar_line_img, skip_merging=True, min_size=(1, 5))
+    bar_lines = create_rotated_bounding_boxes(
+        bar_line_img, skip_merging=True, min_size=(1, 5)
+    )
 
     return PredictedSymbols(
         noteheads, staff_fragments, clefs_keys, accidentals, stems_rest, bar_lines
@@ -157,7 +164,7 @@ def process_image(  # noqa: PLR0915
         multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
-        print('Starting parsing staffs')
+        print("Starting parsing staffs")
 
         appdata.homr_state = "Transforming"
         appdata.homr_progress = 1
@@ -166,7 +173,7 @@ def process_image(  # noqa: PLR0915
             debug, multi_staffs, image, selected_staff=config.selected_staff
         )
 
-        print('Completed parsing staffs')
+        print("Completed parsing staffs")
 
         result_staffs = maintain_accidentals(result_staffs)
         result_staffs = correct_rhythm(result_staffs)
@@ -220,11 +227,13 @@ def detect_staffs_in_image(
     noteheads_with_stems, likely_bar_or_rests_lines = combine_noteheads_with_stems(
         symbols.noteheads, symbols.stems_rest
     )
-    debug.write_bounding_boxes_alternating_colors("notehead_with_stems", noteheads_with_stems)
+    debug.write_bounding_boxes_alternating_colors(
+        "notehead_with_stems", noteheads_with_stems
+    )
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
-    
+
     appdata.homr_progress = 7
 
     average_note_head_height = float(
@@ -251,7 +260,11 @@ def detect_staffs_in_image(
     appdata.homr_progress = 10
 
     staffs = detect_staff(
-        debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
+        debug,
+        predictions.staff,
+        symbols.staff_fragments,
+        symbols.clefs_keys,
+        bar_line_boxes,
     )
     appdata.homr_progress = 90
     if len(staffs) == 0:
@@ -264,17 +277,23 @@ def detect_staffs_in_image(
     eprint("Found " + str(len(bar_lines_found)) + " bar lines")
 
     possible_rests = [
-        rest for rest in bar_lines_or_rests if not rest.is_overlapping_with_any(bar_line_boxes)
+        rest
+        for rest in bar_lines_or_rests
+        if not rest.is_overlapping_with_any(bar_line_boxes)
     ]
     rests = add_rests_to_staffs(staffs, possible_rests)
     eprint("Found", len(rests), "rests")
 
-    all_classified = predictions.notehead + predictions.clefs_keys + predictions.stems_rest
+    all_classified = (
+        predictions.notehead + predictions.clefs_keys + predictions.stems_rest
+    )
     brace_dot_img = prepare_brace_dot_image(
         predictions.symbols, predictions.staff, all_classified, global_unit_size
     )
     debug.write_threshold_image("brace_dot", brace_dot_img)
-    brace_dot = create_rotated_bounding_boxes(brace_dot_img, skip_merging=True, max_size=(100, -1))
+    brace_dot = create_rotated_bounding_boxes(
+        brace_dot_img, skip_merging=True, max_size=(100, -1)
+    )
 
     notes = add_notes_to_staffs(
         staffs, noteheads_with_stems, predictions.symbols, predictions.notehead
@@ -300,7 +319,9 @@ def detect_staffs_in_image(
 def get_all_image_files_in_folder(folder: str) -> list[str]:
     image_files = []
     for ext in ["png", "jpg", "jpeg", "PNG", "JPG", "JPEG"]:
-        image_files.extend(glob.glob(os.path.join(folder, "**", f"*.{ext}"), recursive=True))
+        image_files.extend(
+            glob.glob(os.path.join(folder, "**", f"*.{ext}"), recursive=True)
+        )
     without_teasers = [
         img
         for img in image_files
@@ -334,9 +355,10 @@ def download_weights() -> None:
             if os.path.exists(downloaded_zip):
                 os.remove(downloaded_zip)
 
-        appdata.downloaded_assets = f"{idx+1}/{len(missing_models)}"
+        appdata.downloaded_assets = f"{idx + 1}/{len(missing_models)}"
 
     appdata.download_running = False
+
 
 def check_for_missing_models() -> list:
     """
@@ -346,22 +368,20 @@ def check_for_missing_models() -> list:
         segnet_path_tflite,
         default_config.filepaths.encoder_cnn_path_tflite,
         default_config.filepaths.encoder_transformer_path,
-        default_config.filepaths.decoder_path
+        default_config.filepaths.decoder_path,
     ]
     missing_models = [model for model in models if not os.path.exists(model)]
     return missing_models
 
+
 def homr(path, cache=False):
     t0 = perf_counter()
-    config = ProcessingConfig(
-            False, False, False, False, -1
-        )
-    xml_generator_args = XmlGeneratorArguments(
-        False, False, False
-    )
+    config = ProcessingConfig(False, False, False, False, -1)
+    xml_generator_args = XmlGeneratorArguments(False, False, False)
     out_path = process_image(path, config, xml_generator_args)
     eprint(f"Homr took {perf_counter() - t0} seconds.")
     return out_path
 
+
 if __name__ == "__main__":
-    homr('test_img.png', cache=False)
+    homr("test_img.png", cache=False)

@@ -20,7 +20,9 @@ class SymbolWithPosition:
 
 class SemanticMeasure:
     def __init__(self, number_of_clefs: int) -> None:
-        self.staffs: list[list[SymbolWithPosition]] = [[] for _ in range(number_of_clefs)]
+        self.staffs: list[list[SymbolWithPosition]] = [
+            [] for _ in range(number_of_clefs)
+        ]
         self.current_position = 0
 
     def append_symbol(self, symbol: str) -> None:
@@ -46,21 +48,28 @@ class SemanticMeasure:
         new_position = self.current_position + duration
         if new_position < 0:
             raise ValueError(
-                "Backup duration is too long " + str(self.current_position) + " " + str(duration)
+                "Backup duration is too long "
+                + str(self.current_position)
+                + " "
+                + str(duration)
             )
         self.current_position = new_position
 
     def append_rest(self, staff: int, duration: int, symbol: str) -> None:
         self.append_note(staff, False, duration, symbol)
 
-    def append_note(self, staff: int, is_chord: bool, duration: int, symbol: str) -> None:
+    def append_note(
+        self, staff: int, is_chord: bool, duration: int, symbol: str
+    ) -> None:
         if len(self.staffs) == 0:
             raise ValueError("Expected to get clefs as first symbol")
         if is_chord:
             if len(self.staffs[staff]) == 0:
                 raise ValueError("A chord requires a previous note")
             previous_symbol = self.staffs[staff][-1]
-            self.staffs[staff].append(SymbolWithPosition(previous_symbol.position, symbol))
+            self.staffs[staff].append(
+                SymbolWithPosition(previous_symbol.position, symbol)
+            )
             self.current_position = previous_symbol.position + duration
         else:
             self.staffs[staff].append(SymbolWithPosition(self.current_position, symbol))
@@ -96,7 +105,10 @@ class SemanticPart:
             if len(self.current_measure.staffs) != len(clefs):
                 raise ValueError("Number of clefs changed")
             for staff, clef in enumerate(clefs):
-                if not any(symbol.symbol == clef for symbol in self.current_measure.staffs[staff]):
+                if not any(
+                    symbol.symbol == clef
+                    for symbol in self.current_measure.staffs[staff]
+                ):
                     raise MusicXmlValidationError("Clef changed")
             return
         self.staffs = [[] for _ in range(len(clefs))]
@@ -115,7 +127,9 @@ class SemanticPart:
             raise ValueError("Expected to get clefs as first symbol")
         self.current_measure.append_rest(staff, duration, symbol)
 
-    def append_note(self, staff: int, is_chord: bool, duration: int, symbol: str) -> None:
+    def append_note(
+        self, staff: int, is_chord: bool, duration: int, symbol: str
+    ) -> None:
         if self.current_measure is None:
             raise ValueError("Expected to get clefs as first symbol")
         self.current_measure.append_note(staff, is_chord, duration, symbol)
@@ -141,7 +155,6 @@ class SemanticPart:
 
 
 class TripletState:
-
     def __init__(self) -> None:
         self.started = False
 
@@ -238,7 +251,9 @@ def _process_attributes(
     keys = attribute.get_children_of_type(mxl.XMLKey)
     if len(keys) > 0:
         fifths = keys[0].get_children_of_type(mxl.XMLFifths)[0].value_
-        semantic.append_symbol("keySignature-" + circle_of_fifth_to_key_signature(int(fifths)))
+        semantic.append_symbol(
+            "keySignature-" + circle_of_fifth_to_key_signature(int(fifths))
+        )
         key = KeyTransformation(int(fifths))
     times = attribute.get_children_of_type(mxl.XMLTime)
     if len(times) > 0:
@@ -249,7 +264,10 @@ def _process_attributes(
 
 
 def _process_note(
-    semantic: SemanticPart, note: mxl.XMLNote, key: KeyTransformation, triplet: TripletState
+    semantic: SemanticPart,
+    note: mxl.XMLNote,
+    key: KeyTransformation,
+    triplet: TripletState,
 ) -> KeyTransformation:
     staff = 0
     staff_nodes = note.get_children_of_type(mxl.XMLStaff)

@@ -8,27 +8,24 @@ from time import perf_counter
 from kivy.utils import platform
 from globals import appdata
 
-if platform == 'android':
-    from jnius import autoclass # type: ignore
+if platform == "android":
+    from jnius import autoclass  # type: ignore
 
     # Import Java classes
-    OrtSession = autoclass('ai.onnxruntime.OrtSession')
-    OrtSessionOptions = autoclass('ai.onnxruntime.OrtSession$SessionOptions')
-    OrtEnvironment = autoclass('ai.onnxruntime.OrtEnvironment')
-    OnnxTensor = autoclass('ai.onnxruntime.OnnxTensor')
-    ByteBuffer = autoclass('java.nio.ByteBuffer')
-    FloatBuffer = autoclass('java.nio.FloatBuffer')
-    HashMap = autoclass('java.util.HashMap')
-    OnnxJavaType = autoclass('ai.onnxruntime.OnnxJavaType')
-    Array = autoclass('java.util.Arrays')
-    ByteOrder = autoclass('java.nio.ByteOrder')
+    OrtSession = autoclass("ai.onnxruntime.OrtSession")
+    OrtSessionOptions = autoclass("ai.onnxruntime.OrtSession$SessionOptions")
+    OrtEnvironment = autoclass("ai.onnxruntime.OrtEnvironment")
+    OnnxTensor = autoclass("ai.onnxruntime.OnnxTensor")
+    ByteBuffer = autoclass("java.nio.ByteBuffer")
+    FloatBuffer = autoclass("java.nio.FloatBuffer")
+    HashMap = autoclass("java.util.HashMap")
+    OnnxJavaType = autoclass("ai.onnxruntime.OnnxJavaType")
+    Array = autoclass("java.util.Arrays")
+    ByteOrder = autoclass("java.nio.ByteOrder")
     OrtSessionResult = autoclass("ai.onnxruntime.OrtSession$Result")
 
     class OnnxModel:
-        def __init__(
-                self,
-                model_path: str
-            ):
+        def __init__(self, model_path: str):
             """
             Inference class of .onnx models for kivy apps on android using native Java APIs.
 
@@ -48,7 +45,7 @@ if platform == 'android':
             else:
                 so.setIntraOpNumThreads(appdata.threads)
                 so.setInterOpNumThreads(1)
-        
+
             self.session = self.env.createSession(model_path, so)
 
         def run(self, inputs: dict, outputs: dict) -> dict:
@@ -117,16 +114,16 @@ if platform == 'android':
 
 else:
     import onnxruntime as ort
+
     class OnnxModel:
-        def __init__(
-            self, 
-            model_path: str
-        ):
+        def __init__(self, model_path: str):
             self.model = ort.InferenceSession(model_path)
-        
+
         def run(self, inputs: dict, outputs: dict = None) -> dict:
-            result = self.model.run(output_names=list(outputs.keys()), input_feed=inputs)
+            result = self.model.run(
+                output_names=list(outputs.keys()), input_feed=inputs
+            )
             return result
-        
+
         def close_session(self):
-            print('Not implemented')
+            print("Not implemented")

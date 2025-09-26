@@ -1,15 +1,16 @@
 from kivy.logger import Logger
 
-from jnius import JavaException, PythonJavaClass, autoclass, java_method # pylint: disable=import-error # type: ignore
+from jnius import JavaException, PythonJavaClass, autoclass, java_method  # pylint: disable=import-error # type: ignore
 
-Camera = autoclass('android.hardware.Camera')
-AndroidActivityInfo = autoclass('android.content.pm.ActivityInfo')
-AndroidPythonActivity = autoclass('org.kivy.android.PythonActivity')
+Camera = autoclass("android.hardware.Camera")
+AndroidActivityInfo = autoclass("android.content.pm.ActivityInfo")
+AndroidPythonActivity = autoclass("org.kivy.android.PythonActivity")
+
 
 class ShutterCallback(PythonJavaClass):
-    __javainterfaces__ = ('android.hardware.Camera$ShutterCallback', )
+    __javainterfaces__ = ("android.hardware.Camera$ShutterCallback",)
 
-    @java_method('()V')
+    @java_method("()V")
     def onShutter(self):
         # apparently, it is enough to have an empty shutter callback to play
         # the standard shutter sound. If you pass None instead of shutter_cb
@@ -18,40 +19,40 @@ class ShutterCallback(PythonJavaClass):
 
 
 class PictureCallback(PythonJavaClass):
-    __javainterfaces__ = ('android.hardware.Camera$PictureCallback', )
+    __javainterfaces__ = ("android.hardware.Camera$PictureCallback",)
 
     def __init__(self, filename, on_success):
         super(PictureCallback, self).__init__()
         self.filename = filename
         self.on_success = on_success
 
-    @java_method('([BLandroid/hardware/Camera;)V')
+    @java_method("([BLandroid/hardware/Camera;)V")
     def onPictureTaken(self, data, camera):
         s = data.tostring()
-        with open(self.filename, 'wb') as f:
+        with open(self.filename, "wb") as f:
             f.write(s)
-        Logger.info('xcamera: picture saved to %s', self.filename)
+        Logger.info("xcamera: picture saved to %s", self.filename)
         camera.startPreview()
         self.on_success(self.filename)
 
 
 class AutoFocusCallback(PythonJavaClass):
-    __javainterfaces__ = ('android.hardware.Camera$AutoFocusCallback', )
+    __javainterfaces__ = ("android.hardware.Camera$AutoFocusCallback",)
 
     def __init__(self, filename, on_success):
         super(AutoFocusCallback, self).__init__()
         self.filename = filename
         self.on_success = on_success
 
-    @java_method('(ZLandroid/hardware/Camera;)V')
+    @java_method("(ZLandroid/hardware/Camera;)V")
     def onAutoFocus(self, success, camera):
         if success:
-            Logger.info('xcamera: autofocus succeeded, taking picture...')
+            Logger.info("xcamera: autofocus succeeded, taking picture...")
             shutter_cb = ShutterCallback()
             picture_cb = PictureCallback(self.filename, self.on_success)
             camera.takePicture(shutter_cb, None, picture_cb)
         else:
-            Logger.info('xcamera: autofocus failed')
+            Logger.info("xcamera: autofocus failed")
 
 
 def take_picture(camera_widget, on_success, filename):
@@ -66,11 +67,11 @@ def take_picture(camera_widget, on_success, filename):
     params.setJpegQuality(90)
     camera.setParameters(params)
     cb = AutoFocusCallback(filename, on_success)
-    Logger.info('xcamera: starting autofocus...')
+    Logger.info("xcamera: starting autofocus...")
     try:
         camera.autoFocus(cb)
     except JavaException as e:
-        Logger.info('Error when calling autofocus: {}'.format(e))
+        Logger.info("Error when calling autofocus: {}".format(e))
 
 
 def set_orientation(value):

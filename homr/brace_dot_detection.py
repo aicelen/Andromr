@@ -38,7 +38,9 @@ def _filter_for_tall_elements(
     ]
     result = []
     for symbol in symbols_larger_than_rough_estimate:
-        closest_staff = min(staffs, key=lambda staff: staff.y_distance_to(symbol.center))
+        closest_staff = min(
+            staffs, key=lambda staff: staff.y_distance_to(symbol.center)
+        )
         unit_size = closest_staff.average_unit_size
         if symbol.size[1] > constants.min_height_for_brace(unit_size):
             result.append(symbol)
@@ -109,13 +111,17 @@ def _get_connections_between_staffs(
     staff1: Staff, staff2: Staff, brace_dot: list[RotatedBoundingBox]
 ) -> list[RotatedBoundingBox]:
     result = []
-    result.extend(_get_connections_between_staffs_at_bar_lines(staff1, staff2, brace_dot))
+    result.extend(
+        _get_connections_between_staffs_at_bar_lines(staff1, staff2, brace_dot)
+    )
     result.extend(_get_connections_between_staffs_at_clefs(staff1, staff2, brace_dot))
     result.extend(_get_connections_between_staffs_at_lines(staff1, staff2, brace_dot))
     return result
 
 
-def _merge_multi_staff_if_they_share_a_staff(staffs: list[MultiStaff]) -> list[MultiStaff]:
+def _merge_multi_staff_if_they_share_a_staff(
+    staffs: list[MultiStaff],
+) -> list[MultiStaff]:
     """
     If two MultiStaff objects share a staff, merge them into one MultiStaff object.
     """

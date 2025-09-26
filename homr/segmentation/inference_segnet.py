@@ -33,7 +33,10 @@ class ExtractResult:
 
 
 def merge_patches(
-    patches: list[NDArray], image_shape: tuple[int, int], win_size: int, step_size: int = -1
+    patches: list[NDArray],
+    image_shape: tuple[int, int],
+    win_size: int,
+    step_size: int = -1,
 ) -> NDArray:
     reconstructed = np.zeros(image_shape, dtype=np.float32)
     weight = np.zeros(image_shape, dtype=np.float32)
@@ -76,8 +79,10 @@ def inference(
     """
     eprint("Starting Inference.")
     t0 = perf_counter()
-    num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
-    progress_increment = 100/num_steps
+    num_steps = ceil(image_org.shape[0] / step_size) * ceil(
+        image_org.shape[1] / step_size
+    )
+    progress_increment = 100 / num_steps
 
     model = TensorFlowModel(segnet_path_tflite)
     data = []
@@ -99,12 +104,11 @@ def inference(
             out_filtered = np.argmax(out, axis=-1)
             out_filtered = np.squeeze(out_filtered, axis=0)
             data.append(out_filtered)
-            
+
             # Update progress bar value
             appdata.homr_progress += progress_increment
 
-
-    eprint(f"Segnet Inference time: {perf_counter()- t0}")
+    eprint(f"Segnet Inference time: {perf_counter() - t0}")
 
     merged = merge_patches(
         data, (int(image_org.shape[0]), int(image_org.shape[1])), win_size, step_size

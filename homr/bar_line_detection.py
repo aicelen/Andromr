@@ -41,14 +41,14 @@ def add_bar_lines_to_staffs(
             if point is None:
                 continue
 
-            if abs(bar_line.top_left[1] - point.y[0]) > constants.bar_line_to_staff_tolerance(
-                point.average_unit_size
-            ):
+            if abs(
+                bar_line.top_left[1] - point.y[0]
+            ) > constants.bar_line_to_staff_tolerance(point.average_unit_size):
                 continue
 
-            if abs(bar_line.bottom_left[1] - point.y[-1]) > constants.bar_line_to_staff_tolerance(
-                point.average_unit_size
-            ):
+            if abs(
+                bar_line.bottom_left[1] - point.y[-1]
+            ) > constants.bar_line_to_staff_tolerance(point.average_unit_size):
                 continue
 
             bar_line_symbol = BarLine(bar_line)

@@ -49,7 +49,11 @@ def process_image(path: str, patch_size: int) -> list[tuple[str, int, int]]:
     width, height = calc_target_image_size(width, height)
 
     # Generate patch coordinates
-    return [(path, y, x) for y in range(0, height, patch_size) for x in range(0, width, patch_size)]
+    return [
+        (path, y, x)
+        for y in range(0, height, patch_size)
+        for x in range(0, width, patch_size)
+    ]
 
 
 class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
@@ -61,7 +65,9 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
         self.last_mask: NDArray | None = None
         eprint("Preparing files...")
         with ThreadPoolExecutor() as executor:
-            results = list(executor.map(partial(process_image, patch_size=self.patch_size), images))
+            results = list(
+                executor.map(partial(process_image, patch_size=self.patch_size), images)
+            )
         # Flatten the list of lists
         self.ids = [item for sublist in results for item in sublist]
         eprint(f"Prepared {len(self.ids)} patches.")
@@ -70,7 +76,11 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
     def __getitem__(self, i: int) -> tuple[NDArray, NDArray]:
         # Read the image
         (path, y, x) = self.ids[i]
-        if path == self.last_path and self.last_image is not None and self.last_mask is not None:
+        if (
+            path == self.last_path
+            and self.last_image is not None
+            and self.last_mask is not None
+        ):
             image = self.last_image
             mask = self.last_mask
         else:
@@ -83,7 +93,9 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
             image = resize_image(image)
             image = self._prepare_image(image)
             mask = cv2.resize(
-                mask, (int(image.shape[1]), int(image.shape[0])), interpolation=cv2.INTER_NEAREST
+                mask,
+                (int(image.shape[1]), int(image.shape[0])),
+                interpolation=cv2.INTER_NEAREST,
             )
             self.last_path = path
             self.last_image = image
@@ -116,13 +128,21 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
         grayscale_dim = 2
         if len(image.shape) == grayscale_dim:
             # Grayscale, create a zero patch
-            patch = np.ones((self.patch_size, self.patch_size), dtype=image.dtype) * pad_value
+            patch = (
+                np.ones((self.patch_size, self.patch_size), dtype=image.dtype)
+                * pad_value
+            )
         else:
             # RGB, create an empty white patch
-            patch = np.ones((self.patch_size, self.patch_size, 3), dtype=image.dtype) * pad_value  # type: ignore
+            patch = (
+                np.ones((self.patch_size, self.patch_size, 3), dtype=image.dtype)
+                * pad_value
+            )  # type: ignore
 
         # Copy valid region from source image to patch
-        patch[0:patch_content_height, 0:patch_content_width] = image[y_start:y_end, x_start:x_end]
+        patch[0:patch_content_height, 0:patch_content_width] = image[
+            y_start:y_end, x_start:x_end
+        ]
 
         return patch
 
@@ -138,9 +158,10 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
 
 
 class D2DenseDataset(SegmentationBaseDataset):
-
     def _get_mask(self, image_name: str) -> str:
-        return image_name.replace(".png", "_seg.png").replace("/images/", "/segmentation/")
+        return image_name.replace(".png", "_seg.png").replace(
+            "/images/", "/segmentation/"
+        )
 
     def _build_label(self, image: NDArray, path: str) -> NDArray:
         mask = np.array(Image.open(self._get_mask(path)))
@@ -164,7 +185,6 @@ class D2DenseDataset(SegmentationBaseDataset):
 
 
 class CvcMuscimaDataset(SegmentationBaseDataset):
-
     def _get_staff_mask(self, image_name: str) -> str:
         return image_name.replace("/image/", "/gt/")
 
@@ -195,7 +215,9 @@ def create_vertical_gray_gradient(width: int, height: int) -> NDArray:
     return cv2.merge([gradient, gradient, gradient])
 
 
-def blend_with_gradient(image: NDArray, gradient: NDArray, alpha: float = 0.3) -> NDArray:
+def blend_with_gradient(
+    image: NDArray, gradient: NDArray, alpha: float = 0.3
+) -> NDArray:
     gradient_resized = cv2.resize(gradient, (image.shape[1], image.shape[0]))
     blended = cv2.addWeighted(image, 1 - alpha, gradient_resized, alpha, 0)
     return blended
@@ -227,7 +249,9 @@ def get_training_augmentation() -> Any:
     train_transform = [
         AddGrayGradient(alpha=0.4, direction="vertical", p=1.0),
         A.HorizontalFlip(p=0.5),
-        A.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
+        A.ShiftScaleRotate(
+            scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0
+        ),
         A.GaussNoise(p=0.2),
         A.Perspective(p=0.5),
         A.OneOf(
@@ -278,29 +302,36 @@ def visualize_dataset(dataset: SegmentationBaseDataset) -> None:
 
 
 def train_segnet(visualize: bool = False) -> None:
-
     script_location = os.path.dirname(os.path.realpath(__file__))
     git_root = Path(script_location).parent.parent.absolute()
     dataset_root = os.path.join(git_root, "datasets")
     dense_root = os.path.join(dataset_root, "ds2_dense")
 
     run_id = get_run_id()
-    model_destination = os.path.join(git_root, "homr", "segmentation", f"segnet_{run_id}.pth")
+    model_destination = os.path.join(
+        git_root, "homr", "segmentation", f"segnet_{run_id}.pth"
+    )
     eprint("Starting training of ", model_destination)
 
     images_dir = os.path.join(dense_root, "images")
     images = [os.path.join(images_dir, file) for file in os.listdir(images_dir)]
     train_images, val_images = random_split(images)
 
-    train_dataset = D2DenseDataset(train_images, augmentation=get_training_augmentation())
+    train_dataset = D2DenseDataset(
+        train_images, augmentation=get_training_augmentation()
+    )
 
     if visualize or True:
         visualize_dataset(train_dataset)
 
     validation_dataset = D2DenseDataset(val_images, augmentation=None)
 
-    train_loader = DataLoader(train_dataset, batch_size=24, shuffle=False, num_workers=4)
-    validation_loader = DataLoader(validation_dataset, batch_size=24, shuffle=False, num_workers=4)
+    train_loader = DataLoader(
+        train_dataset, batch_size=24, shuffle=False, num_workers=4
+    )
+    validation_loader = DataLoader(
+        validation_dataset, batch_size=24, shuffle=False, num_workers=4
+    )
 
     model = create_segnet()
 
@@ -327,21 +358,29 @@ def train_unet(visualize: bool = False) -> None:
     cvc_root = os.path.join(dataset_root, "CvcMuscima-Distortions")
 
     run_id = get_run_id()
-    model_destination = os.path.join(git_root, "homr", "segmentation", f"unet_{run_id}.pth")
+    model_destination = os.path.join(
+        git_root, "homr", "segmentation", f"unet_{run_id}.pth"
+    )
     eprint("Starting training of ", model_destination)
 
     images = glob.glob(cvc_root + "/**/image/*.png", recursive=True)
     train_images, val_images = random_split(images)
 
-    train_dataset = CvcMuscimaDataset(train_images, augmentation=get_training_augmentation())
+    train_dataset = CvcMuscimaDataset(
+        train_images, augmentation=get_training_augmentation()
+    )
 
     if visualize:
         visualize_dataset(train_dataset)
 
     validation_dataset = CvcMuscimaDataset(val_images, augmentation=None)
 
-    train_loader = DataLoader(train_dataset, batch_size=24, shuffle=False, num_workers=4)
-    validation_loader = DataLoader(validation_dataset, batch_size=24, shuffle=False, num_workers=4)
+    train_loader = DataLoader(
+        train_dataset, batch_size=24, shuffle=False, num_workers=4
+    )
+    validation_loader = DataLoader(
+        validation_dataset, batch_size=24, shuffle=False, num_workers=4
+    )
 
     model = create_unet()
 

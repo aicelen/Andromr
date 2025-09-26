@@ -9,7 +9,11 @@ from training.architecture.transformer.decoder import (
     ScoreTransformerWrapper,
     get_decoder_onnx,
 )
-from training.architecture.transformer.encoder import get_encoder, get_backbone, get_transformer
+from training.architecture.transformer.encoder import (
+    get_encoder,
+    get_backbone,
+    get_transformer,
+)
 from training.convert_onnx.simplify import main as simplify_onnx_model
 
 
@@ -44,7 +48,9 @@ def convert_encoder() -> str:
 
     # Load weights
     model.load_state_dict(
-        torch.load(r"encoder_weights.pt", weights_only=True, map_location=torch.device("cpu")),
+        torch.load(
+            r"encoder_weights.pt", weights_only=True, map_location=torch.device("cpu")
+        ),
         strict=True,
     )
 
@@ -82,7 +88,9 @@ def convert_decoder() -> str:
     path_out = os.path.join(dir_path, f"decoder_{filename}.onnx")
 
     model.load_state_dict(
-        torch.load(r"decoder_weights.pt", weights_only=True, map_location=torch.device("cpu")),
+        torch.load(
+            r"decoder_weights.pt", weights_only=True, map_location=torch.device("cpu")
+        ),
         strict=True,
     )
 
@@ -149,6 +157,7 @@ def convert_segnet() -> str:
     )
     return f"{os.path.splitext(segnet_path_torch)[0]}.onnx"
 
+
 def convert_cnn_encoder():
     """
     Converts the encoder to onnx
@@ -164,7 +173,9 @@ def convert_cnn_encoder():
 
     # Load weights
     model.load_state_dict(
-        torch.load(r"cnn_encoder.pt", weights_only=True, map_location=torch.device("cpu")),
+        torch.load(
+            r"cnn_encoder.pt", weights_only=True, map_location=torch.device("cpu")
+        ),
         strict=True,
     )
 
@@ -188,6 +199,7 @@ def convert_cnn_encoder():
 
     return path_out
 
+
 def convert_transformer_encoder():
     """
     Converts the encoder to onnx
@@ -203,7 +215,11 @@ def convert_transformer_encoder():
 
     # Load weights
     model.load_state_dict(
-        torch.load(r"transformer_encoder.pt", weights_only=True, map_location=torch.device("cpu")),
+        torch.load(
+            r"transformer_encoder.pt",
+            weights_only=True,
+            map_location=torch.device("cpu"),
+        ),
         strict=True,
     )
 
@@ -211,7 +227,7 @@ def convert_transformer_encoder():
     model.eval()
 
     # Prepare input tensor
-    input_tensor = torch.randn(1,312,8,80).float()
+    input_tensor = torch.randn(1, 312, 8, 80).float()
 
     # Export to onnx
     torch.onnx.export(
@@ -228,9 +244,11 @@ def convert_transformer_encoder():
     return path_out
 
 
-if __name__ == '__main__':
-    simplify_onnx_model(convert_cnn_encoder()) # converted to tflite 0.3s
-    simplify_onnx_model(convert_transformer_encoder()) # lets use quint8 for better performance
+if __name__ == "__main__":
+    simplify_onnx_model(convert_cnn_encoder())  # converted to tflite 0.3s
+    simplify_onnx_model(
+        convert_transformer_encoder()
+    )  # lets use quint8 for better performance
 
 
 # with all optimizations this means inference times of:

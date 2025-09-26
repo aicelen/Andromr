@@ -49,13 +49,17 @@ class ScoreTransformerWrapper(nn.Module):
         self.pos_emb = AbsolutePositionalEmbedding(
             config.decoder_dim, config.max_seq_len, l2norm_embed=l2norm_embed
         )
-        self.attention_dim = config.max_width * config.max_height // config.patch_size**2 + 1
+        self.attention_dim = (
+            config.max_width * config.max_height // config.patch_size**2 + 1
+        )
         self.attention_width = config.max_width // config.patch_size
         self.attention_height = config.max_height // config.patch_size
         self.patch_size = config.patch_size
 
         self.project_emb = (
-            nn.Linear(config.decoder_dim, dim) if config.decoder_dim != dim else nn.Identity()
+            nn.Linear(config.decoder_dim, dim)
+            if config.decoder_dim != dim
+            else nn.Identity()
         )
         self.attn_layers = attn_layers
         self.post_emb_norm = nn.LayerNorm(dim)
@@ -124,7 +128,9 @@ class ScoreTransformerWrapper(nn.Module):
 
         image_attention = attention_all_layers[1:]
         image_attention_2d = (
-            image_attention.reshape(self.attention_height, self.attention_width).cpu().numpy()
+            image_attention.reshape(self.attention_height, self.attention_width)
+            .cpu()
+            .numpy()
         )
         center = np.unravel_index(image_attention_2d.argmax(), image_attention_2d.shape)
         center_of_attention = (
@@ -199,7 +205,9 @@ class ScoreDecoder(nn.Module):
         merger = SymbolMerger()
 
         if mask is None:
-            mask = torch.full_like(out_rhythm, True, dtype=torch.bool, device=out_rhythm.device)
+            mask = torch.full_like(
+                out_rhythm, True, dtype=torch.bool, device=out_rhythm.device
+            )
 
         for _position_in_seq in range(seq_len):
             mask = mask[:, -self.max_seq_len :]
@@ -208,7 +216,12 @@ class ScoreDecoder(nn.Module):
             x_rhythm = out_rhythm[:, -self.max_seq_len :]
 
             rhythmsp, pitchsp, liftsp, notesp, _ignored, center_of_attention = self.net(
-                x_rhythm, x_pitch, x_lift, mask=mask, return_center_of_attention=True, **kwargs
+                x_rhythm,
+                x_pitch,
+                x_lift,
+                mask=mask,
+                return_center_of_attention=True,
+                **kwargs,
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
@@ -221,9 +234,15 @@ class ScoreDecoder(nn.Module):
             max_attempts = 5
 
             while retry and attempt < max_attempts:
-                lift_probs = F.softmax(filtered_lift_logits / current_temperature, dim=-1)
-                pitch_probs = F.softmax(filtered_pitch_logits / current_temperature, dim=-1)
-                rhythm_probs = F.softmax(filtered_rhythm_logits / current_temperature, dim=-1)
+                lift_probs = F.softmax(
+                    filtered_lift_logits / current_temperature, dim=-1
+                )
+                pitch_probs = F.softmax(
+                    filtered_pitch_logits / current_temperature, dim=-1
+                )
+                rhythm_probs = F.softmax(
+                    filtered_rhythm_logits / current_temperature, dim=-1
+                )
 
                 lift_sample = torch.multinomial(lift_probs, 1)
                 pitch_sample = torch.multinomial(pitch_probs, 1)
@@ -238,7 +257,9 @@ class ScoreDecoder(nn.Module):
                 alt_token_id = sorted_indices[0, 1].unsqueeze(0)
 
                 rhythm_token = detokenize(top_token_id, self.inv_rhythm_vocab)
-                alternative_rhythm_token = detokenize(alt_token_id, self.inv_rhythm_vocab)
+                alternative_rhythm_token = detokenize(
+                    alt_token_id, self.inv_rhythm_vocab
+                )
 
                 lift_token = detokenize(lift_sample, self.inv_lift_vocab)
                 pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
@@ -427,12 +448,19 @@ def detokenize(tokens: torch.Tensor, vocab: Any) -> list[str]:
 def tokenize(
     symbols: list[str], vocab: Any, default_token: int, vocab_name: str, file_name: str
 ) -> list[int]:
-
     result = []
     for symbol in symbols:
         if symbol in vocab:
             result.append(vocab[symbol])
         else:
-            eprint("Warning " + file_name + ": " + symbol + " not in " + vocab_name + " vocabulary")
+            eprint(
+                "Warning "
+                + file_name
+                + ": "
+                + symbol
+                + " not in "
+                + vocab_name
+                + " vocabulary"
+            )
             result.append(default_token)
     return result

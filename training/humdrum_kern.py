@@ -87,7 +87,6 @@ def _convert_single_staff(lines: list[str]) -> str:
 
 
 class HumdrumKernConverter:
-
     def __init__(self) -> None:
         self.key: AbstractKeyTransformation = NoKeyTransformation()
 

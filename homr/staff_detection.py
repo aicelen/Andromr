@@ -16,6 +16,7 @@ from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 from globals import appdata
 
+
 def prepare_staff_image(img: NDArray) -> NDArray:
     """
     Remove small details.
@@ -37,10 +38,18 @@ class StaffLineSegment(DebugDrawable):
     def __init__(self, debug_id: int, staff_fragments: list[RotatedBoundingBox]):
         self.debug_id = debug_id
         self.staff_fragments = sorted(staff_fragments, key=lambda box: box.box[0][0])
-        self.min_x = min([line.center[0] - line.size[0] / 2 for line in staff_fragments])
-        self.max_x = max([line.center[0] + line.size[0] / 2 for line in staff_fragments])
-        self.min_y = min([line.center[1] - line.size[1] / 2 for line in staff_fragments])
-        self.max_y = max([line.center[1] + line.size[1] / 2 for line in staff_fragments])
+        self.min_x = min(
+            [line.center[0] - line.size[0] / 2 for line in staff_fragments]
+        )
+        self.max_x = max(
+            [line.center[0] + line.size[0] / 2 for line in staff_fragments]
+        )
+        self.min_y = min(
+            [line.center[1] - line.size[1] / 2 for line in staff_fragments]
+        )
+        self.max_y = max(
+            [line.center[1] + line.size[1] / 2 for line in staff_fragments]
+        )
 
     def merge(self, other: "StaffLineSegment") -> "StaffLineSegment":
         staff_lines = self.staff_fragments.copy()
@@ -66,13 +75,18 @@ class StaffLineSegment(DebugDrawable):
                     return True
         return False
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         for line in self.staff_fragments:
             line.draw_onto_image(img, color)
         cv2.putText(
             img,
             str(self.debug_id),
-            (int(self.staff_fragments[0].box[0][0]), int(self.staff_fragments[0].box[0][1])),
+            (
+                int(self.staff_fragments[0].box[0][0]),
+                int(self.staff_fragments[0].box[0][1]),
+            ),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             color,
@@ -96,7 +110,9 @@ class StaffAnchor(DebugDrawable):
                 for line in staff_lines
             ]
         )
-        y_deltas = [abs(y_positions[i] - y_positions[i - 1]) for i in range(1, len(y_positions))]
+        y_deltas = [
+            abs(y_positions[i] - y_positions[i - 1]) for i in range(1, len(y_positions))
+        ]
         self.unit_sizes = y_deltas
         if len(y_deltas) == 0:
             self.average_unit_size = 0.0
@@ -112,7 +128,9 @@ class StaffAnchor(DebugDrawable):
             int(self.max_y + max_number_of_ledger_lines * self.average_unit_size),
         )
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 255, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (0, 255, 0)
+    ) -> None:
         for staff in self.staff_lines:
             staff.draw_onto_image(img, color)
         self.symbol.draw_onto_image(img, color)
@@ -137,7 +155,9 @@ class RawStaff(RotatedBoundingBox):
     end differently on every staff line.
     """
 
-    def __init__(self, staff_id: int, lines: list[StaffLineSegment], anchors: list[StaffAnchor]):
+    def __init__(
+        self, staff_id: int, lines: list[StaffLineSegment], anchors: list[StaffAnchor]
+    ):
         contours = _get_all_contours(lines)
         box = cv2.minAreaRect(np.array(contours))
         super().__init__(box, np.concatenate(contours), staff_id)
@@ -155,12 +175,16 @@ class RawStaff(RotatedBoundingBox):
             lines.append(other.lines[i].merge(line))
         return RawStaff(self.staff_id, lines, self.anchors + other.anchors)
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         for line in self.lines:
             line.draw_onto_image(img, color)
 
 
-def get_staff_for_anchor(anchor: StaffAnchor, staffs: list[RawStaff]) -> RawStaff | None:
+def get_staff_for_anchor(
+    anchor: StaffAnchor, staffs: list[RawStaff]
+) -> RawStaff | None:
     for staff in staffs:
         for i, anchor_line in enumerate(anchor.staff_lines):
             line_requirement = set(anchor_line.staff_fragments)
@@ -183,14 +207,17 @@ def find_raw_staffs_by_connecting_line_fragments(
         fragments = [
             fragment
             for fragment in staff_fragments
-            if fragment.center[1] >= anchor.zone.start and fragment.center[1] <= anchor.zone.stop
+            if fragment.center[1] >= anchor.zone.start
+            and fragment.center[1] <= anchor.zone.stop
         ]
         connected = connect_staff_lines(fragments, anchor.average_unit_size)
         staff_lines: list[StaffLineSegment] = []
         for anchor_line in anchor.staff_lines:
             line_requirement = set(anchor_line.staff_fragments)
             matching_anchor = [
-                line for line in connected if line_requirement.issubset(set(line.staff_fragments))
+                line
+                for line in connected
+                if line_requirement.issubset(set(line.staff_fragments))
             ]
             if len(matching_anchor) == 1:
                 staff_lines.extend(matching_anchor)
@@ -198,7 +225,9 @@ def find_raw_staffs_by_connecting_line_fragments(
                 staff_lines.append(anchor_line)
         if existing_staff:
             staffs.remove(existing_staff)
-            staffs.append(existing_staff.merge(RawStaff(staff_id, staff_lines, [anchor])))
+            staffs.append(
+                existing_staff.merge(RawStaff(staff_id, staff_lines, [anchor]))
+            )
         else:
             staffs.append(RawStaff(staff_id, staff_lines, [anchor]))
         staff_id += 1
@@ -236,7 +265,9 @@ def connect_staff_lines(
     where segments have an increased likelyhood to belong to a staff.
     """
     # With the pop below we are going through the elements from left to right
-    sorted_by_right_to_left = sorted(staff_lines, key=lambda box: box.bottom_left[0], reverse=True)
+    sorted_by_right_to_left = sorted(
+        staff_lines, key=lambda box: box.bottom_left[0], reverse=True
+    )
     result: list[list[RotatedBoundingBox]] = []
     active_lines_to_check: list[list[RotatedBoundingBox]] = []
     last_cleanup_at_x: float = 0
@@ -256,12 +287,16 @@ def connect_staff_lines(
             ]
             last_cleanup_at_x = x
 
-        is_short_line = current_staff_line.box[1][0] < constants.is_short_line(unit_size)
+        is_short_line = current_staff_line.box[1][0] < constants.is_short_line(
+            unit_size
+        )
         if is_short_line:
             continue
         connected = False
         for active_line in active_lines_to_check:
-            if active_line[-1].is_overlapping_extrapolated(current_staff_line, unit_size):
+            if active_line[-1].is_overlapping_extrapolated(
+                current_staff_line, unit_size
+            ):
                 active_line.append(current_staff_line)
                 connected = True
         if not connected:
@@ -270,7 +305,8 @@ def connect_staff_lines(
             active_lines_to_check.append(new_list)
     result_top_to_bottom = sorted(result, key=lambda lines: lines[0].box[0][1])
     connected_lines = [
-        StaffLineSegment(i, staff_lines) for i, staff_lines in enumerate(result_top_to_bottom)
+        StaffLineSegment(i, staff_lines)
+        for i, staff_lines in enumerate(result_top_to_bottom)
     ]
     return connected_lines
 
@@ -298,9 +334,7 @@ def are_lines_parallel(lines: list[StaffLineSegment], unit_size: float) -> bool:
             fragment.angle - average_angle
         ) > constants.max_angle_for_lines_to_be_parallel and fragment.size[
             0
-        ] > constants.is_short_connected_line(
-            unit_size
-        ):
+        ] > constants.is_short_connected_line(unit_size):
             return False
     return True
 
@@ -351,12 +385,16 @@ def find_staff_anchors(
                 center_symbol.move_to_x_horizontal_by(10),
             ]
         for symbol in adjacent:
-            estimated_unit_size = round(symbol.size[1] / (constants.number_of_lines_on_a_staff - 1))
+            estimated_unit_size = round(
+                symbol.size[1] / (constants.number_of_lines_on_a_staff - 1)
+            )
             thickened_bar_line = symbol.make_box_taller(estimated_unit_size)
             overlapping_staff_lines = [
                 line for line in staff_lines if line.is_intersecting(thickened_bar_line)
             ]
-            connected_lines = connect_staff_lines(overlapping_staff_lines, estimated_unit_size)
+            connected_lines = connect_staff_lines(
+                overlapping_staff_lines, estimated_unit_size
+            )
             if len(connected_lines) > constants.number_of_lines_on_a_staff:
                 connected_lines = [
                     line
@@ -391,7 +429,8 @@ def resample_staff_segment(  # noqa: C901
     for x in axis_range:
         lines = [line.get_at(x) for line in staff.lines]
         axis_center = [
-            line.get_center_extrapolated(x) if line is not None else None for line in lines
+            line.get_center_extrapolated(x) if line is not None else None
+            for line in lines
         ]
         center_values = [center for center in axis_center if center is not None]
         incomplete = all(center is None for center in axis_center)
@@ -413,13 +452,17 @@ def resample_staff_segment(  # noqa: C901
                 axis_center[i] = None
 
         prev_center = -1
-        for i in list(range(len(axis_center))) + list(reversed(list(range(len(axis_center))))):
+        for i in list(range(len(axis_center))) + list(
+            reversed(list(range(len(axis_center))))
+        ):
             if axis_center[i] is not None:
                 prev_center = i
             elif prev_center >= 0:
                 center_value = axis_center[prev_center]
                 if center_value is not None:
-                    axis_center[i] = center_value + anchor.average_unit_size * (i - prev_center)
+                    axis_center[i] = center_value + anchor.average_unit_size * (
+                        i - prev_center
+                    )
         incomplete = any(center is None for center in axis_center)
         if incomplete:
             continue
@@ -441,13 +484,21 @@ def resample_staff(staff: RawStaff) -> Staff:
         if i < len(anchors_left_to_right) - 1:
             to_right = range(
                 int(anchor.symbol.center[0]),
-                int((anchor.symbol.center[0] + anchors_left_to_right[i + 1].symbol.center[0]) / 2),
+                int(
+                    (
+                        anchor.symbol.center[0]
+                        + anchors_left_to_right[i + 1].symbol.center[0]
+                    )
+                    / 2
+                ),
                 staff_density,
             )
         else:
             to_right = range(int(anchor.symbol.center[0]), int(stop), staff_density)
         x = to_right.stop
-        grid.extend(reversed(list(resample_staff_segment(anchor, staff, reversed(to_left)))))
+        grid.extend(
+            reversed(list(resample_staff_segment(anchor, staff, reversed(to_left))))
+        )
         grid.extend(resample_staff_segment(anchor, staff, to_right))
 
     return Staff(grid)
@@ -470,7 +521,9 @@ def range_intersect(r1: range, r2: range) -> range | None:
     return range(max(r1.start, r2.start), min(r1.stop, r2.stop)) or None
 
 
-def filter_edge_of_vision(staffs: list[Staff], image_shape: tuple[int, ...]) -> list[Staff]:
+def filter_edge_of_vision(
+    staffs: list[Staff], image_shape: tuple[int, ...]
+) -> list[Staff]:
     """
     Removes staffs which begin in at the right edge or at the lower edge of the image,
     as this are very likely incomplete staffs.
@@ -504,7 +557,9 @@ def filter_unusual_anchors(anchors: list[StaffAnchor]) -> list[StaffAnchor]:
     return result
 
 
-def init_zone(clef_anchors: list[StaffAnchor], image_shape: tuple[int, ...]) -> list[range]:
+def init_zone(
+    clef_anchors: list[StaffAnchor], image_shape: tuple[int, ...]
+) -> list[range]:
     def make_range(start: float, stop: float) -> range:
         return range(max(int(start), 0), min(int(stop), image_shape[1]))
 
@@ -556,7 +611,9 @@ def filter_line_peaks(
             group += 1
         groups.append(group)
 
-    groups.append(groups[-1] + 1)  # Append an invalid group for better handling edge case
+    groups.append(
+        groups[-1] + 1
+    )  # Append an invalid group for better handling edge case
     cur_g = groups[0]
     count = 1
     for idx in range(1, len(groups)):
@@ -573,9 +630,13 @@ def filter_line_peaks(
             head_part = cand_peaks[: constants.number_of_lines_on_a_staff]
             tail_part = cand_peaks[-constants.number_of_lines_on_a_staff :]
             if sum(norm[head_part]) > sum(norm[tail_part]):
-                valid_peaks[idx - count + constants.number_of_lines_on_a_staff : idx] = False
+                valid_peaks[
+                    idx - count + constants.number_of_lines_on_a_staff : idx
+                ] = False
             else:
-                valid_peaks[idx - count : idx - constants.number_of_lines_on_a_staff] = False
+                valid_peaks[
+                    idx - count : idx - constants.number_of_lines_on_a_staff
+                ] = False
 
         cur_g = group
         count = 1
@@ -593,7 +654,9 @@ def find_horizontal_lines(
 
     count = np.insert(count, [0, len(count)], [0, 0])  # type: ignore
     norm = (count - np.mean(count)) / np.std(count)
-    centers, _ = find_peaks(norm, height=line_threshold, distance=unit_size, prominence=1)
+    centers, _ = find_peaks(
+        norm, height=line_threshold, distance=unit_size, prominence=1
+    )
     centers -= 1
     norm = norm[1:-1]  # Remove prepend / append
     _valid_centers, groups = filter_line_peaks(centers, norm)
@@ -615,7 +678,9 @@ def predict_other_anchors_from_clefs(
 ) -> list[RotatedBoundingBox]:
     if len(clef_anchors) == 0:
         return []
-    average_unit_size = float(np.mean([anchor.average_unit_size for anchor in clef_anchors]))
+    average_unit_size = float(
+        np.mean([anchor.average_unit_size for anchor in clef_anchors])
+    )
     anchor_symbols = [anchor.symbol for anchor in clef_anchors]
     clef_zones = init_zone(clef_anchors, image.shape)
     result: list[RotatedBoundingBox] = []
@@ -627,7 +692,11 @@ def predict_other_anchors_from_clefs(
             max_y = max(group)
             center_y = (min_y + max_y) / 2
             center_x = zone.start + (zone.stop - zone.start) / 2
-            box = ((int(center_x), int(center_y)), (zone.stop - zone.start, int(max_y - min_y)), 0)
+            box = (
+                (int(center_x), int(center_y)),
+                (zone.stop - zone.start, int(max_y - min_y)),
+                0,
+            )
             result.append(RotatedBoundingBox(box, np.array([]), 0))
     return [r for r in result if not r.is_overlapping_with_any(anchor_symbols)]
 
@@ -645,8 +714,12 @@ def break_wide_fragments(
         remaining_fragment = fragment
         while remaining_fragment.size[0] > limit:
             min_x = min([c[0][0] for c in remaining_fragment.contours])  # type: ignore
-            contours_left = [c for c in remaining_fragment.contours if c[0][0] < min_x + limit]  # type: ignore
-            contours_right = [c for c in remaining_fragment.contours if c[0][0] >= min_x + limit]  # type: ignore
+            contours_left = [
+                c for c in remaining_fragment.contours if c[0][0] < min_x + limit
+            ]  # type: ignore
+            contours_right = [
+                c for c in remaining_fragment.contours if c[0][0] >= min_x + limit
+            ]  # type: ignore
             # sort by x
             contours_left = sorted(contours_left, key=lambda c: c[0][0])  # type: ignore
             contours_right = sorted(contours_right, key=lambda c: c[0][0])  # type: ignore
@@ -657,7 +730,9 @@ def break_wide_fragments(
             contours_left.append(contours_right[0])
             contours_right.append(contours_left[-1])
             result.append(
-                create_rotated_bounding_box(np.array(contours_left), remaining_fragment.debug_id)
+                create_rotated_bounding_box(
+                    np.array(contours_left), remaining_fragment.debug_id
+                )
             )
             remaining_fragment = create_rotated_bounding_box(
                 np.array(contours_right), remaining_fragment.debug_id
@@ -682,14 +757,15 @@ def detect_staff(
 
     possible_other_clefs = predict_other_anchors_from_clefs(staff_anchors, image)
     eprint("Found " + str(len(possible_other_clefs)) + " possible other clefs")
-    staff_anchors.extend(find_staff_anchors(staff_fragments, possible_other_clefs, are_clefs=True))
+    staff_anchors.extend(
+        find_staff_anchors(staff_fragments, possible_other_clefs, are_clefs=True)
+    )
     appdata.homr_progress = 20
 
     staff_anchors.extend(
         find_staff_anchors(staff_fragments, likely_bar_or_rests_lines, are_clefs=False)
     )
     appdata.homr_progress = 25
-
 
     staff_anchors = filter_unusual_anchors(staff_anchors)
     eprint("Found " + str(len(staff_anchors)) + " staff anchors")

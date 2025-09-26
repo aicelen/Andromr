@@ -11,7 +11,10 @@ class Symbols:
     ALL_CLEFS = G_GLEF + C_CLEF + F_CLEF
     NUMBERS = [19, 20]
     TIME_SIGNATURE_SUBSET = [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 34]
-    TIME_SIGNATURE = TIME_SIGNATURE_SUBSET + [31, 32]  # Oemer hasn't used these in the past
+    TIME_SIGNATURE = TIME_SIGNATURE_SUBSET + [
+        31,
+        32,
+    ]  # Oemer hasn't used these in the past
     NOTEHEAD_FULL_ON_LINE = [35]
     UNKNOWN = [
         36,

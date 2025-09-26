@@ -48,7 +48,10 @@ if not os.path.exists(musescore_path):
 if not os.path.exists(lieder):
     eprint("Downloading Lieder from https://github.com/OpenScore/Lieder")
     lieder_archive = os.path.join(dataset_root, "Lieder.zip")
-    download_file("https://github.com/OpenScore/Lieder/archive/refs/heads/main.zip", lieder_archive)
+    download_file(
+        "https://github.com/OpenScore/Lieder/archive/refs/heads/main.zip",
+        lieder_archive,
+    )
     unzip_file(lieder_archive, dataset_root)
 
 
@@ -158,7 +161,9 @@ def _split_file_into_staffs(
                 staff_image = image[y : y + height, x : x + width]
                 margin_top = random.randint(5, 10)
                 margin_bottom = random.randint(5, 10)
-                preprocessed = add_image_into_tr_omr_canvas(staff_image, margin_top, margin_bottom)
+                preprocessed = add_image_into_tr_omr_canvas(
+                    staff_image, margin_top, margin_bottom
+                )
                 cv2.imwrite(staff_image_file_name, preprocessed)
                 staff_image_file_name = distort_image(staff_image_file_name)
             elif not os.path.exists(staff_image_file_name):
@@ -198,7 +203,9 @@ def _convert_file(file: Path, just_semantic_files: bool) -> list[str]:
             eprint(file, "contains more than one clef")
             return []
         svg_files = get_position_from_multiple_svg_files(str(file))
-        measures_in_svg = [sum(s.number_of_measures for s in file.staffs) for file in svg_files]
+        measures_in_svg = [
+            sum(s.number_of_measures for s in file.staffs) for file in svg_files
+        ]
         sum_of_measures_in_xml = number_of_measures * number_of_voices
         if sum(measures_in_svg) != sum_of_measures_in_xml:
             eprint(

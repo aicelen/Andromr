@@ -75,7 +75,12 @@ def close_lines(img):
     # Use hough transform to find lines
     width = img.shape[1]
     lines = cv2.HoughLinesP(
-        img, 1, np.pi / 180, threshold=width // 32, minLineLength=width // 16, maxLineGap=50
+        img,
+        1,
+        np.pi / 180,
+        threshold=width // 32,
+        minLineLength=width // 16,
+        maxLineGap=50,
     )
     if lines is not None:
         angles = []
@@ -98,7 +103,9 @@ def close_lines(img):
     return img
 
 
-def make_symbols_stronger(img: NDArray, kernel_size: tuple[int, int] = (5, 5)) -> NDArray:
+def make_symbols_stronger(
+    img: NDArray, kernel_size: tuple[int, int] = (5, 5)
+) -> NDArray:
     """
     Dilates the symbols to make them stronger
     """
@@ -148,7 +155,9 @@ def reconstruct_lines_between_staffs(image: NDArray, mask: NDArray) -> NDArray:
     black_pixels = (gray_img == 0).astype(np.uint8) * 255
 
     # Morphological operation to connect vertical structures
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, min_required_height))
+    vertical_kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT, (1, min_required_height)
+    )
     connected = cv2.morphologyEx(black_pixels, cv2.MORPH_OPEN, vertical_kernel)
 
     # Find connected components again to isolate tall vertical lines

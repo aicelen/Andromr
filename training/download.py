@@ -29,8 +29,12 @@ def download_deep_scores() -> str:
     dataset_path = os.path.join(dataset_root, "ds2_dense")
     if os.path.exists(dataset_path):
         return dataset_path
-    eprint("Downloading deep DeepScoresV2 Dense from https://zenodo.org/records/4012193")
-    download_url = "https://zenodo.org/records/4012193/files/ds2_dense.tar.gz?download=1"
+    eprint(
+        "Downloading deep DeepScoresV2 Dense from https://zenodo.org/records/4012193"
+    )
+    download_url = (
+        "https://zenodo.org/records/4012193/files/ds2_dense.tar.gz?download=1"
+    )
     download_path = os.path.join(dataset_root, "ds2_dense.tar.gz")
     download_file(download_url, download_path)
     eprint("Extracting download")

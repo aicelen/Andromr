@@ -188,7 +188,9 @@ def sort_notes_in_chords(notes: list[Note]) -> list[Note]:
 
 
 def get_all_notes_from_measures(measures: list[mxl.XMLMeasure]) -> list[Note]:
-    return [note for measure in measures for note in get_all_notes_from_measure(measure)]
+    return [
+        note for measure in measures for note in get_all_notes_from_measure(measure)
+    ]
 
 
 def get_keys_and_notes_from_filename(filename: str) -> MusicFile:
@@ -213,7 +215,10 @@ def rate_folder(foldername: str) -> tuple[float | None, int]:
         if not is_xml_or_musicxml(file):
             continue
         if is_file_is_empty(file):
-            eprint(">>> Found empty file, that means that the run failed", os.path.basename(file))
+            eprint(
+                ">>> Found empty file, that means that the run failed",
+                os.path.basename(file),
+            )
             sum_of_failures += 1
             continue
         xmls.append(get_keys_and_notes_from_filename(file))
@@ -227,7 +232,9 @@ def rate_folder(foldername: str) -> tuple[float | None, int]:
     folder_base_name = os.path.basename(foldername.rstrip(os.path.sep))
     if len(reference) != 1:
         for xml in xmls:
-            minimal_diff, minimal_diff_file = find_minimal_diff_against_all_other_files(xml, xmls)
+            minimal_diff, minimal_diff_file = find_minimal_diff_against_all_other_files(
+                xml, xmls
+            )
             if minimal_diff is None or minimal_diff_file is None:
                 eprint("No minimal diff found for", xml.filename)
                 sum_of_failures += 1
@@ -285,7 +292,9 @@ def rate_all_folders(foldername: str) -> bool:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rate validation results.")
     parser.add_argument(
-        "folder", type=str, help="The folder to rate. If 'latest', the newest folder will be rated."
+        "folder",
+        type=str,
+        help="The folder to rate. If 'latest', the newest folder will be rated.",
     )
     args = parser.parse_args()
 

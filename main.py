@@ -44,10 +44,11 @@ from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners
 # Ask for permissions on android
 if platform == "android":
     from android_camera_api import take_picture
-    from jnius import autoclass # pylint: disable=import-error # type: ignore
+    from jnius import autoclass  # pylint: disable=import-error # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # pylint: disable=import-error # type: ignore
+
     required_permissions = [Permission.CAMERA]
-    
+
     def has_all_permissions():
         return all(check_permission(perm) for perm in required_permissions)
 
@@ -56,42 +57,50 @@ if platform == "android":
         request_permissions(required_permissions)
         while not has_all_permissions():
             sleep(0.1)
-            print('waiting for permissions...')
-
+            print("waiting for permissions...")
 
 
 # Classes of Screens used by kivy
 class LandingPage(Screen):
     pass
 
+
 class CameraPage(Screen):
     pass
+
 
 class ProgressPage(Screen):
     pass
 
+
 class SettingsPage(Screen):
     pass
+
 
 class LicensePage(Screen):
     pass
 
+
 class TermsPage(Screen):
     pass
+
 
 class TermsPageButton(Screen):
     pass
 
+
 class EditImagePage(Screen):
     pass
+
 
 class DownloadPage(Screen):
     pass
 
+
 # Custom widget classes
 class KvCam(Camera):
-    CameraInfo = autoclass('android.hardware.Camera$CameraInfo')
-    resolution = (640, 480) #960, 720
+    CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
+    resolution = (640, 480)  # 960, 720
     index = CameraInfo.CAMERA_FACING_BACK
 
     def on_tex(self, *l):
@@ -99,13 +108,15 @@ class KvCam(Camera):
             return None
 
         super(KvCam, self).on_tex(*l)
-        self.texture = Texture.create(size=np.flip(self.resolution), colorfmt='rgb')
+        self.texture = Texture.create(size=np.flip(self.resolution), colorfmt="rgb")
         frame = self.frame_from_buf()
         self.frame_to_screen(frame)
 
     def frame_from_buf(self):
         w, h = self.resolution
-        frame = np.frombuffer(self._camera._buffer.tostring(), 'uint8').reshape((h + h // 2, w))
+        frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape(
+            (h + h // 2, w)
+        )
         frame_bgr = cv2.cvtColor(frame, 93)
         if self.index:
             return np.flip(np.rot90(frame_bgr, 1), 1)
@@ -116,7 +127,8 @@ class KvCam(Camera):
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         flipped = np.flip(frame_rgb, 0)
         buf = flipped.tobytes()
-        self.texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+        self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
 
 class MovableMDIconButton(MDIconButton):
     # custom button that is movable
@@ -128,21 +140,22 @@ class MovableMDIconButton(MDIconButton):
     def on_touch_move(self, touch):
         if self.collide_point(*touch.pos):
             self.pos = (touch.x - self.width / 2, touch.y - self.height / 2)
-            
-            #update button positions (of unmovable)
-            #get buttons
+
+            # update button positions (of unmovable)
+            # get buttons
             btn0 = self.app.root.get_screen("image_page").ids.btn0
             btn1 = self.app.root.get_screen("image_page").ids.btn1
             btn2 = self.app.root.get_screen("image_page").ids.btn2
             btn3 = self.app.root.get_screen("image_page").ids.btn3
 
-            #and set their position so they form a rectangle with btn0 and btn3
+            # and set their position so they form a rectangle with btn0 and btn3
             btn1.pos = btn0.pos[0], btn3.pos[1]
             btn2.pos = btn3.pos[0], btn0.pos[1]
 
-            #update lines
+            # update lines
             line_drawer = self.app.root.get_screen("image_page").ids.line_drawer
             line_drawer.update_lines()
+
 
 class UnmovableMDIconButton(MDIconButton):
     # custom button that is not movable
@@ -151,7 +164,8 @@ class UnmovableMDIconButton(MDIconButton):
         self.max_x, self.max_y = Window.system_size
 
     def update_pos(self, x, y):
-        self.pos = x,y
+        self.pos = x, y
+
 
 class LineDrawer(Widget):
     # draws lines between buttons
@@ -171,10 +185,12 @@ class LineDrawer(Widget):
         with self.canvas:
             Color(1, 0, 0, 1)  # Red
             # Get positions from buttons
-            btns = [self.app.root.get_screen('image_page').ids.btn0,
-                    self.app.root.get_screen('image_page').ids.btn1,
-                    self.app.root.get_screen('image_page').ids.btn3,
-                    self.app.root.get_screen('image_page').ids.btn2]
+            btns = [
+                self.app.root.get_screen("image_page").ids.btn0,
+                self.app.root.get_screen("image_page").ids.btn1,
+                self.app.root.get_screen("image_page").ids.btn3,
+                self.app.root.get_screen("image_page").ids.btn2,
+            ]
 
             points = []
             for btn in btns:
@@ -186,6 +202,7 @@ class LineDrawer(Widget):
             points.extend([btns[0].center_x, btns[0].center_y])
 
             Line(points=points, width=1.5)
+
 
 class OSS_License(RecycleView):
     # shows the terms and conditions using a recycling view widget for better performance
@@ -200,12 +217,13 @@ class OSS_License(RecycleView):
             line_height = sp(font_size) * 1.2
             return int(lines * line_height) + padding
 
-
-        with open(Path(f"{APP_PATH}/data/license.txt"), 'r') as file:
+        with open(Path(f"{APP_PATH}/data/license.txt"), "r") as file:
             lines = [line.strip() for line in file if line.strip()]
-        
-        
-        self.data = [{'text': line, 'size': (None, estimate_height(line))} for line in lines]
+
+        self.data = [
+            {"text": line, "size": (None, estimate_height(line))} for line in lines
+        ]
+
 
 class Licenses(RecycleView):
     # shows the open source licenses using a recycling view widget for better performance
@@ -220,21 +238,20 @@ class Licenses(RecycleView):
             line_height = sp(font_size) * 1.2
             return int(lines * line_height) + padding
 
-
-
-        with open(Path(f"{APP_PATH}/data/licenses.txt"), 'r') as file:
+        with open(Path(f"{APP_PATH}/data/licenses.txt"), "r") as file:
             lines = [line.strip() for line in file if line.strip()]
 
-        
-        
-        self.data = [{'text': line, 'size': (None, estimate_height(line))} for line in lines]
+        self.data = [
+            {"text": line, "size": (None, estimate_height(line))} for line in lines
+        ]
+
 
 # App class
 class Andromr(MDApp):
     def build(self):
         self.setup()
-        #set the app size to a phone size if on windows
-        if platform == 'win':
+        # set the app size to a phone size if on windows
+        if platform == "win":
             Window.size = (350, 680)
 
         # load the file
@@ -243,10 +260,9 @@ class Andromr(MDApp):
         # if the user hasn't agreed to the terms and conditions
         if not appdata.agreed:
             # show him the screen
-            self.sm.current = 'termspagebutton'
+            self.sm.current = "termspagebutton"
 
         return self.sm
-
 
     def setup(self):
         """
@@ -257,20 +273,22 @@ class Andromr(MDApp):
 
         # generate folders
         os.makedirs(Path(f"{APP_PATH}/data/generated_xmls"), exist_ok=True)
-        os.makedirs(Path(f"{APP_PATH}/data/generated_midi"), exist_ok=True)  
+        os.makedirs(Path(f"{APP_PATH}/data/generated_midi"), exist_ok=True)
 
         # create files list (used by the scorllview)
-        self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls")) # list of paths to generated .musicxml
+        self.files = os.listdir(
+            Path(f"{APP_PATH}/data/generated_xmls")
+        )  # list of paths to generated .musicxml
 
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
         try:
             self.theme_cls.theme_style = get_sys_theme()
-        except:
-            self.theme_cls.theme_style = 'Light' # default theme
+        except Exception:
+            # default
+            self.theme_cls.theme_style = "Light"  # default theme
 
-        self.theme_cls.material_style = "M3" # m3 looks cool
-
+        self.theme_cls.material_style = "M3"  # m3 looks cool
 
     def change_screen(self, screen_name):
         """
@@ -278,27 +296,25 @@ class Andromr(MDApp):
         Args:
             screen_name(str): name of the screen you want to change to
         """
-        #set screen
+        # set screen
         self.sm.current = screen_name
 
         # update the scrollview on the landing page
         if screen_name == "landing":
             self.update_scrollview()
-    
 
     def agree_oss_license(self):
-        '''Function that is triggered when the user agreed to the terms and conditions'''
+        """Function that is triggered when the user agreed to the terms and conditions"""
         appdata.agreed = True
         appdata.save_settings()
-        self.change_screen('landing')
-
+        self.change_screen("landing")
 
     def update_scrollview(self):
         """Function that updates the scrollview on the landing page"""
 
         self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
-        self.text_lables =  [os.path.splitext(file)[0] for file in self.files]
-        scroll_box = self.sm.get_screen('landing').ids.scroll_box
+        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
+        scroll_box = self.sm.get_screen("landing").ids.scroll_box
         scroll_box.clear_widgets()
 
         for index, text in enumerate(self.text_lables):
@@ -307,7 +323,7 @@ class Andromr(MDApp):
                 orientation="horizontal",
                 size_hint_y=None,
                 height=dp(50),
-                spacing=10  # Adjust spacing between label and button
+                spacing=10,  # Adjust spacing between label and button
             )
 
             l_name = MDLabel(
@@ -315,52 +331,49 @@ class Andromr(MDApp):
                 size_hint_x=0.9,  # Make label take most space
                 size_hint_y=None,
                 height=dp(50),
-                halign="center"
+                halign="center",
             )
 
             b_delete = MDIconButton(
                 icon="delete-outline",
                 on_release=lambda func: self.confirm_delete(index),
                 size_hint_x=None,
-                pos_hint={'center_y': 0.5},
+                pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
-                icon_color=(1,0,0,1),
-                #ripple_scale=0
-                
+                icon_color=(1, 0, 0, 1),
+                # ripple_scale=0
             )
 
             b_export = MDIconButton(
                 icon="export-variant",
                 on_release=lambda func: self.export_option(index),
                 size_hint_x=None,
-                pos_hint={'center_y': 0.5},
+                pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
                 icon_color=(0, 1, 1, 1),
-                #ripple_scale=0
+                # ripple_scale=0
             )
 
             row.add_widget(l_name)
             row.add_widget(b_delete)
             row.add_widget(b_export)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
-    
 
     def crop(self):
         """
         crop the displayed image based on the positions of the buttons
         """
         # get button positions
-        pos_btns = [self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn0.center), 
-                    self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn1.center), 
-                    self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn2.center), 
-                    self.convert_to_img_pos(self.root.get_screen('image_page').ids.btn3.center)
-                    ]
+        pos_btns = [
+            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn0.center),
+            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn1.center),
+            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn2.center),
+            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn3.center),
+        ]
 
         # call the crop function from utils.py
         crop_image_by_corners(self.img_path, pos_btns, self.img_path)
         self.start_inference(self.img_path)
-
-
 
     def convert_to_img_pos(self, pos):
         """
@@ -382,92 +395,117 @@ class Andromr(MDApp):
         else:
             x -= self.space_left
 
-
         # max: if the value is negative we want it to be 0
-        # min: we obviously don't want the user to be able to make the image bigger than it is. 
+        # min: we obviously don't want the user to be able to make the image bigger than it is.
         # That's why the new side_length needs to be smaller than the side_length of the image
-        x = max(0, min(x*self.scale, self.size[0]))
-        y = max(0, min(y*self.scale, self.size[1]))
+        x = max(0, min(x * self.scale, self.size[0]))
+        y = max(0, min(y * self.scale, self.size[1]))
 
-        return [x, abs(self.size[1]-y)] #the abs thing is a workaround because i read with (0,0) at bottom left while numpy/pillow thinks it's at(0, img_height) 
+        return [
+            x,
+            abs(self.size[1] - y),
+        ]  # the abs thing is a workaround because i read with (0,0) at bottom left while numpy/pillow thinks it's at(0, img_height)
 
-        
     def set_cutter_btn(self, instance=None):
         """
         Displays the drag+drop buttons on image-corners
         """
 
-        #get original size of the image
+        # get original size of the image
         img_x, img_y = self.size
 
-        #get screen size
+        # get screen size
         win_x, win_y = Window.size
-        
-        #calculate on which size the image and the screen touch
-        if img_x/win_x > img_y/win_y:
-            #sides touch vertically
-            self.vertical_touch = True
-            self.scale = img_x/win_x
 
-            dist_y = win_x*img_y/img_x
+        # calculate on which size the image and the screen touch
+        if img_x / win_x > img_y / win_y:
+            # sides touch vertically
+            self.vertical_touch = True
+            self.scale = img_x / win_x
+
+            dist_y = win_x * img_y / img_x
             dist_x = win_x
 
-            #calculate how much space is left
-            self.space_left = (win_y - dist_y)/2 #half beause we only need one distance
+            # calculate how much space is left
+            self.space_left = (
+                win_y - dist_y
+            ) / 2  # half beause we only need one distance
 
-            
-            offset = 50 # buttons should be easily touchable. that's why there's an offset to the edge of the screen
+            offset = 50  # buttons should be easily touchable. that's why there's an offset to the edge of the screen
 
-            #move buttons to the correct point
-            self.root.get_screen('image_page').ids.btn0.center = (offset, self.space_left+offset)
-            self.root.get_screen('image_page').ids.btn3.center = (dist_x-offset, self.space_left+dist_y-offset) 
-            self.root.get_screen('image_page').ids.btn2.center = (offset, self.space_left+dist_y-offset) 
-            self.root.get_screen('image_page').ids.btn1.center = (dist_x-offset, self.space_left+offset)
+            # move buttons to the correct point
+            self.root.get_screen("image_page").ids.btn0.center = (
+                offset,
+                self.space_left + offset,
+            )
+            self.root.get_screen("image_page").ids.btn3.center = (
+                dist_x - offset,
+                self.space_left + dist_y - offset,
+            )
+            self.root.get_screen("image_page").ids.btn2.center = (
+                offset,
+                self.space_left + dist_y - offset,
+            )
+            self.root.get_screen("image_page").ids.btn1.center = (
+                dist_x - offset,
+                self.space_left + offset,
+            )
 
         else:
-            #sides touch horizontally - currently not working
+            # sides touch horizontally - currently not working
             self.vertical_touch = False
-            self.scale = img_y/win_y
-            dist_x = win_y*img_x/img_y
+            self.scale = img_y / win_y
+            dist_x = win_y * img_x / img_y
             dist_y = win_y
 
-
-            #calculate how much space is left
-            self.space_left = (win_x - dist_x)/2 # half because we need only one distance
+            # calculate how much space is left
+            self.space_left = (
+                win_x - dist_x
+            ) / 2  # half because we need only one distance
 
             offset = 50
-            self.root.get_screen('image_page').ids.btn0.center = (self.space_left-25, 0)
-            self.root.get_screen('image_page').ids.btn3.center = (self.space_left+dist_x-25, dist_y-50)
-            self.root.get_screen('image_page').ids.btn2.center = (self.space_left-25, dist_y-50)
-            self.root.get_screen('image_page').ids.btn1.center = (self.space_left+dist_x-25, 0)
+            self.root.get_screen("image_page").ids.btn0.center = (
+                self.space_left - 25,
+                0,
+            )
+            self.root.get_screen("image_page").ids.btn3.center = (
+                self.space_left + dist_x - 25,
+                dist_y - 50,
+            )
+            self.root.get_screen("image_page").ids.btn2.center = (
+                self.space_left - 25,
+                dist_y - 50,
+            )
+            self.root.get_screen("image_page").ids.btn1.center = (
+                self.space_left + dist_x - 25,
+                0,
+            )
 
-        #and display the lines
+        # and display the lines
         line_drawer = self.root.get_screen("image_page").ids.line_drawer
         line_drawer.update_lines()
-
 
     def display_img(self):
         """
         displays an image in the image_box
         """
         # display screen to image_page
-        self.change_screen('image_page')
+        self.change_screen("image_page")
 
         # remove the image loaded previously to the image box
-        self.root.get_screen('image_page').ids.image_box.clear_widgets()
+        self.root.get_screen("image_page").ids.image_box.clear_widgets()
 
         # get size of loaded image
         img = PILImage.open(self.img_path)
         self.size = img.size
 
-        #display image in image_box
+        # display image in image_box
         img_widget = Image(source=self.img_path)
         img_widget.reload()
-        self.root.get_screen('image_page').ids.image_box.add_widget(img_widget)
+        self.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
 
         # move the buttons to the correct location
         self.set_cutter_btn()
-
 
     def export_file(self, musicxml, idx):
         """
@@ -475,23 +513,35 @@ class Andromr(MDApp):
         Args:
             musicxml(bool): export as musicxml
             idx(int): index of the element in self.files
-        
+
             Returns:
                 None
         """
         if musicxml:
-            #export (.musicxml)
-            self.show_toast(save_to_external_storage(f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"))
-        
-        else:
-            #convert to .mid
-            if not os.path.exists(f"{APP_PATH}/data/generated_midi/{self.files[idx]}.midi"):
-                convert_musicxml_to_midi(f"{APP_PATH}/data/generated_xmls/{self.files[idx]}.musicxml", f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid")
-            #export (.mid)
-            self.show_toast(save_to_external_storage(f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid"))
-        
-        self.dialog_export.dismiss()
+            # export (.musicxml)
+            self.show_toast(
+                save_to_external_storage(
+                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
+                )
+            )
 
+        else:
+            # convert to .mid
+            if not os.path.exists(
+                f"{APP_PATH}/data/generated_midi/{self.files[idx]}.midi"
+            ):
+                convert_musicxml_to_midi(
+                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}.musicxml",
+                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid",
+                )
+            # export (.mid)
+            self.show_toast(
+                save_to_external_storage(
+                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid"
+                )
+            )
+
+        self.dialog_export.dismiss()
 
     def show_toast(self, text: str):
         """
@@ -500,7 +550,6 @@ class Andromr(MDApp):
             text(str): Text wanted to be displayed
         """
         toast(text, True, 80, 200, 0)
-    
 
     def show_info(self, text: str, title: str = ""):
         """
@@ -515,16 +564,14 @@ class Andromr(MDApp):
             text="",
             buttons=[
                 MDFlatButton(
-                    text="OK", 
-                    on_release=lambda dt: self.dialog_information.dismiss()
+                    text="OK", on_release=lambda dt: self.dialog_information.dismiss()
                 )
-            ]
+            ],
         )
-        
+
         self.dialog_information.text = text
         self.dialog_information.title = title
         self.dialog_information.open()
-
 
     def confirm_delete(self, idx: int):
         """
@@ -536,17 +583,15 @@ class Andromr(MDApp):
             text="Are you sure you want to delete this scan? This cannot be undone.",
             buttons=[
                 MDFlatButton(
-                    text="CANCEL",
-                    on_release=lambda dt: self.dialog_delete.dismiss()
+                    text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()
                 ),
                 MDFlatButton(
-                    text="CONFIRM",
-                    on_release=lambda func: self.delete_element(idx)
+                    text="CONFIRM", on_release=lambda func: self.delete_element(idx)
                 ),
-            ]
+            ],
         )
         self.dialog_delete.open()
-    
+
     def export_option(self, idx: int):
         """
         give option to export as .musicxml or .mid
@@ -559,16 +604,17 @@ class Andromr(MDApp):
             buttons=[
                 MDFlatButton(
                     text="musicxml",
-                    on_release=lambda func: self.export_file(True, idx) #prior: idx=idx
+                    on_release=lambda func: self.export_file(
+                        True, idx
+                    ),  # prior: idx=idx
                 ),
                 MDFlatButton(
-                    text="midi",
-                    on_release=lambda func: self.export_file(False, idx)
+                    text="midi", on_release=lambda func: self.export_file(False, idx)
                 ),
-            ]
+            ],
         )
         self.dialog_export.open()
-    
+
     def start_inference(self, path_to_image: str):
         # set the progress bar to 0
         appdata.progress = 0
@@ -577,13 +623,15 @@ class Andromr(MDApp):
         self.change_screen("progress")
 
         # reset text-field contents
-        self.root.get_screen('progress').ids.title.text = ""
-        self.root.get_screen('progress').ids.division.text = ""
-        self.root.get_screen('progress').ids.beat.text = ""
+        self.root.get_screen("progress").ids.title.text = ""
+        self.root.get_screen("progress").ids.division.text = ""
+        self.root.get_screen("progress").ids.beat.text = ""
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.homr_call, args=(path_to_image, ), daemon=True)
+        self.ml_thread = Thread(
+            target=self.homr_call, args=(path_to_image,), daemon=True
+        )
         self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
         self.ml_thread.start()
         self.progress_thread.start()
@@ -600,16 +648,18 @@ class Andromr(MDApp):
             return_path = homr(path)
             appdata.homr_running = False
 
-            if self.root.get_screen('progress').ids.title.text == "":
+            if self.root.get_screen("progress").ids.title.text == "":
                 # if there's no user given title we give it a unique id based on time
-                music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+                music_title = (
+                    f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+                )
             else:
                 # otherwise we set it to the users title
-                music_title = str(self.root.get_screen('progress').ids.title.text)
+                music_title = str(self.root.get_screen("progress").ids.title.text)
 
             # get user inputs of the beat and the division
-            beat = self.root.get_screen('progress').ids.beat.text
-            division = self.root.get_screen('progress').ids.division.text
+            beat = self.root.get_screen("progress").ids.beat.text
+            division = self.root.get_screen("progress").ids.division.text
 
             # if we got valid integers
             if beat.isdigit() and division.isdigit():
@@ -617,11 +667,16 @@ class Andromr(MDApp):
                 add_measure_type(return_path, beat, division)
 
             # rename the file
-            os.rename(return_path, os.path.join(APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"))
+            os.rename(
+                return_path,
+                os.path.join(
+                    APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"
+                ),
+            )
 
             # and update self.files (needed for the scorllview)
             self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
-            self.text_lables =  [os.path.splitext(file)[0] for file in self.files]
+            self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
         except Exception as e:
             # if anything fails during transcription it prints the error
@@ -629,15 +684,19 @@ class Andromr(MDApp):
             # and switches back to the landing screen as if nothing ever happend
 
         # switch to landing screen
-        Clock.schedule_once(lambda dt:self.change_screen("landing"))
+        Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
     def update_progress_bar(self):
         """
         Update the progress bar used while running homr
         """
         while appdata.homr_running:
-            self.root.get_screen('progress').ids.progress_bar.value = appdata.homr_progress
-            self.root.get_screen('progress').ids.progress_label.text = appdata.homr_state
+            self.root.get_screen(
+                "progress"
+            ).ids.progress_bar.value = appdata.homr_progress
+            self.root.get_screen(
+                "progress"
+            ).ids.progress_label.text = appdata.homr_state
             sleep(0.1)
 
     def update_download_bar(self, camera_page):
@@ -645,49 +704,55 @@ class Andromr(MDApp):
         Update the progress bar used while downloading models
         """
         while appdata.download_running:
-            self.root.get_screen('downloadpage').ids.download_bar.value = int(appdata.download_progress)
-            self.root.get_screen('downloadpage').ids.download_label.text = str(appdata.downloaded_assets)
+            self.root.get_screen("downloadpage").ids.download_bar.value = int(
+                appdata.download_progress
+            )
+            self.root.get_screen("downloadpage").ids.download_label.text = str(
+                appdata.downloaded_assets
+            )
             sleep(0.02)
         if camera_page:
-            Clock.schedule_once(lambda dt: self.change_screen('camera'))
+            Clock.schedule_once(lambda dt: self.change_screen("camera"))
         else:
-            Clock.schedule_once(lambda dt: self.change_screen('settings'))
+            Clock.schedule_once(lambda dt: self.change_screen("settings"))
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
         download = Thread(target=download_weights, daemon=True)
-        update = Thread(target=self.update_download_bar, args=(camera_page, ),daemon=True)
+        update = Thread(
+            target=self.update_download_bar, args=(camera_page,), daemon=True
+        )
         download.start()
         update.start()
-        Clock.schedule_once(lambda dt: self.change_screen('downloadpage'))
+        Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
 
     def check_download_assets(self, camera_page=False):
         """
         If not all tflite models are downloaded it will create a Dialog informing the user
-        that the App wants to download something. If the user allows to the app will switch 
-        to a Screen displaying a Progressbar. 
+        that the App wants to download something. If the user allows to the app will switch
+        to a Screen displaying a Progressbar.
         If all tflite models are downloaded it will directly switch to the camera screen.
         """
         if check_for_missing_models():
             self.dialog_download = MDDialog(
-            text="You need to download assets before converting an image to .musicxml. You can also download later in the settings tab.",
-            buttons=[
-                MDFlatButton(
-                    id="cancel",
-                    text="CANCEL",
-                    on_release=lambda dt: self.dialog_download.dismiss()
-                ),
-                MDFlatButton(
-                    text="DOWNLOAD NOW",
-                    on_release=lambda dt: self.start_download(camera_page)
-                ),
-                ]
+                text="You need to download assets before converting an image to .musicxml. You can also download later in the settings tab.",
+                buttons=[
+                    MDFlatButton(
+                        id="cancel",
+                        text="CANCEL",
+                        on_release=lambda dt: self.dialog_download.dismiss(),
+                    ),
+                    MDFlatButton(
+                        text="DOWNLOAD NOW",
+                        on_release=lambda dt: self.start_download(camera_page),
+                    ),
+                ],
             )
             self.dialog_download.open()
         elif camera_page:
             self.change_screen("camera")
         else:
-            self.show_toast('You already downloaded all assets')
+            self.show_toast("You already downloaded all assets")
 
     def delete_element(self, index: int):
         """
@@ -705,27 +770,32 @@ class Andromr(MDApp):
         Args:
             filename(str/Path): path to the image
         """
-        rotate_image(img_path, img_path) # we need to rotate the image; android stores them 270° rotated (clockwise)
+        rotate_image(
+            img_path, img_path
+        )  # we need to rotate the image; android stores them 270° rotated (clockwise)
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
-    def capture(self, filename='taken_img.png'):
-        '''Take an image'''
+    def capture(self, filename="taken_img.png"):
+        """Take an image"""
         try:
             os.remove(filename)
         except Exception:
             print("couldn't be removed")
-        take_picture(self.root.get_screen('camera').ids.camera_pre, self.img_taken, filename)
+        take_picture(
+            self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
+        )
 
     def save_settings(self, num_threads, use_xnnpack):
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack
         appdata.save_settings()
-        self.change_screen('landing')
+        self.change_screen("landing")
 
     def on_start(self):
         # Runs from the start of Kivy
         self.update_scrollview()
+
 
 if __name__ == "__main__":
     Andromr().run()

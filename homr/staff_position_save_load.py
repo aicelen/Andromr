@@ -89,7 +89,9 @@ def load_staff_positions(
     return staffs
 
 
-def detect_staff_simple(debug: Debug, img: NDArray, crop_area: BoundingBox) -> Staff | None:
+def detect_staff_simple(
+    debug: Debug, img: NDArray, crop_area: BoundingBox
+) -> Staff | None:
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     binary = cv2.adaptiveThreshold(
         img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5
@@ -98,19 +100,29 @@ def detect_staff_simple(debug: Debug, img: NDArray, crop_area: BoundingBox) -> S
     # Create horizontal structuring element and apply morphological operations
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 1))
     horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_ERODE, kernel, iterations=2)
-    horizontal_lines = cv2.morphologyEx(horizontal_lines, cv2.MORPH_DILATE, kernel, iterations=2)
-    horizontal_lines = cv2.morphologyEx(horizontal_lines, cv2.MORPH_CLOSE, kernel, iterations=2)
+    horizontal_lines = cv2.morphologyEx(
+        horizontal_lines, cv2.MORPH_DILATE, kernel, iterations=2
+    )
+    horizontal_lines = cv2.morphologyEx(
+        horizontal_lines, cv2.MORPH_CLOSE, kernel, iterations=2
+    )
     debug.write_threshold_image("horizontal_lines", 255 * horizontal_lines)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10))
     vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_ERODE, kernel, iterations=2)
-    vertical_lines = cv2.morphologyEx(vertical_lines, cv2.MORPH_DILATE, kernel, iterations=2)
-    vertical_lines = cv2.morphologyEx(vertical_lines, cv2.MORPH_CLOSE, kernel, iterations=2)
+    vertical_lines = cv2.morphologyEx(
+        vertical_lines, cv2.MORPH_DILATE, kernel, iterations=2
+    )
+    vertical_lines = cv2.morphologyEx(
+        vertical_lines, cv2.MORPH_CLOSE, kernel, iterations=2
+    )
     debug.write_threshold_image("vertical_lines", 255 * vertical_lines)
 
     # Detect lines using Hough Transform
     staff_lines = create_lines(horizontal_lines, threshold=30, min_line_length=30)
-    bar_lines = create_lines(vertical_lines, threshold=20, min_line_length=20, max_line_gap=15)
+    bar_lines = create_lines(
+        vertical_lines, threshold=20, min_line_length=20, max_line_gap=15
+    )
     staff_lines = [line.ensure_min_dimension(3, 3) for line in staff_lines]
     bar_lines = [line.ensure_min_dimension(3, 3) for line in bar_lines]
     bar_lines = [bar.make_box_taller_keep_center(5) for bar in bar_lines]
@@ -146,7 +158,9 @@ if __name__ == "__main__":
     if img is None:
         raise ValueError("Failed to read " + sys.argv[1])
     staff = detect_staff_simple(
-        Debug(img, "input.jpg", True), img, BoundingBox([100, 100, 500, 500], np.array([]))
+        Debug(img, "input.jpg", True),
+        img,
+        BoundingBox([100, 100, 500, 500], np.array([])),
     )
 
     if staff is None:

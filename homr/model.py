@@ -67,7 +67,9 @@ class Accidental(SymbolOnStaff):
         self.box = box
         self.position = position
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.box.draw_onto_image(img, color)
         cv2.putText(
             img,
@@ -96,7 +98,9 @@ class Rest(SymbolOnStaff):
         self.box = box
         self.has_dot = False
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.box.draw_onto_image(img, color)
         cv2.putText(
             img,
@@ -200,7 +204,9 @@ class Note(SymbolOnStaff):
         self.beams: list[RotatedBoundingBox] = []
         self.flags: list[RotatedBoundingBox] = []
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.box.draw_onto_image(img, color)
         dot_string = "." if self.has_dot else ""
         cv2.putText(
@@ -224,7 +230,9 @@ class Note(SymbolOnStaff):
         self, clef_type: ClefType | None = None, circle_of_fifth: int | None = None
     ) -> Pitch:
         clef_type = self.clef_type if clef_type is None else clef_type
-        circle_of_fifth = self.circle_of_fifth if circle_of_fifth is None else circle_of_fifth
+        circle_of_fifth = (
+            self.circle_of_fifth if circle_of_fifth is None else circle_of_fifth
+        )
         reference = clef_type.get_reference_pitch()
         reference_pitch = Pitch(reference.step, reference.alter, reference.octave)
         # Position + 1 as the model uses a higher reference point on the staff
@@ -253,7 +261,9 @@ class NoteGroup(SymbolOnStaff):
         # sort notes by pitch, highest position first
         self.notes = sorted(notes, key=lambda note: note.position, reverse=True)
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         for note in self.notes:
             note.draw_onto_image(img, color)
 
@@ -272,7 +282,9 @@ class NoteGroup(SymbolOnStaff):
     def transform_coordinates(
         self, transformation: Callable[[tuple[float, float]], tuple[float, float]]
     ) -> "NoteGroup":
-        return NoteGroup([note.transform_coordinates(transformation) for note in self.notes])
+        return NoteGroup(
+            [note.transform_coordinates(transformation) for note in self.notes]
+        )
 
 
 class BarLine(SymbolOnStaff):
@@ -280,7 +292,9 @@ class BarLine(SymbolOnStaff):
         super().__init__(box.center)
         self.box = box
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.box.draw_onto_image(img, color)
 
     def __str__(self) -> str:
@@ -299,7 +313,9 @@ class Clef(SymbolOnStaff):
         self.box = box
         self.accidentals: list[Accidental] = []
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         self.box.draw_onto_image(img, color)
         cv2.putText(
             img,
@@ -333,7 +349,9 @@ class StaffPoint:
 
     def find_position_in_unit_sizes(self, box: AngledBoundingBox) -> int:
         center = box.center
-        idx_of_closest_y = int(np.argmin(np.abs([y_value - center[1] for y_value in self.y])))
+        idx_of_closest_y = int(
+            np.argmin(np.abs([y_value - center[1] for y_value in self.y]))
+        )
         distance = self.y[idx_of_closest_y] - center[1]
         distance_in_unit_sizes = round(2 * distance / self.average_unit_size)
         position = (
@@ -352,7 +370,9 @@ class StaffPoint:
 
     def to_bounding_box(self) -> BoundingBox:
         return BoundingBox(
-            [int(self.x), int(self.y[0]), int(self.x), int(self.y[-1])], np.array([]), -2
+            [int(self.x), int(self.y[0]), int(self.x), int(self.y[-1])],
+            np.array([]),
+            -2,
         )
 
     def __str__(self) -> str:
@@ -372,7 +392,9 @@ class Staff(DebugDrawable):
         self.average_unit_size = np.median([p.average_unit_size for p in grid])
         self.ledger_lines: list[RotatedBoundingBox] = []
         self.symbols: list[SymbolOnStaff] = []
-        self._y_tolerance = constants.max_number_of_ledger_lines * self.average_unit_size
+        self._y_tolerance = (
+            constants.max_number_of_ledger_lines * self.average_unit_size
+        )
 
     def is_on_staff_zone(self, item: AngledBoundingBox) -> bool:
         point = self.get_at(item.center[0])
@@ -394,7 +416,9 @@ class Staff(DebugDrawable):
     def get_measures(self) -> list[list[Note | NoteGroup]]:
         measures: list[list[Note | NoteGroup]] = []
         current_measure: list[Note | NoteGroup] = []
-        symbols_on_measure = self.get_notes() + self.get_note_groups() + self.get_bar_lines()
+        symbols_on_measure = (
+            self.get_notes() + self.get_note_groups() + self.get_bar_lines()
+        )
         for symbol in sorted(symbols_on_measure, key=lambda s: s.center[0]):
             if isinstance(symbol, BarLine):
                 measures.append(current_measure)
@@ -421,13 +445,19 @@ class Staff(DebugDrawable):
             return 1e10  # Something large to mimic infinity
         return min([abs(y - point[1]) for y in staff_point.y])
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         for i in range(constants.number_of_lines_on_a_staff):
             for j in range(len(self.grid) - 1):
                 p1 = self.grid[j]
                 p2 = self.grid[j + 1]
                 cv2.line(
-                    img, (int(p1.x), int(p1.y[i])), (int(p2.x), int(p2.y[i])), color, thickness=2
+                    img,
+                    (int(p1.x), int(p1.y[i])),
+                    (int(p2.x), int(p2.y[i])),
+                    color,
+                    thickness=2,
                 )
 
     def get_bar_lines(self) -> list[BarLine]:
@@ -501,8 +531,12 @@ class Staff(DebugDrawable):
     def transform_coordinates(
         self, transformation: Callable[[tuple[float, float]], tuple[float, float]]
     ) -> "Staff":
-        copy = Staff([point.transform_coordinates(transformation) for point in self.grid])
-        copy.symbols = [symbol.transform_coordinates(transformation) for symbol in self.symbols]
+        copy = Staff(
+            [point.transform_coordinates(transformation) for point in self.grid]
+        )
+        copy.symbols = [
+            symbol.transform_coordinates(transformation) for symbol in self.symbols
+        ]
         return copy
 
 
@@ -511,7 +545,9 @@ class MultiStaff(DebugDrawable):
     A grand staff or a staff with multiple voices.
     """
 
-    def __init__(self, staffs: list[Staff], connections: list[RotatedBoundingBox]) -> None:
+    def __init__(
+        self, staffs: list[Staff], connections: list[RotatedBoundingBox]
+    ) -> None:
         self.staffs = sorted(staffs, key=lambda s: s.min_y)
         self.connections = connections
 
@@ -529,7 +565,9 @@ class MultiStaff(DebugDrawable):
     def break_apart(self) -> list["MultiStaff"]:
         return [MultiStaff([staff], []) for staff in self.staffs]
 
-    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+    def draw_onto_image(
+        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
+    ) -> None:
         for staff in self.staffs:
             staff.draw_onto_image(img, color)
         for connection in self.connections:

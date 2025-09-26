@@ -16,7 +16,9 @@ def autocrop(img: NDArray) -> NDArray:
     dominant_color_gray_scale = max(enumerate(hist), key=lambda x: int(x[1]))[0]
 
     # threshold
-    thresh = cv2.threshold(gray, dominant_color_gray_scale - 30, 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(
+        gray, dominant_color_gray_scale - 30, 255, cv2.THRESH_BINARY
+    )[1]
 
     # apply morphology
     kernel = np.ones((7, 7), np.uint8)
@@ -27,7 +29,9 @@ def autocrop(img: NDArray) -> NDArray:
     # get largest contour
     contours = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     only_one_item_on_background = 2
-    contours = contours[0] if len(contours) == only_one_item_on_background else contours[1]  # type: ignore
+    contours = (
+        contours[0] if len(contours) == only_one_item_on_background else contours[1]
+    )  # type: ignore
     area_thresh = 0.0
     big_contour = None
     for c in contours:

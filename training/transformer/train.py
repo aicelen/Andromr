@@ -67,7 +67,8 @@ def load_and_mix_training_sets(
         sys.exit(1)
     data_sources = [filter_for_clefs(data) for data in data_sources]
     eprint(
-        "Total number of training files to choose from", sum([len(data) for data in data_sources])
+        "Total number of training files to choose from",
+        sum([len(data) for data in data_sources]),
     )
     return mix_training_sets(data_sources, weights, number_of_files)
 
@@ -79,7 +80,9 @@ git_root = os.path.join(script_location, "..", "..")
 
 
 def _check_datasets_are_present() -> None:
-    if not os.path.exists(primus_train_index) or not os.path.exists(primus_distorted_train_index):
+    if not os.path.exists(primus_train_index) or not os.path.exists(
+        primus_distorted_train_index
+    ):
         convert_primus_dataset()
 
     if not os.path.exists(grandstaff_train_index):
@@ -148,7 +151,9 @@ def train_transformer(fp32: bool = False, resume: str = "") -> None:  # noqa: C9
 
     model_name = "pytorch_model"
 
-    model_destination = os.path.join(git_root, "homr", "transformer", f"{model_name}_{run_id}.pth")
+    model_destination = os.path.join(
+        git_root, "homr", "transformer", f"{model_name}_{run_id}.pth"
+    )
 
     if os.path.exists(model_destination):
         eprint("Model already exists", model_destination)

@@ -55,13 +55,19 @@ class ScoreDecoder:
             x_rhythm = out_rhythm[:, -self.max_seq_len :]
             context = kwargs["context"].astype(np.float32)
 
-            inputs = {"rhythms": x_rhythm, "pitchs": x_pitch, "lifts": x_lift, "context": context}
-            outputs = {"out_rhythms": [1, _position_in_seq+1, 93], "out_pitchs": [1, _position_in_seq+1, 71], "out_lifts": [1, _position_in_seq+1, 5]}
+            inputs = {
+                "rhythms": x_rhythm,
+                "pitchs": x_pitch,
+                "lifts": x_lift,
+                "context": context,
+            }
+            outputs = {
+                "out_rhythms": [1, _position_in_seq + 1, 93],
+                "out_pitchs": [1, _position_in_seq + 1, 71],
+                "out_lifts": [1, _position_in_seq + 1, 5],
+            }
 
-            rhythmsp, pitchsp, liftsp = self.net.run(
-                inputs=inputs,
-                outputs=outputs
-            )
+            rhythmsp, pitchsp, liftsp = self.net.run(inputs=inputs, outputs=outputs)
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
             filtered_pitch_logits = top_k(pitchsp[:, -1, :], thres=filter_thres)
@@ -73,8 +79,12 @@ class ScoreDecoder:
             max_attempts = 5
             while retry and attempt < max_attempts:
                 lift_probs = softmax(filtered_lift_logits / current_temperature, dim=-1)
-                pitch_probs = softmax(filtered_pitch_logits / current_temperature, dim=-1)
-                rhythm_probs = softmax(filtered_rhythm_logits / current_temperature, dim=-1)
+                pitch_probs = softmax(
+                    filtered_pitch_logits / current_temperature, dim=-1
+                )
+                rhythm_probs = softmax(
+                    filtered_rhythm_logits / current_temperature, dim=-1
+                )
 
                 lift_sample = np.array([[lift_probs.argmax()]])
                 pitch_sample = np.array([[pitch_probs.argmax()]])
@@ -90,7 +100,9 @@ class ScoreDecoder:
                 alt_token_id = np.expand_dims(sorted_indices[0, 1], axis=0)
 
                 rhythm_token = detokenize(top_token_id, self.inv_rhythm_vocab)
-                alternative_rhythm_token = detokenize(alt_token_id, self.inv_rhythm_vocab)
+                alternative_rhythm_token = detokenize(
+                    alt_token_id, self.inv_rhythm_vocab
+                )
 
                 lift_token = detokenize(lift_sample, self.inv_lift_vocab)
                 pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
@@ -119,7 +131,10 @@ class ScoreDecoder:
             out_pitch = np.concatenate((out_pitch, pitch_sample), axis=-1)
             out_rhythm = np.concatenate((out_rhythm, rhythm_sample), axis=-1)
 
-            if eos_token is not None and (np.cumsum(out_rhythm == eos_token, 1)[:, -1] >= 1).all():
+            if (
+                eos_token is not None
+                and (np.cumsum(out_rhythm == eos_token, 1)[:, -1] >= 1).all()
+            ):
                 break
 
         out_lift = out_lift[:, t:]
@@ -136,7 +151,9 @@ def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:
     # Get top k elements
     flat_logits = logits.ravel()
     indices = np.argpartition(flat_logits, -k)[-k:]  # Get indices of top k elements
-    indices = indices[np.argsort(-flat_logits[indices])]  # Sort them in descending order
+    indices = indices[
+        np.argsort(-flat_logits[indices])
+    ]  # Sort them in descending order
     values = flat_logits[indices]  # Get the corresponding values
 
     # Create output array with -inf

@@ -22,9 +22,13 @@ def parse_staff_tromr(
     return predict_best(staff_image, debug=debug, staff=staff)
 
 
-def apply_clahe(staff_image: NDArray, clip_limit: float = 2.0, kernel_size: int = 8) -> NDArray:
+def apply_clahe(
+    staff_image: NDArray, clip_limit: float = 2.0, kernel_size: int = 8
+) -> NDArray:
     gray_image = cv2.cvtColor(staff_image, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(kernel_size, kernel_size))
+    clahe = cv2.createCLAHE(
+        clipLimit=clip_limit, tileGridSize=(kernel_size, kernel_size)
+    )
     gray_image = clahe.apply(gray_image)
 
     return cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
@@ -92,7 +96,10 @@ def predict_best(
             + _superfluous_number(parser.number_of_time_signatures())
         )
         total_rating = (
-            distance + diff_accidentals + measure_length_variance + number_of_structural_elements
+            distance
+            + diff_accidentals
+            + measure_length_variance
+            + number_of_structural_elements
         ) / max(min(len(expected), len(actual)), 1)
 
         if best_result.is_empty() or total_rating < best_distance:
@@ -103,12 +110,18 @@ def predict_best(
         if best_distance < 1.0:
             _fill_in_time_signature(best_result)
             eprint(
-                "Stopping at attempt", best_attempt + 1, "with distance", best_distance, best_result
+                "Stopping at attempt",
+                best_attempt + 1,
+                "with distance",
+                best_distance,
+                best_result,
             )
             return best_result
 
     _fill_in_time_signature(best_result)
-    eprint("Taking attempt", best_attempt + 1, "with distance", best_distance, best_result)
+    eprint(
+        "Taking attempt", best_attempt + 1, "with distance", best_distance, best_result
+    )
     return best_result
 
 

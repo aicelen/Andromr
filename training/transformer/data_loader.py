@@ -65,7 +65,9 @@ class DataLoader:
 
             # mask_lens = range(2, semantic_len + 2)  # + 2 for the BOS and EOS token
             for mask_len in mask_lens:
-                result.append({"image": image, "semantic": semantic_file, "mask_len": mask_len})
+                result.append(
+                    {"image": image, "semantic": semantic_file, "mask_len": mask_len}
+                )
         return result
 
     def __len__(self) -> int:
@@ -77,7 +79,9 @@ class DataLoader:
         return samples
 
     def _pad_array_to_max_seq_len(self, samples: list[int]) -> NDArray:
-        samples_padded = np.ones(self.config.max_seq_len, dtype=np.int64) * self.PAD_COLUMN
+        samples_padded = (
+            np.ones(self.config.max_seq_len, dtype=np.int64) * self.PAD_COLUMN
+        )
         valid_len = min(self.config.max_seq_len, len(samples))
         samples_padded[:valid_len] = np.array(samples[:valid_len])
         return samples_padded
@@ -98,7 +102,11 @@ class DataLoader:
         for value in seq:
             if value >= max_value or value < 0:
                 raise Exception(
-                    "ERROR: " + str(value) + " not in range of 0 to " + str(max_value) + "!"
+                    "ERROR: "
+                    + str(value)
+                    + " not in range of 0 to "
+                    + str(max_value)
+                    + "!"
                 )
         return seq
 
@@ -150,7 +158,11 @@ class DataLoader:
             sample_full_filepath,
         )
         lifts = tokenize(
-            liftsymbols[0], self.lift_vocab, self.config.nonote_token, "lift", sample_full_filepath
+            liftsymbols[0],
+            self.lift_vocab,
+            self.config.nonote_token,
+            "lift",
+            sample_full_filepath,
         )
         pitch = tokenize(
             pitchsymbols[0],
@@ -160,9 +172,15 @@ class DataLoader:
             sample_full_filepath,
         )
         notes = tokenize(
-            note_symbols[0], self.note_vocab, self.config.nonote_token, "note", sample_full_filepath
+            note_symbols[0],
+            self.note_vocab,
+            self.config.nonote_token,
+            "note",
+            sample_full_filepath,
         )
-        rhythm_seq = self._check_seq_values(self._pad_rhythm(rhythm), self.config.num_rhythm_tokens)
+        rhythm_seq = self._check_seq_values(
+            self._pad_rhythm(rhythm), self.config.num_rhythm_tokens
+        )
         mask = np.zeros(self.config.max_seq_len).astype(np.bool_)
         mask[: entry["mask_len"]] = 1
         result = {
@@ -170,19 +188,27 @@ class DataLoader:
             "mask": mask,
             "rhythms_seq": self._pad_array_to_max_seq_len(rhythm_seq),
             "note_seq": self._pad_array_to_max_seq_len(
-                self._check_seq_values(self._pad_samples(notes), self.config.num_note_tokens)
+                self._check_seq_values(
+                    self._pad_samples(notes), self.config.num_note_tokens
+                )
             ),
             "lifts_seq": self._pad_array_to_max_seq_len(
-                self._check_seq_values(self._pad_samples(lifts), self.config.num_lift_tokens)
+                self._check_seq_values(
+                    self._pad_samples(lifts), self.config.num_lift_tokens
+                )
             ),
             "pitchs_seq": self._pad_array_to_max_seq_len(
-                self._check_seq_values(self._pad_samples(pitch), self.config.num_pitch_tokens)
+                self._check_seq_values(
+                    self._pad_samples(pitch), self.config.num_pitch_tokens
+                )
             ),
         }
         return result
 
 
-def load_dataset(samples: list[str], config: Config, val_split: float = 0.0) -> dict[str, Any]:
+def load_dataset(
+    samples: list[str], config: Config, val_split: float = 0.0
+) -> dict[str, Any]:
     rhythm_tokenizer_vocab = config.rhythm_vocab
     pitch_tokenizer_vocab = config.pitch_vocab
     note_tokenizer_vocab = config.note_vocab

@@ -48,6 +48,7 @@ def get_encoder(config: Config) -> Any:
     )
     return encoder
 
+
 def _get_resnet(config: Config) -> ResNetV2:
     """Return the ResNetV2 backbone architecture."""
     backbone_layers = list(config.backbone_layers)
@@ -82,10 +83,9 @@ class TransformerEncoderOnly(nn.Module):
         # Remove patch embedding since backbone already does this
         del self.encoder.patch_embed
 
-
     def forward(self, x):
         # x should already be patch embeddings from your backbone
-        #cls_token = self.encoder.cls_token.expand(x.shape[0], -1, -1)
+        # cls_token = self.encoder.cls_token.expand(x.shape[0], -1, -1)
         x = torch.reshape(x, (1, 312, 640))
         x = torch.torch.transpose(x, 1, 2)
         x = torch.cat([self.encoder.cls_token, x], dim=1)
@@ -98,6 +98,7 @@ class TransformerEncoderOnly(nn.Module):
 def get_transformer(config: Config) -> nn.Module:
     return TransformerEncoderOnly(config)
 
+
 class BackboneWithHead(nn.Module):
     def __init__(self, config: Config):
         super().__init__()
@@ -106,18 +107,19 @@ class BackboneWithHead(nn.Module):
 
         # example pooling (if the other model expects flat features)
         self.proj = nn.Conv2d(
-                in_channels=2048,
-                out_channels=312,
-                kernel_size=(1, 1),
-                stride=(1, 1),
-                padding=(0, 0),
-                bias=True
-            )
+            in_channels=2048,
+            out_channels=312,
+            kernel_size=(1, 1),
+            stride=(1, 1),
+            padding=(0, 0),
+            bias=True,
+        )
 
     def forward(self, x):
         x = self.backbone(x)  # (B, C, H, W)
         x = self.proj(x)
         return x
+
 
 def get_backbone(config: Config):
     return BackboneWithHead(config)

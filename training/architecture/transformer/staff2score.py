@@ -22,10 +22,14 @@ class Staff2Score:
         self.model.eval_mode()
         checkpoint_file_path = config.filepaths.checkpoint
         if not os.path.exists(checkpoint_file_path):
-            raise RuntimeError("Please download the model first to " + checkpoint_file_path)
+            raise RuntimeError(
+                "Please download the model first to " + checkpoint_file_path
+            )
         if ".safetensors" in checkpoint_file_path:
             tensors = {}
-            with safetensors.safe_open(checkpoint_file_path, framework="pt", device=0) as f:
+            with safetensors.safe_open(
+                checkpoint_file_path, framework="pt", device=0
+            ) as f:
                 for k in f.keys():
                     tensors[k] = f.get_tensor(k)
             self.model.load_state_dict(tensors, strict=False)
@@ -36,14 +40,18 @@ class Staff2Score:
         else:
             self.model.load_state_dict(
                 torch.load(
-                    checkpoint_file_path, weights_only=True, map_location=torch.device("cpu")
+                    checkpoint_file_path,
+                    weights_only=True,
+                    map_location=torch.device("cpu"),
                 ),
                 strict=False,
             )
         self.model.to(self.device)
 
         if not os.path.exists(config.filepaths.rhythmtokenizer):
-            raise RuntimeError("Failed to find tokenizer config" + config.filepaths.rhythmtokenizer)
+            raise RuntimeError(
+                "Failed to find tokenizer config" + config.filepaths.rhythmtokenizer
+            )
 
     def predict(
         self, image: NDArray, debug: AttentionDebug | None = None

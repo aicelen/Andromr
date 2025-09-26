@@ -33,14 +33,26 @@ class TrOMR(nn.Module):
     ) -> Any:
         encoded = self.encoder(inputs)
         loss = self.decoder(
-            rhythms_seq, pitchs_seq, lifts_seq, note_seq, context=encoded, mask=mask, **kwargs
+            rhythms_seq,
+            pitchs_seq,
+            lifts_seq,
+            note_seq,
+            context=encoded,
+            mask=mask,
+            **kwargs,
         )
         return loss
 
     @torch.no_grad()
-    def generate(self, x: torch.Tensor, debug: AttentionDebug | None) -> list[TransformerChord]:
-        start_token = (torch.LongTensor([self.config.bos_token] * len(x))[:, None]).to(x.device)
-        nonote_token = (torch.LongTensor([self.config.nonote_token] * len(x))[:, None]).to(x.device)
+    def generate(
+        self, x: torch.Tensor, debug: AttentionDebug | None
+    ) -> list[TransformerChord]:
+        start_token = (torch.LongTensor([self.config.bos_token] * len(x))[:, None]).to(
+            x.device
+        )
+        nonote_token = (
+            torch.LongTensor([self.config.nonote_token] * len(x))[:, None]
+        ).to(x.device)
 
         context = self.encoder(x)
         out = self.decoder.generate(

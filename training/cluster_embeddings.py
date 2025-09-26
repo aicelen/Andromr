@@ -34,7 +34,8 @@ def load_model(config):
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model.load_state_dict(
-            torch.load(checkpoint_path, map_location=device, weights_only=True), strict=False
+            torch.load(checkpoint_path, map_location=device, weights_only=True),
+            strict=False,
         )
     model.eval()
     model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
@@ -125,7 +126,9 @@ def main(index_file, logdir, max_image_size, include_images):
         index = f.readlines()
 
     if include_images and len(index) > MAX_NUMBER_OF_SAMPLES_WITH_IMAGES:
-        index = list(np.random.choice(index, MAX_NUMBER_OF_SAMPLES_WITH_IMAGES, replace=False))
+        index = list(
+            np.random.choice(index, MAX_NUMBER_OF_SAMPLES_WITH_IMAGES, replace=False)
+        )
         print(
             f"⚠️ Dataset too large, sampling {MAX_NUMBER_OF_SAMPLES_WITH_IMAGES} random entries for TensorBoard."  # noqa: E501
         )
@@ -148,7 +151,9 @@ def main(index_file, logdir, max_image_size, include_images):
 
             # Prepare image for TensorBoard visualization if requested
             if include_images:
-                tb_img = load_and_prepare_image_for_tensorboard(img_path, max_image_size)
+                tb_img = load_and_prepare_image_for_tensorboard(
+                    img_path, max_image_size
+                )
                 if tb_img is not None:
                     images_for_tensorboard.append(tb_img)
                 else:
@@ -175,7 +180,9 @@ def main(index_file, logdir, max_image_size, include_images):
         # Just stack them as-is for better aspect ratio preservation
         try:
             label_img = torch.stack(images_for_tensorboard)
-            print(f"Prepared {len(images_for_tensorboard)} images for TensorBoard visualization")
+            print(
+                f"Prepared {len(images_for_tensorboard)} images for TensorBoard visualization"
+            )
         except RuntimeError:
             # If stacking fails due to different sizes, pad minimally
             max_h = max(img.shape[1] for img in images_for_tensorboard)
@@ -190,7 +197,9 @@ def main(index_file, logdir, max_image_size, include_images):
                 padded_images.append(padded)
 
             label_img = torch.stack(padded_images)
-            print(f"Prepared {len(padded_images)} images for TensorBoard (with minimal padding)")
+            print(
+                f"Prepared {len(padded_images)} images for TensorBoard (with minimal padding)"
+            )
 
     # Save embeddings to TensorBoard
     writer.add_embedding(
@@ -202,9 +211,13 @@ def main(index_file, logdir, max_image_size, include_images):
     print(f"✅ Saved embeddings for {len(embeddings)} images to {logdir}")
     print(f"To view: tensorboard --logdir {logdir}")
     if include_images:
-        print("📸 Click on points in TensorBoard projector to see images at good resolution")
+        print(
+            "📸 Click on points in TensorBoard projector to see images at good resolution"
+        )
     else:
-        print("💡 Use --include-images to see images when clicking points in the projector")
+        print(
+            "💡 Use --include-images to see images when clicking points in the projector"
+        )
 
 
 if __name__ == "__main__":
@@ -212,7 +225,9 @@ if __name__ == "__main__":
         description="Extract image embeddings for TensorBoard projector"
     )
     parser.add_argument("index", help="Index file")
-    parser.add_argument("--logdir", default="./runs/embeddings", help="TensorBoard log directory")
+    parser.add_argument(
+        "--logdir", default="./runs/embeddings", help="TensorBoard log directory"
+    )
     parser.add_argument(
         "--max-image-size",
         type=int,

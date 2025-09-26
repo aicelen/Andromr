@@ -58,12 +58,16 @@ def calc_symbol_error_rate_for_list(
         ser = round(100 * ser)
         ser_avg = round(100 * sum(all_sers) / len(all_sers))
         i += 1
-        is_staff_with_accidentals = "Polyphonic_tude_No" in img_path and "staff-3" in img_path
+        is_staff_with_accidentals = (
+            "Polyphonic_tude_No" in img_path and "staff-3" in img_path
+        )
         if is_staff_with_accidentals:
             interesting_results.append((str.join(" ", expected), str.join(" ", actual)))
         percentage = round(i / total * 100)
         img_path_rel = os.path.relpath(img_path)
-        eprint(f"Progress: {percentage}%, SER: {ser}%, SER avg: {ser_avg}% ({img_path_rel})")
+        eprint(
+            f"Progress: {percentage}%, SER: {ser}%, SER avg: {ser_avg}% ({img_path_rel})"
+        )
 
     for result in interesting_results:
         eprint("Expected:", result[0])
@@ -100,7 +104,9 @@ def index_folder(folder: str, index_file: str) -> None:
             svg_files = get_position_from_multiple_svg_files(file)
             number_of_voices = len(semantic)
             total_number_of_measures = semantic[0].count("barline")
-            measures_in_svg = [sum(s.number_of_measures for s in file.staffs) for file in svg_files]
+            measures_in_svg = [
+                sum(s.number_of_measures for s in file.staffs) for file in svg_files
+            ]
             sum_of_measures_in_xml = total_number_of_measures * number_of_voices
             if sum(measures_in_svg) != sum_of_measures_in_xml:
                 eprint(
@@ -118,7 +124,9 @@ def index_folder(folder: str, index_file: str) -> None:
                     selected_measures: list[str] = []
                     staffs_per_voice = len(svg_file.staffs) // number_of_voices
                     for _ in range(staff.number_of_measures):
-                        selected_measures.append(str.join("+", measures[voice][1].pop(0)))
+                        selected_measures.append(
+                            str.join("+", measures[voice][1].pop(0))
+                        )
 
                     prelude = measures[voice][0]
                     semantic_content = str.join("+", selected_measures) + "\n"
@@ -134,7 +142,9 @@ def index_folder(folder: str, index_file: str) -> None:
 
                     file_name = f"staff-{file_number}.jpg"
                     staff_image = os.path.join(full_name, file_name)
-                    with open(os.path.join(full_name, f"staff-{file_number}.semantic"), "w") as f:
+                    with open(
+                        os.path.join(full_name, f"staff-{file_number}.semantic"), "w"
+                    ) as f:
                         f.write(semantic_content)
                     voice = (voice + 1) % number_of_voices
                     if os.path.exists(staff_image):
@@ -164,7 +174,9 @@ def main() -> None:
     data_set_location = os.path.join(script_location, "..", "datasets")
     validation_data_set_location = os.path.join(data_set_location, "validation")
     download_path = os.path.join(data_set_location, "validation.zip")
-    download_url = "https://github.com/liebharc/homr/releases/download/datasets/validation.zip"
+    download_url = (
+        "https://github.com/liebharc/homr/releases/download/datasets/validation.zip"
+    )
     if not os.path.exists(validation_data_set_location):
         try:
             eprint("Downloading validation data set")
@@ -192,7 +204,9 @@ def main() -> None:
         is_dir = os.path.isdir(args.checkpoint_file)
         if is_dir:
             # glob recursive for all model.safetensors file in the directory
-            checkpoint_files = list(Path(args.checkpoint_file).rglob("model.safetensors"))
+            checkpoint_files = list(
+                Path(args.checkpoint_file).rglob("model.safetensors")
+            )
         else:
             checkpoint_files = [Path(args.checkpoint_file)]
 

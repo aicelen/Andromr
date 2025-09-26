@@ -37,7 +37,8 @@ def notes_to_tonal_notation(staffs: list[ResultStaff]) -> list[str]:
                     if symbol.duration.modifier == DurationModifier.DOT:
                         duration_modifier = "."
                     duration = (
-                        duration_dict.get(symbol.duration.duration_name, "q") + duration_modifier
+                        duration_dict.get(symbol.duration.duration_name, "q")
+                        + duration_modifier
                     )
                     pitches = str.join("&", chord)
                     measure_results.append(f"{pitches}-{duration}")

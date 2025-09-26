@@ -5,14 +5,16 @@ import os
 from training.convert_onnx.convert import (
     convert_decoder,
     convert_encoder,
-    convert_segnet
+    convert_segnet,
 )
 from training.convert_onnx.quantization import quantization_int8
 from training.convert_onnx.simplify import main as simplify_onnx_model
 from training.convert_onnx.split_weights import split_weights
 
 
-def convert_all(transformer_path: str | None = None, segnet_path: str | None = None) -> None:
+def convert_all(
+    transformer_path: str | None = None, segnet_path: str | None = None
+) -> None:
     if transformer_path is None and segnet_path is None:
         raise FileExistsError("You did not specify the path of your pytorch models")
 
@@ -50,4 +52,6 @@ if __name__ == "__main__":
     from homr.transformer.configs import Config
     from training.convert_onnx.main import convert_all
 
-    convert_all(transformer_path=Config().filepaths.checkpoint, segnet_path=segnet_path_torch)
+    convert_all(
+        transformer_path=Config().filepaths.checkpoint, segnet_path=segnet_path_torch
+    )

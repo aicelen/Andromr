@@ -18,25 +18,37 @@ class SymbolMerger:
         self.last_clef: str = ""
 
     def _append_symbol(
-        self, symbol: str, confidence: float, alternative: str, alternative_confidence: float
+        self,
+        symbol: str,
+        confidence: float,
+        alternative: str,
+        alternative_confidence: float,
     ) -> None:
         if self.next_symbol_is_chord:
             if len(self.merge) == 0:
                 eprint("Warning: Unexpected chord symbol")
                 return
             self.merge[-1].append(
-                TransformerSymbol(symbol, confidence, alternative, alternative_confidence)
+                TransformerSymbol(
+                    symbol, confidence, alternative, alternative_confidence
+                )
             )
             self.next_symbol_is_chord = False
         else:
             self.merge.append(
                 TransformerChord(
-                    [TransformerSymbol(symbol, confidence, alternative, alternative_confidence)]
+                    [
+                        TransformerSymbol(
+                            symbol, confidence, alternative, alternative_confidence
+                        )
+                    ]
                 )
             )
 
     def add_symbol(self, predrhythm: str, predpitch: str, predlift: str) -> bool:
-        return self.add_symbol_and_alternative(predrhythm, 1, predpitch, predlift, "", 0)
+        return self.add_symbol_and_alternative(
+            predrhythm, 1, predpitch, predlift, "", 0
+        )
 
     def add_symbol_and_alternative(
         self,
@@ -97,7 +109,9 @@ class SymbolMerger:
             )
             return False
 
-    def _clean_and_sort_chord(self, chord: list[TransformerSymbol]) -> list[TransformerSymbol]:
+    def _clean_and_sort_chord(
+        self, chord: list[TransformerSymbol]
+    ) -> list[TransformerSymbol]:
         if len(chord) == 1:
             return chord
         chord = sorted(chord, key=symbol_to_sortable)
@@ -105,11 +119,14 @@ class SymbolMerger:
 
     def complete(self) -> list[TransformerChord]:
         return [
-            TransformerChord(self._clean_and_sort_chord(symbols.symbols)) for symbols in self.merge
+            TransformerChord(self._clean_and_sort_chord(symbols.symbols))
+            for symbols in self.merge
         ]
 
 
-def merge_single_line(predrhythm: list[str], predpitch: list[str], predlift: list[str]) -> str:
+def merge_single_line(
+    predrhythm: list[str], predpitch: list[str], predlift: list[str]
+) -> str:
     merger = SymbolMerger()
 
     for j in range(len(predrhythm)):
@@ -119,7 +136,9 @@ def merge_single_line(predrhythm: list[str], predpitch: list[str], predlift: lis
 
 
 def merge_symbols(
-    predrhythms: list[list[str]], predpitchs: list[list[str]], predlifts: list[list[str]]
+    predrhythms: list[list[str]],
+    predpitchs: list[list[str]],
+    predlifts: list[list[str]],
 ) -> list[str]:
     merges = []
     for i in range(len(predrhythms)):
@@ -235,7 +254,8 @@ def _symbol_to_note(symbol: str) -> str:
 def _note_name_and_octave_to_sortable(note_name_with_octave: str) -> int:
     if note_name_with_octave not in default_config.pitch_vocab:
         eprint(
-            "Warning: unknown note in _note_name_and_octave_to_sortable: ", note_name_with_octave
+            "Warning: unknown note in _note_name_and_octave_to_sortable: ",
+            note_name_with_octave,
         )
         return 1000
     # minus to get the right order
@@ -288,7 +308,9 @@ def _sort_by_pitch(
                 break
             symbol_at_i = pitches[i] if pitches[i] != "nonote" else rhythms[i]
             symbol_at_j = pitches[j] if pitches[j] != "nonote" else rhythms[j]
-            if pitch_name_to_sortable(symbol_at_i) > pitch_name_to_sortable(symbol_at_j):
+            if pitch_name_to_sortable(symbol_at_i) > pitch_name_to_sortable(
+                symbol_at_j
+            ):
                 swap(i, j)
             expect_chord = True
     return lifts, pitches, rhythms, notes
@@ -307,7 +329,9 @@ def convert_alter_to_accidentals(merged: list[str]) -> list[str]:
             symbol_result = []
             for symbol in re.split("(\\|)", symbols):
                 if symbol.startswith("keySignature"):
-                    key = KeyTransformation(key_signature_to_circle_of_fifth(symbol.split("-")[-1]))
+                    key = KeyTransformation(
+                        key_signature_to_circle_of_fifth(symbol.split("-")[-1])
+                    )
                     symbol_result.append(symbol)
                 elif symbol == "barline":
                     key = key.reset_at_end_of_measure()
@@ -361,7 +385,11 @@ def split_symbols(  # noqa: C901, PLR0912
         predpitch = []
         predrhythm = []
         prednote = []
-        key = KeyTransformation(0) if convert_to_modified_semantic else NoKeyTransformation()
+        key = (
+            KeyTransformation(0)
+            if convert_to_modified_semantic
+            else NoKeyTransformation()
+        )
         for symbols in re.split("\\s+|\\+", merged[line].strip()):
             symbollift = []
             symbolpitch = []

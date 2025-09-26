@@ -36,19 +36,25 @@ def _is_close_to_image_top_or_bottom(staff: MultiStaff, image: NDArray) -> bool:
     return min(closest_distance_to_top_or_bottom) < tolerance
 
 
-def _ensure_same_number_of_staffs(staffs: list[MultiStaff], image: NDArray) -> list[MultiStaff]:
+def _ensure_same_number_of_staffs(
+    staffs: list[MultiStaff], image: NDArray
+) -> list[MultiStaff]:
     if _have_all_the_same_number_of_staffs(staffs):
         return staffs
     if len(staffs) > 2:  # noqa: PLR2004
         if _is_close_to_image_top_or_bottom(
             staffs[0], image
         ) and _have_all_the_same_number_of_staffs(staffs[1:]):
-            eprint("Removing first system from all voices, as it has a different number of staffs")
+            eprint(
+                "Removing first system from all voices, as it has a different number of staffs"
+            )
             return staffs[1:]
         if _is_close_to_image_top_or_bottom(
             staffs[-1], image
         ) and _have_all_the_same_number_of_staffs(staffs[:-1]):
-            eprint("Removing last system from all voices, as it has a different number of staffs")
+            eprint(
+                "Removing last system from all voices, as it has a different number of staffs"
+            )
             return staffs[:-1]
     result: list[MultiStaff] = []
     for staff in staffs:
@@ -90,7 +96,6 @@ def get_tr_omr_canvas_size(
 def center_image_on_canvas(
     image: NDArray, canvas_size: NDArray, margin_top: int = 0, margin_bottom: int = 0
 ) -> NDArray:
-
     resized = cv2.resize(image, tuple(canvas_size))
 
     new_image = np.zeros((tr_omr_max_height, tr_omr_max_width, 3), np.uint8)
@@ -100,9 +105,9 @@ def center_image_on_canvas(
     x_offset = 0
     tr_omr_max_height_with_margin = tr_omr_max_height - margin_top - margin_bottom
     y_offset = (tr_omr_max_height_with_margin - resized.shape[0]) // 2 + margin_top
-    new_image[y_offset : y_offset + resized.shape[0], x_offset : x_offset + resized.shape[1]] = (
-        resized
-    )
+    new_image[
+        y_offset : y_offset + resized.shape[0], x_offset : x_offset + resized.shape[1]
+    ] = resized
 
     return new_image
 
@@ -115,7 +120,9 @@ def add_image_into_tr_omr_canvas(
     return new_image
 
 
-def copy_image_in_center_of_double_the_height_and_white_background(image: NDArray) -> NDArray:
+def copy_image_in_center_of_double_the_height_and_white_background(
+    image: NDArray,
+) -> NDArray:
     height, width = image.shape[:2]
     new_image = np.zeros((height * 2, width, 3), np.uint8)
     new_image[:, :] = (255, 255, 255)
@@ -127,13 +134,17 @@ def remove_black_contours_at_edges_of_image(bgr: NDArray, unit_size: float) -> N
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 97, 255, cv2.THRESH_BINARY)
     thresh = 255 - thresh
-    contours, _hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _hierarchy = cv2.findContours(
+        thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+    )
     threshold = constants.black_spot_removal_threshold(unit_size)
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
         if w < threshold or h < threshold:
             continue
-        is_at_edge_of_image = x == 0 or y == 0 or x + w == bgr.shape[1] or y + h == bgr.shape[0]
+        is_at_edge_of_image = (
+            x == 0 or y == 0 or x + w == bgr.shape[1] or y + h == bgr.shape[0]
+        )
         if not is_at_edge_of_image:
             continue
         average_gray_intensity = 127
@@ -168,17 +179,26 @@ def prepare_staff_image(
     scaling_factor = image_dimensions[1] / (region[3] - region[1])
     staff_image = cv2.resize(
         staff_image,
-        (int(staff_image.shape[1] * scaling_factor), int(staff_image.shape[0] * scaling_factor)),
+        (
+            int(staff_image.shape[1] * scaling_factor),
+            int(staff_image.shape[0] * scaling_factor),
+        ),
     )
     region = np.round(region * scaling_factor)
     region_step1 = np.array(region) + np.array([-10, -50, 10, 50])
-    staff_image, top_left = crop_image_and_return_new_top(staff_image, region_step1[0], region_step1[1], region_step1[2], region_step1[3])
+    staff_image, top_left = crop_image_and_return_new_top(
+        staff_image, region_step1[0], region_step1[1], region_step1[2], region_step1[3]
+    )
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
-    staff_image, top_left = crop_image_and_return_new_top(staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3])
+    staff_image, top_left = crop_image_and_return_new_top(
+        staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3]
+    )
     scaling_factor = 1
 
-    staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
+    staff_image = remove_black_contours_at_edges_of_image(
+        staff_image, staff.average_unit_size
+    )
     staff_image = center_image_on_canvas(staff_image, image_dimensions)
     return staff_image, staff
 
@@ -189,7 +209,9 @@ def parse_staff_image(
     staff_image, transformed_staff = prepare_staff_image(
         debug, index, staff, image, regions=regions
     )
-    attention_debug = debug.build_attention_debug(staff_image, f"_staff-{index}_output.jpg")
+    attention_debug = debug.build_attention_debug(
+        staff_image, f"_staff-{index}_output.jpg"
+    )
     eprint("Running TrOmr inference on staff image", index)
     result = parse_staff_tromr(
         staff_image=staff_image,
@@ -278,7 +300,9 @@ def _remove_all_but_first_time_signature(measures: list[ResultMeasure]) -> None:
                     last_sig = symbol
 
 
-def merge_and_clean(staffs: list[ResultStaff], force_single_clef_type: bool) -> ResultStaff:
+def merge_and_clean(
+    staffs: list[ResultStaff], force_single_clef_type: bool
+) -> ResultStaff:
     """
     Merge all staffs of a voice into a single staff.
     """
@@ -316,13 +340,15 @@ def parse_staffs(
     for voice in range(number_of_voices):
         staffs_for_voice = [staff.staffs[voice] for staff in staffs]
         result_for_voice = []
-        progress_increment = 100/(len(staffs_for_voice) * number_of_voices)
+        progress_increment = 100 / (len(staffs_for_voice) * number_of_voices)
         for staff_index, staff in enumerate(staffs_for_voice):
             if selected_staff >= 0 and staff_index != selected_staff:
                 eprint("Ignoring staff due to selected_staff argument", i)
                 i += 1
                 continue
-            result_staff = parse_staff_image(debug, i, staff, image, regions) # tromr call
+            result_staff = parse_staff_image(
+                debug, i, staff, image, regions
+            )  # tromr call
             appdata.homr_progress += progress_increment
             if result_staff is None:
                 eprint("Staff was filtered out", i)

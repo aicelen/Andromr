@@ -27,9 +27,13 @@ grandstaff_train_index = os.path.join(grandstaff_root, "index.txt")
 
 
 if not os.path.exists(grandstaff_root):
-    eprint("Downloading grandstaff from https://sites.google.com/view/multiscore-project/datasets")
+    eprint(
+        "Downloading grandstaff from https://sites.google.com/view/multiscore-project/datasets"
+    )
     grandstaff_archive = os.path.join(dataset_root, "grandstaff.tgz")
-    download_file("https://grfia.dlsi.ua.es/musicdocs/grandstaff.tgz", grandstaff_archive)
+    download_file(
+        "https://grfia.dlsi.ua.es/musicdocs/grandstaff.tgz", grandstaff_archive
+    )
     untar_file(grandstaff_archive, grandstaff_root)
     eprint("Adding musicxml files to grandstaff dataset")
 
@@ -45,9 +49,13 @@ def _get_dark_pixels_per_row(image: NDArray) -> NDArray:
     return dark_pixels_per_row
 
 
-def _find_central_valleys(image: NDArray, dark_pixels_per_row: NDArray) -> np.int32 | None:
+def _find_central_valleys(
+    image: NDArray, dark_pixels_per_row: NDArray
+) -> np.int32 | None:
     conv_len = image.shape[0] // 4 + 1
-    blurred = np.convolve(dark_pixels_per_row, np.ones(conv_len) / conv_len, mode="same")
+    blurred = np.convolve(
+        dark_pixels_per_row, np.ones(conv_len) / conv_len, mode="same"
+    )
 
     # Find the central valley
     peaks, _ = find_peaks(-blurred, distance=10, prominence=1)
@@ -70,7 +78,9 @@ def _split_staff_image(path: str, basename: str) -> tuple[str | None, str | None
     upper_bound, lower_bound = _get_image_bounds(dark_pixels_per_row)
     image = image[upper_bound:-lower_bound]
     dark_pixels_per_row = dark_pixels_per_row[upper_bound:-lower_bound]
-    norm = (dark_pixels_per_row - np.mean(dark_pixels_per_row)) / np.std(dark_pixels_per_row)
+    norm = (dark_pixels_per_row - np.mean(dark_pixels_per_row)) / np.std(
+        dark_pixels_per_row
+    )
     centers, _ = find_peaks(norm, height=1.4, distance=3, prominence=1)
     lines_per_staff = 5
     if len(centers) == lines_per_staff:
@@ -83,7 +93,9 @@ def _split_staff_image(path: str, basename: str) -> tuple[str | None, str | None
             single_image = _prepare_image(predistorted_image)
             cv2.imwrite(basename + "_single-pre.jpg", single_image)
             return distort_image(basename + "_single-pre.jpg"), None
-        eprint(f"INFO: Couldn't find pre-distorted image {path}, using custom distortions")
+        eprint(
+            f"INFO: Couldn't find pre-distorted image {path}, using custom distortions"
+        )
         cv2.imwrite(basename + "_upper-pre.jpg", upper)
         return distort_image(basename + "_upper-pre.jpg"), None
     elif len(centers) == 2 * lines_per_staff:
@@ -103,7 +115,9 @@ def _split_staff_image(path: str, basename: str) -> tuple[str | None, str | None
     lower = _prepare_image(image[middle - overlap :])
     cv2.imwrite(basename + "_upper-pre.jpg", upper)
     cv2.imwrite(basename + "_lower-pre.jpg", lower)
-    return distort_image(basename + "_upper-pre.jpg"), distort_image(basename + "_lower-pre.jpg")
+    return distort_image(basename + "_upper-pre.jpg"), distort_image(
+        basename + "_lower-pre.jpg"
+    )
 
 
 def _prepare_image(image: NDArray) -> NDArray:

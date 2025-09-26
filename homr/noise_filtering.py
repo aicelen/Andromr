@@ -33,7 +33,9 @@ def create_noise_grid(gray: NDArray, debug: Debug) -> NDArray | None:  # noqa: C
 
 def create_grid(gray: NDArray, M: int, N: int) -> NDArray:
     imgheight, imgwidth = gray.shape
-    grid = np.zeros([int(np.ceil(imgheight / M)), int(np.ceil(imgwidth / N))], dtype=np.uint8)
+    grid = np.zeros(
+        [int(np.ceil(imgheight / M)), int(np.ceil(imgwidth / N))], dtype=np.uint8
+    )
 
     for i, y1 in enumerate(range(0, imgheight, M)):
         for j, x1 in enumerate(range(0, imgwidth, N)):
@@ -56,7 +58,9 @@ def apply_noise_filter(
             y2, x2 = y1 + M, x1 + N
             noise = grid[i, j]
             neighbors = get_neighbors(grid, i, j)
-            any_neighbor_above_limit = np.any(np.array(neighbors) > constants.image_noise_limit)
+            any_neighbor_above_limit = np.any(
+                np.array(neighbors) > constants.image_noise_limit
+            )
 
             if noise > constants.image_noise_limit and any_neighbor_above_limit:
                 cv2.rectangle(debug_image, (x1, y1), (x2, y2), (0, 255, 255))
@@ -91,7 +95,9 @@ def get_neighbors(grid: NDArray, i: int, j: int) -> list[int]:
     return neighbors
 
 
-def handle_filter_results(filtered_cells: int, total_cells: int, mask: NDArray) -> NDArray | None:
+def handle_filter_results(
+    filtered_cells: int, total_cells: int, mask: NDArray
+) -> NDArray | None:
     half = 0.5
     if filtered_cells / total_cells > half:
         eprint(
@@ -111,10 +117,16 @@ def filter_predictions(prediction: InputPredictions, debug: Debug) -> InputPredi
         return prediction
     return InputPredictions(
         original=cv2.bitwise_and(prediction.original, prediction.original, mask=mask),
-        preprocessed=cv2.bitwise_and(prediction.preprocessed, prediction.preprocessed, mask=mask),
+        preprocessed=cv2.bitwise_and(
+            prediction.preprocessed, prediction.preprocessed, mask=mask
+        ),
         notehead=cv2.bitwise_and(prediction.notehead, prediction.notehead, mask=mask),
         symbols=cv2.bitwise_and(prediction.symbols, prediction.symbols, mask=mask),
         staff=cv2.bitwise_and(prediction.staff, prediction.staff, mask=mask),
-        clefs_keys=cv2.bitwise_and(prediction.clefs_keys, prediction.clefs_keys, mask=mask),
-        stems_rest=cv2.bitwise_and(prediction.stems_rest, prediction.stems_rest, mask=mask),
+        clefs_keys=cv2.bitwise_and(
+            prediction.clefs_keys, prediction.clefs_keys, mask=mask
+        ),
+        stems_rest=cv2.bitwise_and(
+            prediction.stems_rest, prediction.stems_rest, mask=mask
+        ),
     )

@@ -20,14 +20,15 @@ class Staff2Score:
     def __init__(self) -> None:
         self.config = Config()
         self.encoder = EncoderDual(
-            self.config.filepaths.encoder_cnn_path_tflite, 
+            self.config.filepaths.encoder_cnn_path_tflite,
             self.config.filepaths.encoder_transformer_path,
         )
         self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
             raise RuntimeError(
-                "Failed to find tokenizer config" + self.config.filepaths.rhythmtokenizer
+                "Failed to find tokenizer config"
+                + self.config.filepaths.rhythmtokenizer
             )  # noqa: E501
 
     def predict(self, image: NDArray) -> list[TransformerChord]:
@@ -55,7 +56,7 @@ class Staff2Score:
             context=context,
         )
 
-        eprint(f"Inference Time Tromr: {perf_counter()-t0}")
+        eprint(f"Inference Time Tromr: {perf_counter() - t0}")
 
         return out
 

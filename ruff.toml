@@ -1,0 +1,15 @@
+[lint]
+exclude = [
+    ".buildozer/",
+    ".gradle/",
+    ".venv/",
+    "__pycache__/",
+    "build/",
+    "dist/",
+    "bin/",
+    "build/",
+    "cnn_encoder_188/",
+    "datasets/",
+    "opencv/",
+    "segnet_155"
+]

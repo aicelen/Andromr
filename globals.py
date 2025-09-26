@@ -2,18 +2,14 @@ from os import path
 import json
 from pathlib import Path
 
-APP_PATH = path.dirname(path.realpath(__file__)) # get path of my app
+APP_PATH = path.dirname(path.realpath(__file__))  # get path of my app
 
 
-class AppData():
+class AppData:
     def __init__(self):
-        self.settings_file = Path(APP_PATH + '/data/saved_settings.json')
+        self.settings_file = Path(APP_PATH + "/data/saved_settings.json")
         # Default settings
-        self.default_settings = {
-            "threads": 2,
-            "xnnpack": False,
-            "agreed": False
-        }
+        self.default_settings = {"threads": 2, "xnnpack": False, "agreed": False}
 
         # Load data
         self._load_settings()
@@ -30,30 +26,31 @@ class AppData():
     def _load_settings(self):
         if self.settings_file.exists():
             # Load file normally
-            with open(self.settings_file, 'r') as f:
+            with open(self.settings_file, "r") as f:
                 settings = json.load(f)
 
             # Validate and use loaded settings
-            self.threads = settings.get('threads', self.default_settings['threads'])
-            self.xnnpack = settings.get('xnnpack', self.default_settings['xnnpack'])
-            self.agreed = settings.get('agreed', self.default_settings['agreed'])
+            self.threads = settings.get("threads", self.default_settings["threads"])
+            self.xnnpack = settings.get("xnnpack", self.default_settings["xnnpack"])
+            self.agreed = settings.get("agreed", self.default_settings["agreed"])
 
         else:
             # Create new file using defaults
             self.settings_file.parent.mkdir(parents=True, exist_ok=True)
-            self.threads = self.default_settings['threads']
-            self.xnnpack = self.default_settings['xnnpack']
-            self.agreed = self.default_settings['agreed']
+            self.threads = self.default_settings["threads"]
+            self.xnnpack = self.default_settings["xnnpack"]
+            self.agreed = self.default_settings["agreed"]
             self.save_settings()
 
     def save_settings(self):
         settings_data = {
             "threads": self.threads,
             "xnnpack": self.xnnpack,
-            "agreed": self.agreed
+            "agreed": self.agreed,
         }
 
-        with open(self.settings_file, 'w') as f:
+        with open(self.settings_file, "w") as f:
             json.dump(settings_data, f, indent=2)
+
 
 appdata = AppData()

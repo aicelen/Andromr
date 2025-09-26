@@ -56,7 +56,8 @@ class SvgStaff(SvgRectangle):
 
     def add_bar_line(self, bar_line: SvgRectangle) -> None:
         already_present = any(
-            abs(bar_line.x - x) < self.min_measure_width for x in self.bar_line_x_positions
+            abs(bar_line.x - x) < self.min_measure_width
+            for x in self.bar_line_x_positions
         )
         if not already_present:
             self.bar_line_x_positions.add(bar_line.x)
@@ -73,7 +74,9 @@ class SvgStaff(SvgRectangle):
 
 
 class SvgMusicFile:
-    def __init__(self, filename: str, width: float, height: float, staffs: list[SvgStaff]):
+    def __init__(
+        self, filename: str, width: float, height: float, staffs: list[SvgStaff]
+    ):
         self.filename = filename
         self.width = width
         self.height = height
@@ -106,7 +109,9 @@ def _combine_staff_lines_and_bar_lines(
     staff_lines: list[SvgRectangle], bar_lines: list[SvgRectangle]
 ) -> list[SvgStaff]:
     if len(staff_lines) % constants.number_of_lines_on_a_staff != 0:
-        eprint("Warning: Staff lines are not a multiple of 5, but is ", len(staff_lines))
+        eprint(
+            "Warning: Staff lines are not a multiple of 5, but is ", len(staff_lines)
+        )
         return []
     groups: list[list[SvgRectangle]] = []
     staffs_sorted_by_y = sorted(staff_lines, key=lambda s: s.y)
@@ -121,7 +126,9 @@ def _combine_staff_lines_and_bar_lines(
         for line in group[1:]:
             merged_group = merged_group.merge(line)
         merged_groups.append(merged_group)
-    staffs = [SvgStaff(staff.x, staff.y, staff.width, staff.height) for staff in merged_groups]
+    staffs = [
+        SvgStaff(staff.x, staff.y, staff.width, staff.height) for staff in merged_groups
+    ]
 
     for bar_line in bar_lines:
         for staff in staffs:
