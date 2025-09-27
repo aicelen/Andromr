@@ -44,8 +44,8 @@ from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners
 # Ask for permissions on android
 if platform == "android":
     from android_camera_api import take_picture
-    from jnius import autoclass  # pylint: disable=import-error # type: ignore
-    from android.permissions import request_permissions, Permission, check_permission  # pylint: disable=import-error # type: ignore
+    from jnius import autoclass  # type: ignore
+    from android.permissions import request_permissions, Permission, check_permission  # type: ignore
 
     required_permissions = [Permission.CAMERA]
 
@@ -58,7 +58,55 @@ if platform == "android":
         while not has_all_permissions():
             sleep(0.1)
             print("waiting for permissions...")
+            
+    # Custom widget classes for android
+    class KvCam(Camera):
+        CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
+        resolution = (640, 480)  # 960, 720
+        index = CameraInfo.CAMERA_FACING_BACK
 
+        def on_tex(self, *l):
+            if self._camera._buffer is None:
+                return None
+
+            super(KvCam, self).on_tex(*l)
+            self.texture = Texture.create(size=np.flip(self.resolution), colorfmt="rgb")
+            frame = self.frame_from_buf()
+            self.frame_to_screen(frame)
+
+        def frame_from_buf(self):
+            w, h = self.resolution
+            frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape(
+                (h + h // 2, w)
+            )
+            frame_bgr = cv2.cvtColor(frame, 93)
+            if self.index:
+                return np.flip(np.rot90(frame_bgr, 1), 1)
+            else:
+                return np.rot90(frame_bgr, 3)
+
+        def frame_to_screen(self, frame):
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            flipped = np.flip(frame_rgb, 0)
+            buf = flipped.tobytes()
+            self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
+else:
+    # Custom placeholder widget for DESKTOP
+    class KvCam(MDBoxLayout):
+        """A placeholder for the camera on desktop platforms."""
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            # Add a label to indicate that the camera is not available
+            self.add_widget(
+                MDLabel(
+                    text="Camera not available on Desktop.\nPress capture to select a file.",
+                    halign="center"
+                )
+            )
+    
+    def take_picture(widget, function, filename):
+        function(filename)
 
 # Classes of Screens used by kivy
 class LandingPage(Screen):
@@ -95,39 +143,6 @@ class EditImagePage(Screen):
 
 class DownloadPage(Screen):
     pass
-
-
-# Custom widget classes
-class KvCam(Camera):
-    CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
-    resolution = (640, 480)  # 960, 720
-    index = CameraInfo.CAMERA_FACING_BACK
-
-    def on_tex(self, *l):
-        if self._camera._buffer is None:
-            return None
-
-        super(KvCam, self).on_tex(*l)
-        self.texture = Texture.create(size=np.flip(self.resolution), colorfmt="rgb")
-        frame = self.frame_from_buf()
-        self.frame_to_screen(frame)
-
-    def frame_from_buf(self):
-        w, h = self.resolution
-        frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape(
-            (h + h // 2, w)
-        )
-        frame_bgr = cv2.cvtColor(frame, 93)
-        if self.index:
-            return np.flip(np.rot90(frame_bgr, 1), 1)
-        else:
-            return np.rot90(frame_bgr, 3)
-
-    def frame_to_screen(self, frame):
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        flipped = np.flip(frame_rgb, 0)
-        buf = flipped.tobytes()
-        self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
 
 class MovableMDIconButton(MDIconButton):
@@ -770,18 +785,22 @@ class Andromr(MDApp):
         Args:
             filename(str/Path): path to the image
         """
-        rotate_image(
-            img_path, img_path
-        )  # we need to rotate the image; android stores them 270° rotated (clockwise)
+        if platform == 'android':
+            # we need to rotate the image; android stores them 270° rotated (clockwise)
+            rotate_image(
+                img_path, img_path
+            )
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
     def capture(self, filename="taken_img.png"):
         """Take an image"""
-        try:
-            os.remove(filename)
-        except Exception:
-            print("couldn't be removed")
+        if platform == 'android':
+            try:
+                os.remove(filename)
+            except Exception:
+                print("couldn't be removed")
+
         take_picture(
             self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
         )
