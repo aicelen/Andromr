@@ -22,17 +22,19 @@ from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.camera import Camera
 
-
-# Other imports
+# Built-in imports
 from pathlib import Path
 from threading import Thread
 import os
+from datetime import datetime
+from time import sleep
+
+# Package imports
 import numpy as np
 import cv2
-from time import sleep
 from PIL import Image as PILImage
-from datetime import datetime
 
+# Own imports
 from utils import get_sys_theme
 from homr.main import download_weights, homr, check_for_missing_models
 from globals import APP_PATH, appdata
@@ -41,14 +43,12 @@ from save_file import save_to_external_storage
 from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners
 
 
-# Ask for permissions on android
 if platform == "android":
     from android_camera_api import take_picture
     from jnius import autoclass  # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # type: ignore
 
     required_permissions = [Permission.CAMERA]
-
     def has_all_permissions():
         return all(check_permission(perm) for perm in required_permissions)
 
@@ -59,7 +59,7 @@ if platform == "android":
             sleep(0.1)
             print("waiting for permissions...")
             
-    # Custom widget classes for android
+    # Custom camera widget for android
     class KvCam(Camera):
         CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
         resolution = (640, 480)  # 960, 720
@@ -92,7 +92,7 @@ if platform == "android":
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
 else:
-    # Custom placeholder widget for DESKTOP
+    # Custom placeholder widget for Desktop
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
         def __init__(self, **kwargs):
@@ -125,15 +125,15 @@ class SettingsPage(Screen):
     pass
 
 
+class OSSLicensePage(Screen):
+    pass
+
+
 class LicensePage(Screen):
     pass
 
 
-class TermsPage(Screen):
-    pass
-
-
-class TermsPageButton(Screen):
+class LicensePageButton(Screen):
     pass
 
 
@@ -219,10 +219,10 @@ class LineDrawer(Widget):
             Line(points=points, width=1.5)
 
 
-class OSS_License(RecycleView):
-    # shows the terms and conditions using a recycling view widget for better performance
+class License(RecycleView):
+    # shows the license using a recycling view widget for better performance
     def __init__(self, **kwargs):
-        super(OSS_License, self).__init__(**kwargs)
+        super(License, self).__init__(**kwargs)
 
         def estimate_height(text, font_size=10, width=300, padding=20):
             # Very rough estimate: average characters per line
@@ -240,10 +240,10 @@ class OSS_License(RecycleView):
         ]
 
 
-class Licenses(RecycleView):
+class OSS_Licenses(RecycleView):
     # shows the open source licenses using a recycling view widget for better performance
     def __init__(self, **kwargs):
-        super(Licenses, self).__init__(**kwargs)
+        super(OSS_Licenses, self).__init__(**kwargs)
 
         def estimate_height(text, font_size=10, width=300, padding=20):
             # Very rough estimate: average characters per line
@@ -263,6 +263,7 @@ class Licenses(RecycleView):
 
 # App class
 class Andromr(MDApp):
+    # Setup methods
     def build(self):
         self.setup()
         # set the app size to a phone size if on windows
@@ -272,10 +273,10 @@ class Andromr(MDApp):
         # load the file
         self.sm = Builder.load_file("main.kv")
 
-        # if the user hasn't agreed to the terms and conditions
+        # if the user hasn't agreed to the license
         if not appdata.agreed:
             # show him the screen
-            self.sm.current = "termspagebutton"
+            self.sm.current = "licensepagebutton"
 
         return self.sm
 
@@ -305,6 +306,12 @@ class Andromr(MDApp):
 
         self.theme_cls.material_style = "M3"  # m3 looks cool
 
+    def on_start(self):
+        # Update Scrollview on start
+        self.update_scrollview()
+
+
+    # UI methods
     def change_screen(self, screen_name):
         """
         Change the screen displayed by Kivy
@@ -317,12 +324,6 @@ class Andromr(MDApp):
         # update the scrollview on the landing page
         if screen_name == "landing":
             self.update_scrollview()
-
-    def agree_oss_license(self):
-        """Function that is triggered when the user agreed to the terms and conditions"""
-        appdata.agreed = True
-        appdata.save_settings()
-        self.change_screen("landing")
 
     def update_scrollview(self):
         """Function that updates the scrollview on the landing page"""
@@ -374,6 +375,170 @@ class Andromr(MDApp):
             row.add_widget(b_export)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
 
+    def show_info(self, text: str, title: str = ""):
+        """
+        show a pop-up with a button; better for longer texts
+        Args:
+            text(str): Text to display
+            title(str): Defaults to empty; if used displays a title in the pop-up
+        """
+
+        self.dialog_information = MDDialog(
+            title=title,
+            text="",
+            buttons=[
+                MDFlatButton(
+                    text="OK", on_release=lambda dt: self.dialog_information.dismiss()
+                )
+            ],
+        )
+
+        self.dialog_information.text = text
+        self.dialog_information.title = title
+        self.dialog_information.open()
+
+    def show_toast(self, text: str):
+        """
+        show a simple text message on the bottom
+        Args:
+            text(str): Text wanted to be displayed
+        """
+        toast(text, True, 80, 200, 0)
+
+    def update_progress_bar(self):
+        """
+        Update the progress bar used while running homr
+        """
+        while appdata.homr_running:
+            self.root.get_screen(
+                "progress"
+            ).ids.progress_bar.value = appdata.homr_progress
+            self.root.get_screen(
+                "progress"
+            ).ids.progress_label.text = appdata.homr_state
+            sleep(0.1)
+
+    def update_download_bar(self, camera_page):
+        """
+        Update the progress bar used while downloading models
+        """
+        while appdata.download_running:
+            self.root.get_screen("downloadpage").ids.download_bar.value = int(
+                appdata.download_progress
+            )
+            self.root.get_screen("downloadpage").ids.download_label.text = str(
+                appdata.downloaded_assets
+            )
+            sleep(0.02)
+        if camera_page:
+            Clock.schedule_once(lambda dt: self.change_screen("camera"))
+        else:
+            Clock.schedule_once(lambda dt: self.change_screen("settings"))
+
+
+    # Button click methods
+    def export_file(self, musicxml, idx):
+        """
+        Save a file to Android External Storage
+        Args:
+            musicxml(bool): export as musicxml
+            idx(int): index of the element in self.files
+
+            Returns:
+                None
+        """
+        if musicxml:
+            # export (.musicxml)
+            self.show_toast(
+                save_to_external_storage(
+                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
+                )
+            )
+
+        else:
+            # convert to .mid
+            if not os.path.exists(
+                f"{APP_PATH}/data/generated_midi/{self.files[idx]}.midi"
+            ):
+                convert_musicxml_to_midi(
+                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}.musicxml",
+                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid",
+                )
+            # export (.mid)
+            self.show_toast(
+                save_to_external_storage(
+                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid"
+                )
+            )
+
+        self.dialog_export.dismiss()
+
+    def confirm_delete(self, idx: int):
+        """
+        creates a special pop-up with two buttons; one is bound to delete an element in the scrollview, the other to cancel
+        Args:
+            idx(int): index of the element that we want to be deleted
+        """
+        self.dialog_delete = MDDialog(
+            text="Are you sure you want to delete this scan? This cannot be undone.",
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()
+                ),
+                MDFlatButton(
+                    text="CONFIRM", on_release=lambda func: self.delete_element(idx)
+                ),
+            ],
+        )
+        self.dialog_delete.open()
+
+    def export_option(self, idx: int):
+        """
+        give option to export as .musicxml or .mid
+        Args:
+            idx(int): index of the element that we want to be deleted
+        """
+        self.dialog_export = MDDialog(
+            title="Export as",
+            text="",
+            buttons=[
+                MDFlatButton(
+                    text="musicxml",
+                    on_release=lambda func: self.export_file(
+                        True, idx
+                    ),  # prior: idx=idx
+                ),
+                MDFlatButton(
+                    text="midi", on_release=lambda func: self.export_file(False, idx)
+                ),
+            ],
+        )
+        self.dialog_export.open()
+
+    def delete_element(self, index: int):
+        """
+        Deletes a certain element of the scrollview
+        Args:
+            index(int): index of the element in the scrollview that should be deleted
+        """
+        os.remove(Path(f"{APP_PATH}/data/generated_xmls/{self.files[index]}"))
+        self.dialog_delete.dismiss()
+        self.update_scrollview()
+
+    def save_settings(self, num_threads, use_xnnpack):
+        appdata.threads = int(num_threads)
+        appdata.xnnpack = use_xnnpack
+        appdata.save_settings()
+        self.change_screen("landing")
+
+    def agree_license(self):
+        """Function that is triggered when the user agreed to the license"""
+        appdata.agreed = True
+        appdata.save_settings()
+        self.change_screen("landing")
+
+
+    # Crop Image methods
     def crop(self):
         """
         crop the displayed image based on the positions of the buttons
@@ -500,6 +665,8 @@ class Andromr(MDApp):
         line_drawer = self.root.get_screen("image_page").ids.line_drawer
         line_drawer.update_lines()
 
+
+    # Camera methods
     def display_img(self):
         """
         displays an image in the image_box
@@ -522,114 +689,34 @@ class Andromr(MDApp):
         # move the buttons to the correct location
         self.set_cutter_btn()
 
-    def export_file(self, musicxml, idx):
+    def img_taken(self, img_path):
         """
-        Save a file to Android External Storage
+        Function running after the image is taken, see android_camera_api.py
         Args:
-            musicxml(bool): export as musicxml
-            idx(int): index of the element in self.files
-
-            Returns:
-                None
+            filename(str/Path): path to the image
         """
-        if musicxml:
-            # export (.musicxml)
-            self.show_toast(
-                save_to_external_storage(
-                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
-                )
+        if platform == 'android':
+            # we need to rotate the image; android stores them 270° rotated (clockwise)
+            rotate_image(
+                img_path, img_path
             )
+        self.img_path = img_path
+        Clock.schedule_once(lambda dt: self.display_img())
 
-        else:
-            # convert to .mid
-            if not os.path.exists(
-                f"{APP_PATH}/data/generated_midi/{self.files[idx]}.midi"
-            ):
-                convert_musicxml_to_midi(
-                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}.musicxml",
-                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid",
-                )
-            # export (.mid)
-            self.show_toast(
-                save_to_external_storage(
-                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid"
-                )
-            )
+    def capture(self, filename="taken_img.png"):
+        """Take an image"""
+        if platform == 'android':
+            try:
+                os.remove(filename)
+            except Exception:
+                print("couldn't be removed")
 
-        self.dialog_export.dismiss()
-
-    def show_toast(self, text: str):
-        """
-        show a simple text message on the bottom
-        Args:
-            text(str): Text wanted to be displayed
-        """
-        toast(text, True, 80, 200, 0)
-
-    def show_info(self, text: str, title: str = ""):
-        """
-        show a pop-up with a button; better for longer texts
-        Args:
-            text(str): Text to display
-            title(str): Defaults to empty; if used displays a title in the pop-up
-        """
-
-        self.dialog_information = MDDialog(
-            title=title,
-            text="",
-            buttons=[
-                MDFlatButton(
-                    text="OK", on_release=lambda dt: self.dialog_information.dismiss()
-                )
-            ],
+        take_picture(
+            self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
         )
 
-        self.dialog_information.text = text
-        self.dialog_information.title = title
-        self.dialog_information.open()
 
-    def confirm_delete(self, idx: int):
-        """
-        creates a special pop-up with two buttons; one is bound to delete an element in the scrollview, the other to cancel
-        Args:
-            idx(int): index of the element that we want to be deleted
-        """
-        self.dialog_delete = MDDialog(
-            text="Are you sure you want to delete this scan? This cannot be undone.",
-            buttons=[
-                MDFlatButton(
-                    text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()
-                ),
-                MDFlatButton(
-                    text="CONFIRM", on_release=lambda func: self.delete_element(idx)
-                ),
-            ],
-        )
-        self.dialog_delete.open()
-
-    def export_option(self, idx: int):
-        """
-        give option to export as .musicxml or .mid
-        Args:
-            idx(int): index of the element that we want to be deleted
-        """
-        self.dialog_export = MDDialog(
-            title="Export as",
-            text="",
-            buttons=[
-                MDFlatButton(
-                    text="musicxml",
-                    on_release=lambda func: self.export_file(
-                        True, idx
-                    ),  # prior: idx=idx
-                ),
-                MDFlatButton(
-                    text="midi", on_release=lambda func: self.export_file(False, idx)
-                ),
-            ],
-        )
-        self.dialog_export.open()
-
+    # Homr methods
     def start_inference(self, path_to_image: str):
         # set the progress bar to 0
         appdata.progress = 0
@@ -701,36 +788,6 @@ class Andromr(MDApp):
         # switch to landing screen
         Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
-    def update_progress_bar(self):
-        """
-        Update the progress bar used while running homr
-        """
-        while appdata.homr_running:
-            self.root.get_screen(
-                "progress"
-            ).ids.progress_bar.value = appdata.homr_progress
-            self.root.get_screen(
-                "progress"
-            ).ids.progress_label.text = appdata.homr_state
-            sleep(0.1)
-
-    def update_download_bar(self, camera_page):
-        """
-        Update the progress bar used while downloading models
-        """
-        while appdata.download_running:
-            self.root.get_screen("downloadpage").ids.download_bar.value = int(
-                appdata.download_progress
-            )
-            self.root.get_screen("downloadpage").ids.download_label.text = str(
-                appdata.downloaded_assets
-            )
-            sleep(0.02)
-        if camera_page:
-            Clock.schedule_once(lambda dt: self.change_screen("camera"))
-        else:
-            Clock.schedule_once(lambda dt: self.change_screen("settings"))
-
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
         download = Thread(target=download_weights, daemon=True)
@@ -769,51 +826,6 @@ class Andromr(MDApp):
         else:
             self.show_toast("You already downloaded all assets")
 
-    def delete_element(self, index: int):
-        """
-        Deletes a certain element of the scrollview
-        Args:
-            index(int): index of the element in the scrollview that should be deleted
-        """
-        os.remove(Path(f"{APP_PATH}/data/generated_xmls/{self.files[index]}"))
-        self.dialog_delete.dismiss()
-        self.update_scrollview()
-
-    def img_taken(self, img_path):
-        """
-        Function running after the image is taken, see android_camera_api.py
-        Args:
-            filename(str/Path): path to the image
-        """
-        if platform == 'android':
-            # we need to rotate the image; android stores them 270° rotated (clockwise)
-            rotate_image(
-                img_path, img_path
-            )
-        self.img_path = img_path
-        Clock.schedule_once(lambda dt: self.display_img())
-
-    def capture(self, filename="taken_img.png"):
-        """Take an image"""
-        if platform == 'android':
-            try:
-                os.remove(filename)
-            except Exception:
-                print("couldn't be removed")
-
-        take_picture(
-            self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
-        )
-
-    def save_settings(self, num_threads, use_xnnpack):
-        appdata.threads = int(num_threads)
-        appdata.xnnpack = use_xnnpack
-        appdata.save_settings()
-        self.change_screen("landing")
-
-    def on_start(self):
-        # Runs from the start of Kivy
-        self.update_scrollview()
 
 
 if __name__ == "__main__":

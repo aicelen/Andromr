@@ -5,9 +5,9 @@ ScreenManager:
     ProgressPage:
     SettingsPage:
     DownloadPage:
+    OSSLicensePage:
+    LicensePageButton:
     LicensePage:
-    TermsPageButton:
-    TermsPage:
     
 <LandingPage>:
     name: "landing"
@@ -233,13 +233,13 @@ ScreenManager:
             orientation: "horizontal"
             MDRaisedButton:
                 text: "OSS Licenses"
-                on_release: app.change_screen('licensepage')
+                on_release: app.change_screen('osslicensepage')
             
             Widget:
 
             MDRaisedButton:
                 text: "License"
-                on_release: app.change_screen('termspage')
+                on_release: app.change_screen('licensepage')
 
             Widget:
 
@@ -268,13 +268,13 @@ ScreenManager:
             size_hint_y: None
             height: self.texture_size[1]
 
-<LicensePage>:
-    name: 'licensepage'
+<OSSLicensePage>:
+    name: 'osslicensepage'
     BoxLayout:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)
-        Licenses:
+        OSS_Licenses:
             id: rv_lp
         MDRaisedButton:
             text: 'Back'
@@ -284,29 +284,29 @@ ScreenManager:
             padding: dp(10)
             spacing: dp(10)
 
-<TermsPageButton>:
-    name: 'termspagebutton'
+<LicensePageButton>:
+    name: 'licensepagebutton'
     BoxLayout:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)        
-        OSS_License:
+        License:
             id: rv_tpb
         MDRaisedButton:
-            text: 'I read and agree to the Terms and Conditions'
+            text: 'I read and agree to the License'
             size_hint_y: None
             height: '40dp'
-            on_release: app.agree_oss_license()
+            on_release: app.agree_license()
             padding: dp(10)
             spacing: dp(10)
 
-<TermsPage>:
-    name: 'termspage'
+<LicensePage>:
+    name: 'licensepage'
     BoxLayout:
         orientation: 'vertical'
         padding: dp(10)
         spacing: dp(10)        
-        OSS_License:
+        License:
             id: rv_tp
         MDRaisedButton:
             text: 'Back'
@@ -317,7 +317,7 @@ ScreenManager:
             spacing: dp(10)
 
 
-<Licenses>:
+<OSS_Licenses>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
         key_size: 'size'   
@@ -327,7 +327,7 @@ ScreenManager:
         height: self.minimum_height
         orientation: 'vertical'
 
-<OSS_License>:
+<License>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
         key_size: 'size'   
