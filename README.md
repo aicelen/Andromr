@@ -29,7 +29,7 @@ If you only want to change something about the homr backend please first think a
 
 ## Acknowledgments
 Thanks to [Christian Liebhardt](https://github.com/liebharc) for open-sourcing homr.
-All the other open-source licenses are listed in `data/licenses.txt`.
+All the other open-source licenses are listed in `data/oss_licenses.txt`.
 
 ## Future Plans
 Late 2025: LiteRT Next integration (2x performance improvement for CNNs)

@@ -1,3 +1,17 @@
+
+
+
+Andromr is open-source software licensed under AGPL 3.0
+
+version: v1.1-beta
+author: aicelen
+contact: andromr.official@gmail.com
+
+[b]COLLECTION OF USER DATA[/b]
+No data is being collected by the app itself. 
+Models are downloaded from github.com. Therefore Github could collect data like the time of download.
+
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 

@@ -37,7 +37,7 @@ def get_sys_theme():
         "Light": Light mode
     """
     if platform == "android":
-        from jnius import autoclass  # pylint: disable=import-error # type: ignore
+        from jnius import autoclass  # type: ignore
 
         Configuration = autoclass("android.content.res.Configuration")
         activity = autoclass("org.kivy.android.PythonActivity").mActivity
@@ -69,7 +69,8 @@ def get_sys_theme():
             return "Light"  # Default fallback
 
     else:
-        raise RuntimeError("Getting the theme is only working on Android and Windows")
+        print("Getting the theme is only working on Android and Windows")
+        return "Light"
 
 
 def convert_musicxml_to_midi(input_file, output_file=None):

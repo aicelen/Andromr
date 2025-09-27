@@ -223,41 +223,50 @@ class License(RecycleView):
     # shows the license using a recycling view widget for better performance
     def __init__(self, **kwargs):
         super(License, self).__init__(**kwargs)
+        self.dark_mode = get_sys_theme() == "Dark"
 
-        def estimate_height(text, font_size=10, width=300, padding=20):
+        def estimate_height(text, font_size=10, width=300):
             # Very rough estimate: average characters per line
             avg_char_width = font_size * 0.6
             approx_chars_per_line = width / avg_char_width
             lines = max(1, int(len(text) / approx_chars_per_line) + 1)
-            line_height = sp(font_size) * 1.2
-            return int(lines * line_height) + padding
+            line_height = sp(font_size) * 0.9
+            return int(lines * line_height)
 
-        with open(Path(f"{APP_PATH}/data/license.txt"), "r") as file:
-            lines = [line.strip() for line in file if line.strip()]
+        with open(Path(f"{APP_PATH}/data/license.txt"), "r", encoding="utf-8") as file:
+            lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
-            {"text": line, "size": (None, estimate_height(line))} for line in lines
+            {                
+                "text": line, 
+                "size": (None, estimate_height(line)), 
+                "color": (1,1,1,1) if self.dark_mode else (0,0,0,1)
+            } for line in lines
         ]
-
 
 class OSS_Licenses(RecycleView):
     # shows the open source licenses using a recycling view widget for better performance
     def __init__(self, **kwargs):
         super(OSS_Licenses, self).__init__(**kwargs)
+        self.dark_mode = get_sys_theme() == "Dark"
 
-        def estimate_height(text, font_size=10, width=300, padding=20):
+        def estimate_height(text, font_size=10, width=300):
             # Very rough estimate: average characters per line
             avg_char_width = font_size * 0.6
             approx_chars_per_line = width / avg_char_width
             lines = max(1, int(len(text) / approx_chars_per_line) + 1)
-            line_height = sp(font_size) * 1.2
-            return int(lines * line_height) + padding
+            line_height = sp(font_size) * 0.9
+            return int(lines * line_height)
 
-        with open(Path(f"{APP_PATH}/data/licenses.txt"), "r") as file:
-            lines = [line.strip() for line in file if line.strip()]
+        with open(Path(f"{APP_PATH}/data/oss_licenses.txt"), "r", encoding="utf-8") as file:
+            lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
-            {"text": line, "size": (None, estimate_height(line))} for line in lines
+            {                
+                "text": line, 
+                "size": (None, estimate_height(line)), 
+                "color": (1,1,1,1) if self.dark_mode else (0,0,0,1)
+            } for line in lines
         ]
 
 
@@ -298,11 +307,7 @@ class Andromr(MDApp):
 
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
-        try:
-            self.theme_cls.theme_style = get_sys_theme()
-        except Exception:
-            # default
-            self.theme_cls.theme_style = "Light"  # default theme
+        self.theme_cls.theme_style = get_sys_theme()
 
         self.theme_cls.material_style = "M3"  # m3 looks cool
 
