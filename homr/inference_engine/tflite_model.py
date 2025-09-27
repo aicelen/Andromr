@@ -22,10 +22,10 @@ if platform == "android":
     InterpreterApiOptions = autoclass("org.tensorflow.lite.InterpreterApi$Options")
 
     class TensorFlowModel:
-        def __init__(self, model_filename):
+        def __init__(self, model_filename, num_threads):
             model = File(model_filename)
             options = InterpreterOptions()
-            options.setNumThreads(appdata.threads)
+            options.setNumThreads(num_threads)
             options.setUseXNNPACK(True)
             self.interpreter = Interpreter(model, options)
             self.allocate_tensors()
@@ -63,7 +63,7 @@ else:
     class TensorFlowModel:
         def __init__(self, model_filename, num_threads=None):
             self.interpreter = Interpreter(
-                model_filename, num_threads=12
+                model_filename, num_threads=num_threads
             )
             self.interpreter.allocate_tensors()
 

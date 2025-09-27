@@ -35,12 +35,12 @@ import cv2
 from PIL import Image as PILImage
 
 # Own imports
-from utils import get_sys_theme
 from homr.main import download_weights, homr, check_for_missing_models
+from homr.benchmark import Benchmark
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from save_file import save_to_external_storage
-from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners
+from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners, get_sys_theme
 
 
 if platform == "android":
@@ -831,7 +831,8 @@ class Andromr(MDApp):
         else:
             self.show_toast("You already downloaded all assets")
 
-
+    def find_optimial_settings(self):
+        print(Benchmark().run())
 
 if __name__ == "__main__":
     Andromr().run()

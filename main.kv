@@ -225,9 +225,17 @@ ScreenManager:
             show_off: False
             
         Widget:
-        MDRaisedButton:
-            text: "Download assets (60MB)"
-            on_release: app.check_download_assets()
+        MDBoxLayout:
+            orientation: "horizontal"
+            MDRaisedButton:
+                text: "Download assets (60MB)"
+                on_release: app.check_download_assets()
+
+            Widget:
+
+            MDRaisedButton:
+                text: "Find optimial settings"
+                on_release: app.find_optimial_settings()
 
         MDBoxLayout:
             orientation: "horizontal"
