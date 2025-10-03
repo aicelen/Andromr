@@ -225,17 +225,12 @@ ScreenManager:
             show_off: False
             
         Widget:
+
         MDBoxLayout:
             orientation: "horizontal"
             MDRaisedButton:
                 text: "Download assets (60MB)"
                 on_release: app.check_download_assets()
-
-            Widget:
-
-            MDRaisedButton:
-                text: "Find optimial settings"
-                on_release: app.find_optimial_settings()
 
         MDBoxLayout:
             orientation: "horizontal"
@@ -248,12 +243,6 @@ ScreenManager:
             MDRaisedButton:
                 text: "License"
                 on_release: app.change_screen('licensepage')
-
-            Widget:
-
-            MDRaisedButton:
-                text: "Apply"
-                on_release: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active)
 
 <DownloadPage>
     name: "downloadpage"

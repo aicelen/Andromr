@@ -307,9 +307,10 @@ class Andromr(MDApp):
 
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
+        self.theme_cls.primary_palette = "LightGreen"
         self.theme_cls.theme_style = get_sys_theme()
 
-        self.theme_cls.material_style = "M3"  # m3 looks cool
+        self.theme_cls.material_style = "M3"
 
     def on_start(self):
         # Update Scrollview on start
