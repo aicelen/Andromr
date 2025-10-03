@@ -22,7 +22,10 @@ if platform == "android":
     InterpreterApiOptions = autoclass("org.tensorflow.lite.InterpreterApi$Options")
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads):
+        def __init__(self, model_filename, num_threads=None):
+            if num_threads is None:
+                num_threads = appdata.threads
+
             model = File(model_filename)
             options = InterpreterOptions()
             options.setNumThreads(num_threads)

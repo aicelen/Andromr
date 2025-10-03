@@ -13,32 +13,43 @@ ScreenManager:
     name: "landing"
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(10)
-        ScrollView:
-            id: scroll_view
-            size_hint_y: 0.75
-            BoxLayout:
-                id: scroll_box
-                orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
-                padding: dp(10)
-                spacing: dp(10)
-                
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "Home"
+            elevation: 0
+            type_height: 'small'
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
+
         BoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1  
-            MDFloatingActionButton:
-                icon: "cog"
-                on_release: app.change_screen("settings")
+            orientation: 'vertical'
+            padding: dp(20)
+            spacing: dp(10)
+            ScrollView:
+                id: scroll_view
+                size_hint_y: 0.75
+                BoxLayout:
+                    id: scroll_box
+                    orientation: 'vertical'
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: dp(10)
+                    spacing: dp(10)
+                    
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint_y: 0.1  
+                MDFloatingActionButton:
+                    icon: "cog"
+                    on_release: app.change_screen("settings")
 
-            Widget:
+                Widget:
 
-            MDFloatingActionButton:
-                id: gen_xml
-                icon: "upload"
-                on_release: app.check_download_assets(camera_page=True)
+                MDFloatingActionButton:
+                    id: gen_xml
+                    icon: "upload"
+                    on_release: app.check_download_assets(camera_page=True)
 
 
 <CameraPage>:
@@ -57,6 +68,7 @@ ScreenManager:
         pos_hint: {'center_x': 0.5}
         on_release: app.capture()
         icon_size: "80dp"  
+
 
 <EditImagePage>:
     name: "image_page"
@@ -137,149 +149,185 @@ ScreenManager:
 
 <ProgressPage>:
     name: "progress"
-    MDBoxLayout:
-        orientation: "vertical"
-        spacing: dp(20)
-        padding: dp(10)
-        
-        Widget:
-
-        MDTextField:
-            id: title
-            hint_text: "Title"
-            mode: "round"
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "Edit Image"
+            elevation: 0
+            type_height: 'small'
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
 
         MDBoxLayout:
-            orientation: "horizontal"
+            orientation: "vertical"
             spacing: dp(20)
             padding: dp(10)
+            
+            Widget:
 
             MDTextField:
-                id: beat
-                hint_text: "Beat"
+                id: title
+                hint_text: "Title"
                 mode: "round"
-                helper_text: "Only natural numbers (1,2,3...)"
-                helper_text_mode: "on_focus"
+
+            MDBoxLayout:
+                orientation: "horizontal"
+                spacing: dp(20)
+                padding: dp(10)
+
+                MDTextField:
+                    id: beat
+                    hint_text: "Beat"
+                    mode: "round"
+                    helper_text: "Only natural numbers (1,2,3...)"
+                    helper_text_mode: "on_focus"
 
 
-            MDTextField:
-                id: division
-                hint_text: "Beat Type"
-                mode: "round"
-                helper_text: "Only natural numbers"
-                helper_text_mode: "on_focus"
+                MDTextField:
+                    id: division
+                    hint_text: "Beat Type"
+                    mode: "round"
+                    helper_text: "Only natural numbers"
+                    helper_text_mode: "on_focus"
 
 
-        Widget:
+            Widget:
 
-        MDProgressBar:
-            id: progress_bar
-            size_hint_y: None
-            height: dp(10)  # Set the height of the progress bar
-            pos_hint: {"center_x": 0.5}
+            MDProgressBar:
+                id: progress_bar
+                size_hint_y: None
+                height: dp(10)  # Set the height of the progress bar
+                pos_hint: {"center_x": 0.5}
 
-        MDLabel:
-            id: progress_label
-            text: "0%"
-            halign: 'center'
-            size_hint_y: None
-            height: self.texture_size[1]  # Ensure the label only takes the needed height
+            MDLabel:
+                id: progress_label
+                text: "0%"
+                halign: 'center'
+                size_hint_y: None
+                height: self.texture_size[1]  # Ensure the label only takes the needed height
 
 <SettingsPage>:
     name: "settings"
     MDBoxLayout:
         orientation: "vertical"
-        padding: dp(25)
+
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "Settings"
+            elevation: 0
+            type_height: 'small'
+            left_action_items: [['arrow-left', lambda x: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active, x)]]
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
 
         MDBoxLayout:
-            MDLabel:
-                id: label_xnnpack
-                text: "Use xnnpack to accelerate models"
+            orientation: "vertical"
+            padding: dp(25)
 
-            MDCheckbox:
-                id: checkbox_xnnpack
-                active: app.appdata.xnnpack
-                size_hint_x: None
-                pos_hint: {'center_y': 0.5}
-                ripple_scale: 0
+            MDBoxLayout:
+                MDLabel:
+                    id: label_xnnpack
+                    text: "Use xnnpack to accelerate models"
 
-        MDBoxLayout:
-            MDLabel:
-                id: l_threads
-                text: "Threads"
+                MDCheckbox:
+                    id: checkbox_xnnpack
+                    active: app.appdata.xnnpack
+                    size_hint_x: None
+                    pos_hint: {'center_y': 0.5}
+                    ripple_scale: 0
 
-            MDIconButton:
-                id: inf_threads
-                icon: "information-slab-circle-outline"
-                size_hint_x: None
-                pos_hint: {'center_y': 0.5}
-                on_release: app.show_info("Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
-                ripple_scale: 0
+            MDBoxLayout:
+                MDLabel:
+                    id: l_threads
+                    text: "Threads"
 
-        MDSlider:
-            id: slider_threads
-            min: 1
-            max: 8
-            value: app.appdata.threads
-            step: 1
-            show_off: False
-            
-        Widget:
+                MDIconButton:
+                    id: inf_threads
+                    icon: "information-slab-circle-outline"
+                    size_hint_x: None
+                    pos_hint: {'center_y': 0.5}
+                    on_release: app.show_info("Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
+                    ripple_scale: 0
 
-        MDBoxLayout:
-            orientation: "horizontal"
-            MDRaisedButton:
-                text: "Download assets (60MB)"
-                on_release: app.check_download_assets()
+            MDSlider:
+                id: slider_threads
+                min: 1
+                max: 8
+                value: app.appdata.threads
+                step: 1
+                show_off: False
+                
 
-        MDBoxLayout:
-            orientation: "horizontal"
-            MDRaisedButton:
-                text: "OSS Licenses"
-                on_release: app.change_screen('osslicensepage')
-            
+            MDBoxLayout:
+                orientation: "horizontal"
+                MDRaisedButton:
+                    text: "Download assets (60MB)"
+                    on_release: app.check_download_assets()
+                    size_hint_x: 1
+
             Widget:
-
-            MDRaisedButton:
-                text: "License"
-                on_release: app.change_screen('licensepage')
 
 <DownloadPage>
     name: "downloadpage"
-    MDBoxLayout:
-        orientation: "vertical"
-        spacing: dp(20)
-        padding: dp(10)
-        Widget:
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "Download Assets"
+            elevation: 0
+            type_height: 'small'
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
 
-        MDProgressBar:
-            id: download_bar
-            size_hint_y: None
-            height: dp(10)
-            pos_hint: {"center_x": 0.5}
+        MDBoxLayout:
+            orientation: "vertical"
+            spacing: dp(20)
+            padding: dp(10)
+            Widget:
 
-        MDLabel:
-            id: download_label
-            text: "0/4"
-            halign: 'center'
-            size_hint_y: None
-            height: self.texture_size[1]
+            MDProgressBar:
+                id: download_bar
+                size_hint_y: None
+                height: dp(10)
+                pos_hint: {"center_x": 0.5}
+
+            MDLabel:
+                id: download_label
+                text: "0/4"
+                halign: 'center'
+                size_hint_y: None
+                height: self.texture_size[1]
 
 <OSSLicensePage>:
     name: 'osslicensepage'
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(10)
-        spacing: dp(10)
-        OSS_Licenses:
-            id: rv_lp
-        MDRaisedButton:
-            text: 'Back'
-            size_hint_y: None
-            height: '40dp'
-            on_release: app.change_screen('settings')
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "About"
+            elevation: 0
+            type_height: 'small'
+            left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
+
+
+        BoxLayout:
+            orientation: 'vertical'
             padding: dp(10)
             spacing: dp(10)
+            OSS_Licenses:
+                id: rv_lp
+            MDRaisedButton:
+                text: 'Back'
+                size_hint_y: None
+                height: '40dp'
+                on_release: app.change_screen('settings')
+                padding: dp(10)
+                spacing: dp(10)
 
 <LicensePageButton>:
     name: 'licensepagebutton'
@@ -301,17 +349,28 @@ ScreenManager:
     name: 'licensepage'
     BoxLayout:
         orientation: 'vertical'
-        padding: dp(10)
-        spacing: dp(10)        
-        License:
-            id: rv_tp
-        MDRaisedButton:
-            text: 'Back'
-            size_hint_y: None
-            height: '40dp'
-            on_release: app.change_screen('settings')
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "License"
+            elevation: 0
+            type_height: 'small'
+            left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: 1,1,1,1
+            specific_text_color: 0,0,0,1
+        BoxLayout:
+            orientation: 'vertical'
             padding: dp(10)
-            spacing: dp(10)
+            spacing: dp(10)        
+            License:
+                id: rv_tp
+            MDRaisedButton:
+                text: 'Back'
+                size_hint_y: None
+                height: '40dp'
+                on_release: app.change_screen('settings')
+                padding: dp(10)
+                spacing: dp(10)
 
 
 <OSS_Licenses>:

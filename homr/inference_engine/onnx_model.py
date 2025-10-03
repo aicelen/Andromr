@@ -25,7 +25,7 @@ if platform == "android":
     OrtSessionResult = autoclass("ai.onnxruntime.OrtSession$Result")
 
     class OnnxModel:
-        def __init__(self, model_path: str, num_threads: int):
+        def __init__(self, model_path: str, num_threads: int = None):
             """
             Inference class of .onnx models for kivy apps on android using native Java APIs.
 
@@ -34,6 +34,8 @@ if platform == "android":
             model_path: str
                 Path to the .onnx model you want to run inference on.
             """
+            if num_threads is None:
+                num_threads = appdata.threads
             self.env = OrtEnvironment.getEnvironment()
             so = OrtSessionOptions()
 

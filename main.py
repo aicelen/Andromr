@@ -11,6 +11,7 @@ from kivymd.uix.button import MDIconButton
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
+from kivymd.uix.menu import MDDropdownMenu
 from kivy.core.window import Window
 from kivy.utils import platform
 from kivymd.toast import toast
@@ -276,11 +277,28 @@ class Andromr(MDApp):
     def build(self):
         self.setup()
         # set the app size to a phone size if on windows
-        if platform == "win":
+        if platform == "win" or platform == 'linux':
             Window.size = (350, 680)
 
         # load the file
         self.sm = Builder.load_file("main.kv")
+
+        self.menu = MDDropdownMenu(
+            items=[
+                {
+                    "viewclass": "OneLineListItem",
+                    "text": "License",
+                    "height": dp(48),
+                    "on_release": lambda x="licensepage": self.change_screen(x),
+                },
+                {
+                    "viewclass": "OneLineListItem",
+                    "text": "About",
+                    "height": dp(48),
+                    "on_release": lambda x="osslicensepage": self.change_screen(x),
+                }
+            ]
+        )
 
         # if the user hasn't agreed to the license
         if not appdata.agreed:
@@ -305,11 +323,13 @@ class Andromr(MDApp):
             Path(f"{APP_PATH}/data/generated_xmls")
         )  # list of paths to generated .musicxml
 
+        # widgets
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
+
+        # themes
         self.theme_cls.primary_palette = "LightGreen"
         self.theme_cls.theme_style = get_sys_theme()
-
         self.theme_cls.material_style = "M3"
 
     def on_start(self):
@@ -318,12 +338,13 @@ class Andromr(MDApp):
 
 
     # UI methods
-    def change_screen(self, screen_name):
+    def change_screen(self, screen_name, btn=None):
         """
         Change the screen displayed by Kivy
         Args:
             screen_name(str): name of the screen you want to change to
         """
+        self.menu.dismiss()
         # set screen
         self.sm.current = screen_name
 
@@ -409,7 +430,7 @@ class Andromr(MDApp):
         Args:
             text(str): Text wanted to be displayed
         """
-        toast(text, True, 80, 200, 0)
+        toast(text=text, duration=1)
 
     def update_progress_bar(self):
         """
@@ -531,7 +552,7 @@ class Andromr(MDApp):
         self.dialog_delete.dismiss()
         self.update_scrollview()
 
-    def save_settings(self, num_threads, use_xnnpack):
+    def save_settings(self, num_threads, use_xnnpack, btn=None):
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack
         appdata.save_settings()
@@ -542,7 +563,13 @@ class Andromr(MDApp):
         appdata.agreed = True
         appdata.save_settings()
         self.change_screen("landing")
+    
+    def open_menu(self, button):
+        self.menu.caller = button
+        self.menu.open()
 
+    def menu_callback(self):
+        self.menu.dismiss()
 
     # Crop Image methods
     def crop(self):
