@@ -8,7 +8,7 @@ from homr.transformer.configs import Config
 from homr.transformer.split_merge_symbols import SymbolMerger
 from homr.transformer.utils import softmax
 from homr.type_definitions import NDArray
-from homr.inference_engine.onnx_model import OnnxModel
+from homr.inference_engine import OnnxModel
 
 
 class ScoreDecoder:

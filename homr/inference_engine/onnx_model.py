@@ -117,7 +117,7 @@ else:
     import onnxruntime as ort
 
     class OnnxModel:
-        def __init__(self, model_path: str, num_threads):
+        def __init__(self, model_path: str, num_threads=0):
             session_options = ort.SessionOptions()
             session_options.intra_op_num_threads = num_threads
             self.model = ort.InferenceSession(model_path, session_options)

@@ -5,7 +5,7 @@ from math import ceil
 import cv2
 import numpy as np
 
-from homr.inference_engine.tflite_model import TensorFlowModel
+from homr.inference_engine import TensorFlowModel
 from homr.segmentation.config import segnet_path_tflite
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray

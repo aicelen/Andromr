@@ -2,8 +2,8 @@ import numpy as np
 from time import perf_counter
 
 from homr.type_definitions import NDArray
-from homr.inference_engine.onnx_model import OnnxModel
-from homr.inference_engine.tflite_model import TensorFlowModel
+from homr.inference_engine import OnnxModel
+from homr.inference_engine import TensorFlowModel
 
 
 class EncoderDual:

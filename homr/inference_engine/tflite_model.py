@@ -64,7 +64,7 @@ else:
         from ai_edge_litert.interpreter import Interpreter
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads=None):
+        def __init__(self, model_filename, num_threads=8):
             self.interpreter = Interpreter(
                 model_filename, num_threads=num_threads
             )
