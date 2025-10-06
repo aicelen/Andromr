@@ -70,7 +70,7 @@ def get_sys_theme():
 
     else:
         print("Getting the theme is only working on Android and Windows")
-        return "Light"
+        return "Dark"
 
 
 def convert_musicxml_to_midi(input_file, output_file=None):

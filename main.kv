@@ -19,8 +19,8 @@ ScreenManager:
             elevation: 0
             type_height: 'small'
             right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
         BoxLayout:
             orientation: 'vertical'
@@ -153,11 +153,11 @@ ScreenManager:
         orientation: 'vertical'
         MDTopAppBar:
             id: toolbar_settings
-            title: "Edit Image"
+            title: "OMR"
             elevation: 0
             type_height: 'small'
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
         MDBoxLayout:
             orientation: "vertical"
@@ -219,8 +219,8 @@ ScreenManager:
             type_height: 'small'
             left_action_items: [['arrow-left', lambda x: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active, x)]]
             right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
         MDBoxLayout:
             orientation: "vertical"
@@ -278,8 +278,8 @@ ScreenManager:
             title: "Download Assets"
             elevation: 0
             type_height: 'small'
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
         MDBoxLayout:
             orientation: "vertical"
@@ -311,8 +311,8 @@ ScreenManager:
             type_height: 'small'
             left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
             right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
 
         BoxLayout:
@@ -321,6 +321,33 @@ ScreenManager:
             spacing: dp(10)
             OSS_Licenses:
                 id: rv_lp
+            MDRaisedButton:
+                text: 'Back'
+                size_hint_y: None
+                height: '40dp'
+                on_release: app.change_screen('settings')
+                padding: dp(10)
+                spacing: dp(10)
+
+<LicensePage>:
+    name: 'licensepage'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            id: toolbar_settings
+            title: "License"
+            elevation: 0
+            type_height: 'small'
+            left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+        BoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)        
+            License:
+                id: rv_tp
             MDRaisedButton:
                 text: 'Back'
                 size_hint_y: None
@@ -344,35 +371,6 @@ ScreenManager:
             on_release: app.agree_license()
             padding: dp(10)
             spacing: dp(10)
-
-<LicensePage>:
-    name: 'licensepage'
-    BoxLayout:
-        orientation: 'vertical'
-        MDTopAppBar:
-            id: toolbar_settings
-            title: "License"
-            elevation: 0
-            type_height: 'small'
-            left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
-            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
-            md_bg_color: 1,1,1,1
-            specific_text_color: 0,0,0,1
-        BoxLayout:
-            orientation: 'vertical'
-            padding: dp(10)
-            spacing: dp(10)        
-            License:
-                id: rv_tp
-            MDRaisedButton:
-                text: 'Back'
-                size_hint_y: None
-                height: '40dp'
-                on_release: app.change_screen('settings')
-                padding: dp(10)
-                spacing: dp(10)
-
-
 <OSS_Licenses>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
