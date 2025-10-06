@@ -211,7 +211,6 @@ ScreenManager:
     name: "settings"
     MDBoxLayout:
         orientation: "vertical"
-
         MDTopAppBar:
             id: toolbar_settings
             title: "Settings"
@@ -229,14 +228,15 @@ ScreenManager:
             MDBoxLayout:
                 MDLabel:
                     id: label_xnnpack
-                    text: "Use xnnpack to accelerate models"
+                    text: "Xnnpack acceleration"
 
                 MDCheckbox:
                     id: checkbox_xnnpack
                     active: app.appdata.xnnpack
-                    size_hint_x: None
-                    pos_hint: {'center_y': 0.5}
                     ripple_scale: 0
+                    pos_hint: {'center_y': 0.5}
+                    size_hint: None, None
+                    size: "48dp", "48dp"
 
             MDBoxLayout:
                 MDLabel:
@@ -246,9 +246,8 @@ ScreenManager:
                 MDIconButton:
                     id: inf_threads
                     icon: "information-slab-circle-outline"
-                    size_hint_x: None
                     pos_hint: {'center_y': 0.5}
-                    on_release: app.show_info("Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
+                    on_release: app.show_info("Number of threads the models can utilize. Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
                     ripple_scale: 0
 
             MDSlider:
@@ -321,13 +320,6 @@ ScreenManager:
             spacing: dp(10)
             OSS_Licenses:
                 id: rv_lp
-            MDRaisedButton:
-                text: 'Back'
-                size_hint_y: None
-                height: '40dp'
-                on_release: app.change_screen('settings')
-                padding: dp(10)
-                spacing: dp(10)
 
 <LicensePage>:
     name: 'licensepage'
@@ -348,13 +340,6 @@ ScreenManager:
             spacing: dp(10)        
             License:
                 id: rv_tp
-            MDRaisedButton:
-                text: 'Back'
-                size_hint_y: None
-                height: '40dp'
-                on_release: app.change_screen('settings')
-                padding: dp(10)
-                spacing: dp(10)
 
 <LicensePageButton>:
     name: 'licensepagebutton'
