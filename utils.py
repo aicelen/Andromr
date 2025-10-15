@@ -1,10 +1,9 @@
-from PIL import Image
+from PIL import Image, ImageOps
 import os
 from music21 import converter, midi
 import numpy as np
 import cv2
 from kivy.utils import platform
-
 
 def rotate_image(input_path, output_path):
     """
@@ -112,6 +111,7 @@ def crop_image_by_corners(path, points, output_path):
         None
     """
     img = Image.open(path)
+    img = ImageOps.exif_transpose(img)
     arr = np.array(img)
 
     # Find bounding box of the 4 points
@@ -129,3 +129,16 @@ def crop_image_by_corners(path, points, output_path):
 
     # Save the cropped image
     img.save(output_path)
+
+def downscale_cv2(input_path: str, scale: float):
+    """
+    Fast downscaling using OpenCV
+    """
+    img = cv2.imread(input_path)
+    size_old = (img.shape[1], img.shape[0])
+    new_size = (int(img.shape[1] * scale), int(img.shape[0] * scale))
+    img_resized = cv2.resize(img, new_size, interpolation=cv2.INTER_AREA)
+    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+    flipped = np.flip(img_rgb, 0)
+    buf = flipped.tobytes()
+    return buf, size_old, new_size

@@ -33,7 +33,6 @@ from time import sleep
 # Package imports
 import numpy as np
 import cv2
-from PIL import Image as PILImage
 
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
@@ -41,7 +40,7 @@ from homr.benchmark import Benchmark
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from save_file import save_to_external_storage
-from utils import rotate_image, convert_musicxml_to_midi, crop_image_by_corners, get_sys_theme
+from utils import convert_musicxml_to_midi, crop_image_by_corners, get_sys_theme, downscale_cv2
 
 
 if platform == "android":
@@ -105,7 +104,7 @@ else:
                     halign="center"
                 )
             )
-    
+
     def take_picture(widget, function, filename):
         function(filename)
 
@@ -430,7 +429,7 @@ class Andromr(MDApp):
         Args:
             text(str): Text wanted to be displayed
         """
-        toast(text=text, duration=1)
+        toast(text=text)
 
     def update_progress_bar(self):
         """
@@ -702,7 +701,7 @@ class Andromr(MDApp):
     # Camera methods
     def display_img(self):
         """
-        displays an image in the image_box
+        displays the taken image in the image_box
         """
         # display screen to image_page
         self.change_screen("image_page")
@@ -710,14 +709,19 @@ class Andromr(MDApp):
         # remove the image loaded previously to the image box
         self.root.get_screen("image_page").ids.image_box.clear_widgets()
 
-        # get size of loaded image
-        img = PILImage.open(self.img_path)
-        self.size = img.size
+        # downscale image to save time during rendering
+        buf, self.size, text_res = downscale_cv2(self.img_path, 0.25)
 
-        # display image in image_box
-        img_widget = Image(source=self.img_path)
-        img_widget.reload()
+        # create texture from buffer
+        texture = Texture.create(size=text_res, colorfmt="rgb")
+        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
+        # create Image widget
+        img_widget = Image(fit_mode="contain")
         self.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
+
+        # and set texture 
+        img_widget.texture = texture
 
         # move the buttons to the correct location
         self.set_cutter_btn()
@@ -728,22 +732,11 @@ class Andromr(MDApp):
         Args:
             filename(str/Path): path to the image
         """
-        if platform == 'android':
-            # we need to rotate the image; android stores them 270° rotated (clockwise)
-            rotate_image(
-                img_path, img_path
-            )
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
-    def capture(self, filename="taken_img.png"):
+    def capture(self, filename="taken_img.jpg"):
         """Take an image"""
-        if platform == 'android':
-            try:
-                os.remove(filename)
-            except Exception:
-                print("couldn't be removed")
-
         take_picture(
             self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
         )
@@ -861,6 +854,19 @@ class Andromr(MDApp):
 
     def find_optimial_settings(self):
         print(Benchmark().run())
+
+    def on_resume(self):
+        print("Resuming app — scheduling camera restart")
+        # Schedule camera re-init a bit later, when GL is alive again
+        Clock.schedule_once(self._restore_camera, 1)  # wait 1 second
+
+    def _restore_camera(self, dt):
+        camera_screen = self.root.get_screen("camera")
+        parent = camera_screen.ids.camera_pre.parent
+        parent.remove_widget(camera_screen.ids.camera_pre)
+        new_cam = KvCam(fit_mode='contain', play=True)
+        camera_screen.ids.camera_pre = new_cam
+        parent.add_widget(new_cam, index=0)
 
 if __name__ == "__main__":
     Andromr().run()

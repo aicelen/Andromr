@@ -1,6 +1,6 @@
 from kivy.logger import Logger
 
-from jnius import JavaException, PythonJavaClass, autoclass, java_method  # pylint: disable=import-error # type: ignore
+from jnius import JavaException, PythonJavaClass, autoclass, java_method # pylint: disable=import-error # type: ignore
 
 Camera = autoclass("android.hardware.Camera")
 AndroidActivityInfo = autoclass("android.content.pm.ActivityInfo")
@@ -64,7 +64,7 @@ def take_picture(camera_widget, on_success, filename):
     camera = camera_widget._camera._android_camera
     params = camera.getParameters()
     params.setFocusMode("auto")
-    params.setJpegQuality(90)
+    params.setRotation(90)
     camera.setParameters(params)
     cb = AutoFocusCallback(filename, on_success)
     Logger.info("xcamera: starting autofocus...")
