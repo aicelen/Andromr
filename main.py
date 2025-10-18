@@ -350,6 +350,11 @@ class Andromr(MDApp):
         # update the scrollview on the landing page
         if screen_name == "landing":
             self.update_scrollview()
+        
+        if screen_name == "camera":
+            self.root.get_screen("camera").ids.camera_pre.play = True
+        else:
+            self.root.get_screen("camera").ids.camera_pre.play = False
 
     def update_scrollview(self):
         """Function that updates the scrollview on the landing page"""

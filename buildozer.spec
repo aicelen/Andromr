@@ -3,6 +3,10 @@
 # It largely follows the syntax of an .ini file.
 # See the end of the file for more details and warnings about common mistakes.
 
+# to modify templates go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\common\build\templates
+# to reduce apk size put:
+# ndk {abiFilters 'arm64-v8a'} 
+
 [app]
 
 # (str) Title of your application
@@ -34,7 +38,7 @@ source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build,
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.1
+version = 1.2
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -312,7 +316,7 @@ android.allow_backup = True
 # android.no-byte-compile-python = False
 
 # (str) The format used to package the app for release mode (aab or apk or aar).
-#android.release_artifact = apk
+android.release_artifact = apk
 
 # (str) The format used to package the app for debug mode (apk or aar).
 # android.debug_artifact = apk

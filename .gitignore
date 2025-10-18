@@ -25,6 +25,7 @@ test.py
 *.pt
 *.tflite
 *.png
+*.jpg
 *.pkl
 *Zone.Identifier
 *.musicxml

@@ -3,7 +3,7 @@
 
 Andromr is open-source software licensed under AGPL 3.0
 
-version: v1.1-beta
+version: v1.2-beta
 author: aicelen
 contact: andromr.official@gmail.com
 
