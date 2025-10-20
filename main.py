@@ -485,7 +485,13 @@ class Andromr(MDApp):
 
         self.dialog_export.dismiss()
 
-    def share_file(self, path):
+    def share_file(self, path: str):
+        """
+        Share a file from a file path using android share sheets.
+        Based on https://github.com/Android-for-Python/share_send_example/
+        Args:
+            path(str): path to file located in app storage.
+        """
         uri = SharedStorage().copy_to_shared(path)
         ShareSheet().share_file(uri)
         SharedStorage().delete_file(uri)
