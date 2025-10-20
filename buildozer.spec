@@ -46,7 +46,7 @@ version = 1.2
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, peak_finding_utils, pyjnius, android, music21, more_itertools, webcolors, jsonpickle, joblib, pykdtree, musicxml, requests, verysimpletree
+requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, peak_finding_utils, pyjnius, android, pykdtree, musicxml, requests, verysimpletree, androidstorage4kivy
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -107,7 +107,7 @@ fullscreen = 1
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, MANAGE_EXTERNAL_STORAGE, CAMERA, INTERNET
+android.permissions = WRITE_EXTERNAL_STORAGE, CAMERA, INTERNET
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = camera2

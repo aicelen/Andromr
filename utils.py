@@ -1,6 +1,4 @@
 from PIL import Image, ImageOps
-import os
-from music21 import converter, midi
 import numpy as np
 import cv2
 from kivy.utils import platform
@@ -70,33 +68,6 @@ def get_sys_theme():
     else:
         print("Getting the theme is only working on Android and Windows")
         return "Dark"
-
-
-def convert_musicxml_to_midi(input_file, output_file=None):
-    """
-    Convert a MusicXML file to MIDI format
-
-    Args:
-        input_file (str): Path to the input MusicXML file
-        output_file (str, optional): Path for the output MIDI file.
-                                   If None, uses input filename with .mid extension
-
-    Returns:
-        None
-    """
-    # Load the MusicXML file
-    score = converter.parse(input_file)
-
-    # Generate output filename if not provided
-    if output_file is None:
-        base_name = os.path.splitext(input_file)[0]
-        output_file = base_name + ".mid"
-
-    # Convert to MIDI and save
-    midi_file = midi.translate.music21ObjectToMidiFile(score)
-    midi_file.open(output_file, "wb")
-    midi_file.write()
-    midi_file.close()
 
 
 def crop_image_by_corners(path, points, output_path):

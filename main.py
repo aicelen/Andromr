@@ -39,12 +39,12 @@ from homr.main import download_weights, homr, check_for_missing_models
 from homr.benchmark import Benchmark
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
-from save_file import save_to_external_storage
-from utils import convert_musicxml_to_midi, crop_image_by_corners, get_sys_theme, downscale_cv2
+from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
 
 if platform == "android":
     from android_camera_api import take_picture
+    from androidstorage4kivy import SharedStorage, ShareSheet
     from jnius import autoclass  # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # type: ignore
 
@@ -393,7 +393,7 @@ class Andromr(MDApp):
 
             b_export = MDIconButton(
                 icon="export-variant",
-                on_release=lambda func: self.export_option(index),
+                on_release=lambda func: self.export_file(idx=index),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -468,7 +468,7 @@ class Andromr(MDApp):
 
 
     # Button click methods
-    def export_file(self, musicxml, idx):
+    def export_file(self, idx, btn=None):
         """
         Save a file to Android External Storage
         Args:
@@ -478,31 +478,17 @@ class Andromr(MDApp):
             Returns:
                 None
         """
-        if musicxml:
-            # export (.musicxml)
-            self.show_toast(
-                save_to_external_storage(
-                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
-                )
-            )
-
-        else:
-            # convert to .mid
-            if not os.path.exists(
-                f"{APP_PATH}/data/generated_midi/{self.files[idx]}.midi"
-            ):
-                convert_musicxml_to_midi(
-                    f"{APP_PATH}/data/generated_xmls/{self.files[idx]}.musicxml",
-                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid",
-                )
-            # export (.mid)
-            self.show_toast(
-                save_to_external_storage(
-                    f"{APP_PATH}/data/generated_midi/{self.files[idx]}.mid"
-                )
-            )
+        # export (.musicxml)
+        self.share_file(
+                f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
+        )
 
         self.dialog_export.dismiss()
+
+    def share_file(self, path):
+        uri = SharedStorage().copy_to_shared(path)
+        ShareSheet().share_file(uri)
+        SharedStorage().delete_file(uri)
 
     def confirm_delete(self, idx: int):
         """
@@ -522,29 +508,6 @@ class Andromr(MDApp):
             ],
         )
         self.dialog_delete.open()
-
-    def export_option(self, idx: int):
-        """
-        give option to export as .musicxml or .mid
-        Args:
-            idx(int): index of the element that we want to be deleted
-        """
-        self.dialog_export = MDDialog(
-            title="Export as",
-            text="",
-            buttons=[
-                MDFlatButton(
-                    text="musicxml",
-                    on_release=lambda func: self.export_file(
-                        True, idx
-                    ),  # prior: idx=idx
-                ),
-                MDFlatButton(
-                    text="midi", on_release=lambda func: self.export_file(False, idx)
-                ),
-            ],
-        )
-        self.dialog_export.open()
 
     def delete_element(self, index: int):
         """
