@@ -13,8 +13,10 @@ ScreenManager:
     name: "landing"
     BoxLayout:
         orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
+
         MDTopAppBar:
-            id: toolbar_settings
+            id: toolbar_landing
             title: "Home"
             elevation: 0
             type_height: 'small'
@@ -65,9 +67,9 @@ ScreenManager:
         id: img_taker
         icon: "circle-slice-8"
         size_hint_x: None
-        pos_hint: {'center_x': 0.5}
+        pos_hint: {'center_x': 0.5, 'center_y': 0.125}
         on_release: app.capture()
-        icon_size: "80dp"  
+        icon_size: "80dp"
 
 
 <EditImagePage>:
@@ -79,7 +81,7 @@ ScreenManager:
     MDBoxLayout:
         id: btn_box
         orientation: "horizontal"
-        padding: dp(10)
+        padding: [dp(10), dp(20), dp(10), dp(app.bottom_pad)]
         spacing: dp(10)
 
         MDRaisedButton:
@@ -151,8 +153,9 @@ ScreenManager:
     name: "progress"
     BoxLayout:
         orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         MDTopAppBar:
-            id: toolbar_settings
+            id: toolbar_progress
             title: "OMR"
             elevation: 0
             type_height: 'small'
@@ -211,6 +214,7 @@ ScreenManager:
     name: "settings"
     MDBoxLayout:
         orientation: "vertical"
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         MDTopAppBar:
             id: toolbar_settings
             title: "Settings"
@@ -271,9 +275,10 @@ ScreenManager:
 <DownloadPage>
     name: "downloadpage"
     BoxLayout:
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         orientation: 'vertical'
         MDTopAppBar:
-            id: toolbar_settings
+            id: toolbar_download
             title: "Download Assets"
             elevation: 0
             type_height: 'small'
@@ -301,10 +306,11 @@ ScreenManager:
 
 <OSSLicensePage>:
     name: 'osslicensepage'
+    padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
     BoxLayout:
         orientation: 'vertical'
         MDTopAppBar:
-            id: toolbar_settings
+            id: toolbar_osslicensepage
             title: "About"
             elevation: 0
             type_height: 'small'
@@ -325,8 +331,9 @@ ScreenManager:
     name: 'licensepage'
     BoxLayout:
         orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         MDTopAppBar:
-            id: toolbar_settings
+            id: toolbar_licensepage
             title: "License"
             elevation: 0
             type_height: 'small'
@@ -344,8 +351,8 @@ ScreenManager:
 <LicensePageButton>:
     name: 'licensepagebutton'
     BoxLayout:
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         orientation: 'vertical'
-        padding: dp(10)
         spacing: dp(10)        
         License:
             id: rv_tpb

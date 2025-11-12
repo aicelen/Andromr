@@ -279,6 +279,9 @@ class Andromr(MDApp):
         if platform == "win" or platform == 'linux':
             Window.size = (350, 680)
 
+        #self.bottom_pad = self.nav_bar_height_dp()
+        #print(self.bottom_pad)
+
         # load the file
         self.sm = Builder.load_file("main.kv")
 
@@ -330,11 +333,23 @@ class Andromr(MDApp):
         self.theme_cls.primary_palette = "LightGreen"
         self.theme_cls.theme_style = get_sys_theme()
         self.theme_cls.material_style = "M3"
+        self.bottom_pad = self.nav_bar_height_dp()
 
     def on_start(self):
         # Update Scrollview on start
         self.update_scrollview()
 
+    def nav_bar_height_dp(self, offset=0, default = 32) -> float:
+        """Return navigation-bar height in *dp*."""
+        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        activity = PythonActivity.mActivity
+        resources = activity.getResources()
+        res_id = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        if res_id > 0:
+            px = resources.getDimensionPixelSize(res_id)
+            density = resources.getDisplayMetrics().density
+            return (px / density) + offset
+        return dp(default)
 
     # UI methods
     def change_screen(self, screen_name, btn=None):
