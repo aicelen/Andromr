@@ -213,7 +213,7 @@ android.ndk = 25b
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = com.google.ai.edge.litert:litert:1.4.0, com.google.ai.edge.litert:litert-support:1.4.0, com.microsoft.onnxruntime:onnxruntime-android:1.22.0
+android.gradle_dependencies = com.google.ai.edge.litert:litert:1.4.1, com.google.ai.edge.litert:litert-support:1.4.1, com.microsoft.onnxruntime:onnxruntime-android:1.22.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
