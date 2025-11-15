@@ -279,9 +279,6 @@ class Andromr(MDApp):
         if platform == "win" or platform == 'linux':
             Window.size = (350, 680)
 
-        #self.bottom_pad = self.nav_bar_height_dp()
-        #print(self.bottom_pad)
-
         # load the file
         self.sm = Builder.load_file("main.kv")
 
@@ -340,7 +337,10 @@ class Andromr(MDApp):
         self.update_scrollview()
 
     def nav_bar_height_dp(self, offset=0, default = 32) -> float:
-        """Return navigation-bar height in *dp*."""
+        """
+        Return navigation-bar height in *dp*.
+        Otherwise the navigation bar might be overlapping with the buttons on the bottom
+        """
         PythonActivity = autoclass('org.kivy.android.PythonActivity')
         activity = PythonActivity.mActivity
         resources = activity.getResources()
