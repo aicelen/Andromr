@@ -329,7 +329,7 @@ class Andromr(MDApp):
         # widgets
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
         self.last_screen = deque(maxlen=10)
-        self.returnables = ["landing", "camera", "settings", "osslicensepage", "licensepage"]
+        self.returnables = ["landing", "camera", "settings", "osslicensepage", "licensepage", "image_page"]
 
         # themes
         self.theme_cls.primary_palette = "LightGreen"
@@ -373,7 +373,7 @@ class Andromr(MDApp):
         self.menu.dismiss()
 
         # record current screen
-        if screen_name in self.returnables:
+        if self.sm.current in self.returnables:
             self.last_screen.append(self.sm.current)
 
         # set new screen
@@ -390,7 +390,7 @@ class Andromr(MDApp):
 
     def previous_screen(self, btn=None):
         """Switch to the previous screen"""
-        if len (self.last_screen) != 0:
+        if len(self.last_screen) != 0 and self.sm.current in self.returnables:
             self.sm.current = self.last_screen.pop()
 
     def update_scrollview(self):
