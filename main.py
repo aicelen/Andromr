@@ -29,6 +29,8 @@ from threading import Thread
 import os
 from datetime import datetime
 from time import sleep
+from collections import deque
+
 
 # Package imports
 import numpy as np
@@ -303,6 +305,8 @@ class Andromr(MDApp):
         if not appdata.agreed:
             # show him the screen
             self.sm.current = "licensepagebutton"
+        
+        Window.bind(on_keyboard=self.on_custom_back)
 
         return self.sm
 
@@ -324,7 +328,8 @@ class Andromr(MDApp):
 
         # widgets
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
-
+        self.last_screen = deque(maxlen=10)
+        self.returnables = ["landing", "camera", "settings", "osslicensepage", "licensepage"]
 
         # themes
         self.theme_cls.primary_palette = "LightGreen"
@@ -351,6 +356,13 @@ class Andromr(MDApp):
             return (px / density) + offset
         return dp(default)
 
+    def on_custom_back(self, window, key, scancode, codepoint, modifiers):
+        if key == 27: # back gesture on android
+            self.previous_screen()
+            return True
+        return False
+
+
     # UI methods
     def change_screen(self, screen_name, btn=None):
         """
@@ -359,7 +371,12 @@ class Andromr(MDApp):
             screen_name(str): name of the screen you want to change to
         """
         self.menu.dismiss()
-        # set screen
+
+        # record current screen
+        if screen_name in self.returnables:
+            self.last_screen.append(self.sm.current)
+
+        # set new screen
         self.sm.current = screen_name
 
         # update the scrollview on the landing page
@@ -370,6 +387,11 @@ class Andromr(MDApp):
             self.root.get_screen("camera").ids.camera_pre.play = True
         else:
             self.root.get_screen("camera").ids.camera_pre.play = False
+
+    def previous_screen(self, btn=None):
+        """Switch to the previous screen"""
+        if len (self.last_screen) != 0:
+            self.sm.current = self.last_screen.pop()
 
     def update_scrollview(self):
         """Function that updates the scrollview on the landing page"""

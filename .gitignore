@@ -11,6 +11,7 @@ build/
 #tflite model folders
 /segnet_155/
 /cnn_encoder_188/
+/decoder_188/
 
 #pycache
 **/__pycache__/
@@ -22,6 +23,7 @@ test.py
 # file extensions
 *.pth
 *.onnx
+*.onnx.data
 *.pt
 *.tflite
 *.png
@@ -40,6 +42,7 @@ _warps_cy.c
 onnx_ser.txt
 test.py
 todo.md
+commands.txt
 
 # include
 !icon.png
