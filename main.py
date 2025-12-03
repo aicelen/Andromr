@@ -335,7 +335,11 @@ class Andromr(MDApp):
         self.theme_cls.primary_palette = "LightGreen"
         self.theme_cls.theme_style = get_sys_theme()
         self.theme_cls.material_style = "M3"
-        self.bottom_pad = self.nav_bar_height_dp()
+        if platform == 'android':
+            self.bottom_pad = self.nav_bar_height_dp()
+        
+        else:
+            self.bottom_pad = 0
 
     def on_start(self):
         # Update Scrollview on start
@@ -520,8 +524,6 @@ class Andromr(MDApp):
                 f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
         )
 
-        self.dialog_export.dismiss()
-
     def share_file(self, path: str):
         """
         Share a file from a file path using android share sheets.
@@ -531,7 +533,6 @@ class Andromr(MDApp):
         """
         uri = SharedStorage().copy_to_shared(path)
         ShareSheet().share_file(uri)
-        SharedStorage().delete_file(uri)
 
     def confirm_delete(self, idx: int):
         """
