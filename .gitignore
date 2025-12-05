@@ -12,6 +12,7 @@ build/
 /segnet_155/
 /cnn_encoder_188/
 /decoder_188/
+/transformer_encoder188/
 
 #pycache
 **/__pycache__/
