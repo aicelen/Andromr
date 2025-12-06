@@ -37,7 +37,6 @@ from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
 from homr.staff_parsing import parse_staffs
 from homr.staff_position_save_load import load_staff_positions, save_staff_positions
-from homr.title_detection import detect_title, download_ocr_weights
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 
@@ -157,20 +156,16 @@ def process_image(
             multi_staffs = load_staff_positions(
                 debug, image, staff_position_files, config.selected_staff
             )
-            title = ""
         else:
-            multi_staffs, image, debug, title_future = detect_staffs_in_image(image_path, config)
+            multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
         result_staffs = parse_staffs(
             debug, multi_staffs, image, selected_staff=config.selected_staff
         )
 
-        title = title_future.result(60)
-        eprint("Found title:", title)
-
         eprint("Writing XML", result_staffs)
-        xml = generate_xml(xml_generator_args, result_staffs, title)
+        xml = generate_xml(xml_generator_args, result_staffs, "") # "" for the empty title
         xml.write(xml_file)
 
         eprint("Finished parsing " + str(len(result_staffs)) + " staves")
@@ -193,7 +188,7 @@ def process_image(
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
-) -> tuple[list[MultiStaff], NDArray, Debug, Future[str]]:
+) -> tuple[list[MultiStaff], NDArray, Debug]:
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache
     )
@@ -234,7 +229,6 @@ def detect_staffs_in_image(
     )
     if len(staffs) == 0:
         raise Exception("No staffs found")
-    title_future = detect_title(debug, staffs[0])
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
 
     brace_dot_img = prepare_brace_dot_image(predictions.symbols, predictions.staff)
@@ -255,7 +249,7 @@ def detect_staffs_in_image(
 
     debug.write_all_bounding_boxes_alternating_colors("notes", multi_staffs, notes)
 
-    return multi_staffs, predictions.preprocessed, debug, title_future
+    return multi_staffs, predictions.preprocessed, debug
 
 
 def get_all_image_files_in_folder(folder: str) -> list[str]:
