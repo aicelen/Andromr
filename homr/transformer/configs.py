@@ -2,29 +2,29 @@ import json
 import os
 from typing import Any
 
+from homr.transformer.vocabulary import Vocabulary
+
 workspace = os.path.join(os.path.dirname(__file__))
 root_dir = os.getcwd()
 
 
 class FilePaths:
     def __init__(self) -> None:
-        self.encoder_cnn_path_tflite = os.path.join(
-            workspace, "cnn_encoder_188_wi_8_afp32.tflite"
-        )  # noqa: E501
-        self.encoder_transformer_path = os.path.join(
+        model_name = "pytorch_model_236-922ad08f8895f6d9c0ae61954cd78a021ff950a7"
+        self.encoder_path = os.path.join(
             workspace,
-            "transformer_encoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx",
+            f"encoder_{model_name}_kv.onnx",
         )  # noqa: E501
         self.decoder_path = os.path.join(
             workspace,
-            "decoder_pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.onnx",
+            f"decoder_{model_name}_kv.onnx",
         )  # noqa: E501
         self.checkpoint = os.path.join(
             root_dir,
             "training",
             "architecture",
             "transformer",
-            "pytorch_model_188-4915073f892f6ab199844b1bff0c968cdf8be03e.pth",
+            f"{model_name}.pth",
         )
 
         self.rhythmtokenizer = os.path.join(workspace, "tokenizer_rhythm.json")
@@ -68,22 +68,25 @@ class DecoderArgs:
 
 class Config:
     def __init__(self) -> None:
+        self.vocab = Vocabulary()
         self.filepaths = FilePaths()
         self.channels = 1
         self.patch_size = 16
-        self.max_height = 128
+        self.max_height = 256
         self.max_width = 1280
-        self.max_seq_len = 256
+        self.max_seq_len = 608
         self.pad_token = 0
         self.bos_token = 1
         self.eos_token = 2
         self.nonote_token = 0
-        self.num_rhythm_tokens = 93
-        self.num_note_tokens = 2
-        self.num_pitch_tokens = 71
-        self.num_lift_tokens = 5
+        self.num_rhythm_tokens = len(self.vocab.rhythm)
+        self.num_pitch_tokens = len(self.vocab.pitch)
+        self.num_lift_tokens = len(self.vocab.lift)
+        self.num_articulation_tokens = len(self.vocab.articulation)
+        self.num_position_tokens = len(self.vocab.position)
+        self.num_state_tokens = len(self.vocab.state)
         self.encoder_structure = "hybrid"
-        self.encoder_depth = 6
+        self.encoder_depth = 8
         self.backbone_layers = [3, 4, 6, 3]
         self.encoder_dim = 312
         self.encoder_heads = 8
@@ -92,29 +95,12 @@ class Config:
         self.decoder_heads = 8
         self.temperature = 0.01
         self.decoder_args = DecoderArgs()
-        self.lift_vocab = json.load(open(self.filepaths.lifttokenizer))["model"][
-            "vocab"
-        ]
-        self.pitch_vocab = json.load(open(self.filepaths.pitchtokenizer))["model"][
-            "vocab"
-        ]
-        self.note_vocab = json.load(open(self.filepaths.notetokenizer))["model"][
-            "vocab"
-        ]
-        self.rhythm_vocab = json.load(open(self.filepaths.rhythmtokenizer))["model"][
-            "vocab"
-        ]
-        self.noteindexes = self._get_values_of_keys_starting_with("note-")
-        self.restindexes = self._get_values_of_keys_starting_with(
-            "rest-"
-        ) + self._get_values_of_keys_starting_with("multirest-")
-        self.chordindex = self.rhythm_vocab["|"]
-        self.barlineindex = self.rhythm_vocab["barline"]
-
-    def _get_values_of_keys_starting_with(self, prefix: str) -> list[int]:
-        return [
-            value for key, value in self.rhythm_vocab.items() if key.startswith(prefix)
-        ]
+        self.lift_vocab = self.vocab.lift
+        self.pitch_vocab = self.vocab.pitch
+        self.rhythm_vocab = self.vocab.rhythm
+        self.articulation_vocab = self.vocab.articulation
+        self.position_vocab = self.vocab.position
+        self.state_vocab = self.vocab.state
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -128,7 +114,6 @@ class Config:
             "bos_token": self.bos_token,
             "eos_token": self.eos_token,
             "nonote_token": self.nonote_token,
-            "noteindexes": self.noteindexes,
             "encoder_structure": self.encoder_structure,
             "encoder_depth": self.encoder_depth,
             "backbone_layers": self.backbone_layers,

@@ -2,14 +2,13 @@ import math
 
 import cv2
 import numpy as np
+import scipy
 
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
 
-def get_dominant_color(
-    gray_scale: NDArray, color_range: range, default: int | None = None
-) -> int:
+def get_dominant_color(gray_scale: NDArray, color_range: range, default: int | None = None) -> int:
     if gray_scale.dtype != np.uint8:
         raise Exception("Wrong image dtype")
 
@@ -22,13 +21,9 @@ def get_dominant_color(
         return 0 if default is None else default
 
     bins = np.bincount(masked_gray_scale.flatten())
-    center_of_mass = center_of_mass_np(bins)
+    center_of_mass = scipy.ndimage.measurements.center_of_mass(bins)[0]
+
     return int(center_of_mass)
-
-
-def center_of_mass_np(arr: NDArray):
-    positions = np.arange(len(arr))
-    return np.sum(positions * arr) / np.sum(arr)
 
 
 def apply_clahe(channel: NDArray) -> NDArray:
@@ -36,9 +31,7 @@ def apply_clahe(channel: NDArray) -> NDArray:
     return clahe.apply(channel)
 
 
-def remove_background_from_channel(
-    channel: NDArray, block_size: int
-) -> tuple[NDArray, NDArray]:
+def remove_background_from_channel(channel: NDArray, block_size: int) -> tuple[NDArray, NDArray]:
     """
     Divides the image into blocks of size block_size and calculates
     the dominant color of each block. The dominant color is then
@@ -48,8 +41,7 @@ def remove_background_from_channel(
     x_range = range(0, channel.shape[0], block_size)
     y_range = range(0, channel.shape[1], block_size)
     background_pixels = np.zeros(
-        [math.ceil(x_range.stop / block_size), math.ceil(y_range.stop / block_size)],
-        dtype=np.uint8,
+        [math.ceil(x_range.stop / block_size), math.ceil(y_range.stop / block_size)], dtype=np.uint8
     )
     color_range = range(150, 254)
     background = get_dominant_color(channel, color_range)
@@ -66,9 +58,7 @@ def remove_background_from_channel(
     max_background = int(np.max(background_blurred[valid_background]))
     background_blurred[valid_background] += color_white - max_background  # type: ignore
     result_background = cv2.resize(
-        background_blurred,
-        (channel.shape[1], channel.shape[0]),
-        interpolation=cv2.INTER_LINEAR,
+        background_blurred, (channel.shape[1], channel.shape[0]), interpolation=cv2.INTER_LINEAR
     )
     division = cv2.divide(channel, result_background, scale=color_white)
 

@@ -4,49 +4,9 @@ from collections.abc import Sequence
 from itertools import chain
 
 import cv2
-import numpy as np
 
 from homr.bounding_boxes import DebugDrawable
 from homr.type_definitions import NDArray
-
-
-class AttentionDebug:
-    def __init__(self, filename: str, image: NDArray, parent: "Debug") -> None:
-        self.image = image
-        self.destname = filename
-        self.attentions: list[NDArray] = []
-        self.parent = parent
-
-    def add_attention(self, attention: NDArray, center: tuple[float, float]) -> None:
-        attention_resized = cv2.resize(
-            attention, (self.image.shape[1], self.image.shape[0])
-        )
-        # Apply a colormap to the attention weights
-        attention_colormap = cv2.applyColorMap(  # type: ignore
-            np.uint8(255.0 * attention_resized / attention_resized.max()),
-            cv2.COLORMAP_JET,
-        )
-        overlay = cv2.addWeighted(self.image, 0.6, attention_colormap, 0.4, 0)
-
-        # Draw the center of attention
-        center_coordinates = (int(center[1]), int(center[0]))
-        radius = 20
-        color = (0, 255, 0)
-        thickness = 2
-        cv2.circle(overlay, center_coordinates, radius, color, thickness)
-
-        self.attentions.append(overlay)
-
-    def reset(self) -> None:
-        self.attentions = []
-
-    def write(self) -> None:
-        if not self.attentions:
-            return
-        attention = cv2.vconcat(self.attentions)
-        self.parent._remember_file_name(self.destname)
-        cv2.imwrite(self.destname, attention)
-        self.attentions = []
 
 
 class Debug:
@@ -55,9 +15,7 @@ class Debug:
         self.original_image = original_image
         filename = filename.replace("\\", "/")
         self.dir_name = os.path.dirname(filename)
-        self.base_filename = os.path.join(
-            self.dir_name, filename.split("/")[-1].split(".")[0]
-        )
+        self.base_filename = os.path.join(self.dir_name, filename.split("/")[-1].split(".")[0])
         self.debug = debug
         self.colors = [
             (0, 255, 0),
@@ -87,9 +45,7 @@ class Debug:
 
     def _debug_file_name(self, suffix: str) -> str:
         self.debug_output_counter += 1
-        return (
-            f"{self.base_filename}_debug_{str(self.debug_output_counter)}_{suffix}.png"
-        )
+        return f"{self.base_filename}_debug_{str(self.debug_output_counter)}_{suffix}.png"
 
     def write_threshold_image(self, suffix: str, image: NDArray) -> None:
         if not self.debug:
@@ -101,9 +57,7 @@ class Debug:
     def _remember_file_name(self, filename: str) -> None:
         self.written_files.append(filename)
 
-    def write_bounding_boxes(
-        self, suffix: str, bounding_boxes: Sequence[DebugDrawable]
-    ) -> None:
+    def write_bounding_boxes(self, suffix: str, bounding_boxes: Sequence[DebugDrawable]) -> None:
         if not self.debug:
             return
         img = self.original_image.copy()
@@ -130,9 +84,7 @@ class Debug:
     def write_all_bounding_boxes_alternating_colors(
         self, suffix: str, *boxes: Sequence[DebugDrawable]
     ) -> None:
-        self.write_bounding_boxes_alternating_colors(
-            suffix, list(chain.from_iterable(boxes))
-        )
+        self.write_bounding_boxes_alternating_colors(suffix, list(chain.from_iterable(boxes)))
 
     def write_bounding_boxes_alternating_colors(
         self, suffix: str, bounding_boxes: Sequence[DebugDrawable]
@@ -141,9 +93,7 @@ class Debug:
             return
         self.write_teaser(self._debug_file_name(suffix), bounding_boxes)
 
-    def write_teaser(
-        self, filename: str, bounding_boxes: Sequence[DebugDrawable]
-    ) -> None:
+    def write_teaser(self, filename: str, bounding_boxes: Sequence[DebugDrawable]) -> None:
         img = self.original_image.copy()
         for i, box in enumerate(bounding_boxes):
             color = self.colors[i % len(self.colors)]
@@ -163,12 +113,3 @@ class Debug:
             self._remember_file_name(filename)
         cv2.imwrite(filename, staff_image)
         return filename
-
-    def build_attention_debug(
-        self, image: NDArray, suffix: str
-    ) -> AttentionDebug | None:
-        if not self.debug:
-            return None
-        filename = self.base_filename + suffix
-        self._remember_file_name(filename)
-        return AttentionDebug(filename, image, self)

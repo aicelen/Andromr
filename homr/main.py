@@ -1,17 +1,16 @@
+import argparse
 import glob
 import os
+import sys
+from concurrent.futures import Future
 from dataclasses import dataclass
-from time import perf_counter
 
 import cv2
 import numpy as np
 
 from homr import color_adjust, download_utils
-from homr.accidental_detection import add_accidentals_to_staffs
-from homr.accidental_rules import maintain_accidentals
 from homr.autocrop import autocrop
 from homr.bar_line_detection import (
-    add_bar_lines_to_staffs,
     detect_bar_lines,
     prepare_bar_line_image,
 )
@@ -27,23 +26,21 @@ from homr.brace_dot_detection import (
 )
 from homr.debug import Debug
 from homr.model import InputPredictions, MultiStaff
+from homr.music_xml_generator import XmlGeneratorArguments, generate_xml
 from homr.noise_filtering import filter_predictions
 from homr.note_detection import add_notes_to_staffs, combine_noteheads_with_stems
 from homr.resize import resize_image
-from homr.rest_detection import add_rests_to_staffs
-from homr.results import ResultStaff
-from homr.rhythm_rules import correct_rhythm
-from homr.segmentation.config import segnet_path_tflite
+from homr.segmentation.config import segnet_path_onnx
 from homr.segmentation.inference_segnet import extract
 from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
 from homr.staff_parsing import parse_staffs
-from homr.staff_position_save_load import save_staff_positions
+from homr.staff_position_save_load import load_staff_positions, save_staff_positions
+from homr.title_detection import detect_title, download_ocr_weights
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
-from homr.xml_generator import XmlGeneratorArguments, generate_xml
 
-from globals import appdata
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 class PredictedSymbols:
@@ -52,14 +49,12 @@ class PredictedSymbols:
         noteheads: list[BoundingEllipse],
         staff_fragments: list[RotatedBoundingBox],
         clefs_keys: list[RotatedBoundingBox],
-        accidentals: list[RotatedBoundingBox],
         stems_rest: list[RotatedBoundingBox],
         bar_lines: list[RotatedBoundingBox],
     ) -> None:
         self.noteheads = noteheads
         self.staff_fragments = staff_fragments
         self.clefs_keys = clefs_keys
-        self.accidentals = accidentals
         self.stems_rest = stems_rest
         self.bar_lines = bar_lines
 
@@ -68,12 +63,8 @@ def get_predictions(
     original: NDArray, preprocessed: NDArray, img_path: str, enable_cache: bool
 ) -> InputPredictions:
     result = extract(preprocessed, img_path, step_size=320, use_cache=enable_cache)
-    original_image = cv2.resize(
-        original, (result.staff.shape[1], result.staff.shape[0])
-    )
-    preprocessed_image = cv2.resize(
-        preprocessed, (result.staff.shape[1], result.staff.shape[0])
-    )
+    original_image = cv2.resize(original, (result.staff.shape[1], result.staff.shape[0]))
+    preprocessed_image = cv2.resize(preprocessed, (result.staff.shape[1], result.staff.shape[0]))
     return InputPredictions(
         original=original_image,
         preprocessed=preprocessed_image,
@@ -125,22 +116,14 @@ def predict_symbols(debug: Debug, predictions: InputPredictions) -> PredictedSym
     clefs_keys = create_rotated_bounding_boxes(
         predictions.clefs_keys, min_size=(20, 40), max_size=(1000, 1000)
     )
-    eprint("Creating bounds for accidentals")
-    accidentals = create_rotated_bounding_boxes(
-        predictions.clefs_keys, min_size=(5, 5), max_size=(100, 100)
-    )
     eprint("Creating bounds for stems_rest")
     stems_rest = create_rotated_bounding_boxes(predictions.stems_rest)
     eprint("Creating bounds for bar_lines")
     bar_line_img = prepare_bar_line_image(predictions.stems_rest)
     debug.write_threshold_image("bar_line_img", bar_line_img)
-    bar_lines = create_rotated_bounding_boxes(
-        bar_line_img, skip_merging=True, min_size=(1, 5)
-    )
+    bar_lines = create_rotated_bounding_boxes(bar_line_img, skip_merging=True, min_size=(1, 5))
 
-    return PredictedSymbols(
-        noteheads, staff_fragments, clefs_keys, accidentals, stems_rest, bar_lines
-    )
+    return PredictedSymbols(noteheads, staff_fragments, clefs_keys, stems_rest, bar_lines)
 
 
 @dataclass
@@ -152,43 +135,42 @@ class ProcessingConfig:
     selected_staff: int
 
 
-def process_image(  # noqa: PLR0915
+def process_image(
     image_path: str,
     config: ProcessingConfig,
     xml_generator_args: XmlGeneratorArguments,
-) -> list[ResultStaff]:
+) -> None:
     eprint("Processing " + image_path)
     xml_file = replace_extension(image_path, ".musicxml")
     debug_cleanup: Debug | None = None
     try:
-        multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
+        if config.read_staff_positions:
+            image = cv2.imread(image_path)
+            if image is None:
+                raise ValueError("Failed to read " + image_path)
+            image = resize_image(image)
+            debug = Debug(image, image_path, config.enable_debug)
+            staff_position_files = replace_extension(image_path, ".txt")
+            multi_staffs = load_staff_positions(
+                debug, image, staff_position_files, config.selected_staff
+            )
+            title = ""
+        else:
+            multi_staffs, image, debug, title_future = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
-
-        print("Starting parsing staffs")
-
-        appdata.homr_state = "Transforming"
-        appdata.homr_progress = 1
 
         result_staffs = parse_staffs(
             debug, multi_staffs, image, selected_staff=config.selected_staff
         )
 
-        print("Completed parsing staffs")
+        title = title_future.result(60)
+        eprint("Found title:", title)
 
-        result_staffs = maintain_accidentals(result_staffs)
-        result_staffs = correct_rhythm(result_staffs)
-
-        eprint("Writing XML")
-        xml = generate_xml(xml_generator_args, result_staffs, title="")
+        eprint("Writing XML", result_staffs)
+        xml = generate_xml(xml_generator_args, result_staffs, title)
         xml.write(xml_file)
 
-        eprint(
-            "Finished parsing "
-            + str(len(result_staffs))
-            + " voices over "
-            + str(sum(staff.number_of_new_lines() for staff in result_staffs))
-            + " staves"
-        )
+        eprint("Finished parsing " + str(len(result_staffs)) + " staves")
         teaser_file = replace_extension(image_path, "_teaser.png")
         if config.write_staff_positions:
             staff_position_files = replace_extension(image_path, ".txt")
@@ -197,8 +179,6 @@ def process_image(  # noqa: PLR0915
         debug.clean_debug_files_from_previous_runs()
 
         eprint("Result was written to", xml_file)
-
-        return xml_file
     except:
         if os.path.exists(xml_file):
             os.remove(xml_file)
@@ -210,31 +190,21 @@ def process_image(  # noqa: PLR0915
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
-) -> tuple[list[MultiStaff], NDArray, Debug]:
-    appdata.homr_state = "Segementing"
-    appdata.homr_progress = 1
+) -> tuple[list[MultiStaff], NDArray, Debug, Future[str]]:
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache
     )
-    appdata.homr_state = "Extracting"
-    appdata.homr_progress = 1
     symbols = predict_symbols(debug, predictions)
 
     symbols.staff_fragments = break_wide_fragments(symbols.staff_fragments)
     debug.write_bounding_boxes("staff_fragments", symbols.staff_fragments)
     eprint("Found " + str(len(symbols.staff_fragments)) + " staff line fragments")
 
-    noteheads_with_stems, likely_bar_or_rests_lines = combine_noteheads_with_stems(
-        symbols.noteheads, symbols.stems_rest
-    )
-    debug.write_bounding_boxes_alternating_colors(
-        "notehead_with_stems", noteheads_with_stems
-    )
+    noteheads_with_stems = combine_noteheads_with_stems(symbols.noteheads, symbols.stems_rest)
+    debug.write_bounding_boxes_alternating_colors("notehead_with_stems", noteheads_with_stems)
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
-
-    appdata.homr_progress = 7
 
     average_note_head_height = float(
         np.median([notehead.notehead.size[1] for notehead in noteheads_with_stems])
@@ -256,50 +226,21 @@ def detect_staffs_in_image(
     debug.write_bounding_boxes(
         "anchor_input", symbols.staff_fragments + bar_line_boxes + symbols.clefs_keys
     )
-
-    appdata.homr_progress = 10
-
     staffs = detect_staff(
-        debug,
-        predictions.staff,
-        symbols.staff_fragments,
-        symbols.clefs_keys,
-        bar_line_boxes,
+        debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
     )
-    appdata.homr_progress = 90
     if len(staffs) == 0:
         raise Exception("No staffs found")
+    title_future = detect_title(debug, staffs[0])
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
 
-    global_unit_size = np.mean([staff.average_unit_size for staff in staffs])
-
-    bar_lines_found = add_bar_lines_to_staffs(staffs, bar_line_boxes)
-    eprint("Found " + str(len(bar_lines_found)) + " bar lines")
-
-    possible_rests = [
-        rest
-        for rest in bar_lines_or_rests
-        if not rest.is_overlapping_with_any(bar_line_boxes)
-    ]
-    rests = add_rests_to_staffs(staffs, possible_rests)
-    eprint("Found", len(rests), "rests")
-
-    all_classified = (
-        predictions.notehead + predictions.clefs_keys + predictions.stems_rest
-    )
-    brace_dot_img = prepare_brace_dot_image(
-        predictions.symbols, predictions.staff, all_classified, global_unit_size
-    )
+    brace_dot_img = prepare_brace_dot_image(predictions.symbols, predictions.staff)
     debug.write_threshold_image("brace_dot", brace_dot_img)
-    brace_dot = create_rotated_bounding_boxes(
-        brace_dot_img, skip_merging=True, max_size=(100, -1)
-    )
+    brace_dot = create_rotated_bounding_boxes(brace_dot_img, skip_merging=True, max_size=(100, -1))
 
     notes = add_notes_to_staffs(
         staffs, noteheads_with_stems, predictions.symbols, predictions.notehead
     )
-    accidentals = add_accidentals_to_staffs(staffs, symbols.accidentals)
-    eprint("Found", len(accidentals), "accidentals")
 
     multi_staffs = find_braces_brackets_and_grand_staff_lines(debug, staffs, brace_dot)
     eprint(
@@ -309,19 +250,15 @@ def detect_staffs_in_image(
         [len(staff.staffs) for staff in multi_staffs],
     )
 
-    debug.write_all_bounding_boxes_alternating_colors(
-        "notes", multi_staffs, notes, rests, accidentals
-    )
-    appdata.homr_progress = 100
-    return multi_staffs, predictions.preprocessed, debug
+    debug.write_all_bounding_boxes_alternating_colors("notes", multi_staffs, notes)
+
+    return multi_staffs, predictions.preprocessed, debug, title_future
 
 
 def get_all_image_files_in_folder(folder: str) -> list[str]:
     image_files = []
     for ext in ["png", "jpg", "jpeg", "PNG", "JPG", "JPEG"]:
-        image_files.extend(
-            glob.glob(os.path.join(folder, "**", f"*.{ext}"), recursive=True)
-        )
+        image_files.extend(glob.glob(os.path.join(folder, "**", f"*.{ext}"), recursive=True))
     without_teasers = [
         img
         for img in image_files
@@ -334,54 +271,112 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
 
 
 def download_weights() -> None:
-    base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
-    missing_models = check_for_missing_models()
+    base_url = "https://github.com/liebharc/homr/releases/download/onnx_checkpoints/"
+    models = [
+        segnet_path_onnx,
+        default_config.filepaths.encoder_path,
+        default_config.filepaths.decoder_path,
+    ]
+    missing_models = [model for model in models if not os.path.exists(model)]
+
     if len(missing_models) == 0:
         return
 
     eprint("Downloading", len(missing_models), "models - this is only required once")
-    for idx, model in enumerate(missing_models):
-        base_name = os.path.basename(model).split(".")[0]
-        eprint(f"Downloading {base_name}")
-        try:
-            zip_name = base_name + ".zip"
-            download_url = base_url + zip_name
-            downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
-            download_utils.download_file(download_url, downloaded_zip)
+    for model in missing_models:
+        if not os.path.exists(model):
+            base_name = os.path.basename(model).split(".")[0]
+            eprint(f"Downloading {base_name}")
+            try:
+                zip_name = base_name + ".zip"
+                download_url = base_url + zip_name
+                downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
+                download_utils.download_file(download_url, downloaded_zip)
 
-            destination_dir = os.path.dirname(model)
-            download_utils.unzip_file(downloaded_zip, destination_dir)
-        finally:
-            if os.path.exists(downloaded_zip):
-                os.remove(downloaded_zip)
-
-        appdata.downloaded_assets = f"{idx + 1}/{len(missing_models)}"
-
-    appdata.download_running = False
+                destination_dir = os.path.dirname(model)
+                download_utils.unzip_file(downloaded_zip, destination_dir)
+            finally:
+                if os.path.exists(downloaded_zip):
+                    os.remove(downloaded_zip)
 
 
-def check_for_missing_models() -> list:
-    """
-    Checks for missing models and returns a list with all the links to the missing models.
-    """
-    models = [
-        segnet_path_tflite,
-        default_config.filepaths.encoder_cnn_path_tflite,
-        default_config.filepaths.encoder_transformer_path,
-        default_config.filepaths.decoder_path,
-    ]
-    missing_models = [model for model in models if not os.path.exists(model)]
-    return missing_models
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="homer", description="An optical music recognition (OMR) system"
+    )
+    parser.add_argument("image", type=str, nargs="?", help="Path to the image to process")
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        help="Downloads the models if they are missing and then exits. "
+        + "You don't have to call init before processing images, "
+        + "it's only useful if you want to prepare for example a Docker image.",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument(
+        "--cache", action="store_true", help="Read an existing cache file or create a new one"
+    )
+    parser.add_argument(
+        "--output-large-page",
+        action="store_true",
+        help="Adds instructions to the musicxml so that it gets rendered on larger pages",
+    )
+    parser.add_argument(
+        "--output-metronome", type=int, help="Adds a metronome to the musicxml with the given bpm"
+    )
+    parser.add_argument(
+        "--output-tempo", type=int, help="Adds a tempo to the musicxml with the given bpm"
+    )
+    parser.add_argument(
+        "--write-staff-positions",
+        action="store_true",
+        help="Writes the position of all detected staffs to a txt file.",
+    )
+    parser.add_argument(
+        "--read-staff-positions",
+        action="store_true",
+        help="Reads the position of all staffs from a txt file instead"
+        + " of running the built-in staff detection.",
+    )
+    args = parser.parse_args()
 
+    download_weights()
+    if args.init:
+        download_ocr_weights()
+        eprint("Init finished")
+        return
 
-def homr(path, cache=False):
-    t0 = perf_counter()
-    config = ProcessingConfig(False, False, False, False, -1)
-    xml_generator_args = XmlGeneratorArguments(False, False, False)
-    out_path = process_image(path, config, xml_generator_args)
-    eprint(f"Homr took {perf_counter() - t0} seconds.")
-    return out_path
+    config = ProcessingConfig(
+        args.debug, args.cache, args.write_staff_positions, args.read_staff_positions, -1
+    )
+
+    xml_generator_args = XmlGeneratorArguments(
+        args.output_large_page, args.output_metronome, args.output_tempo
+    )
+
+    if not args.image:
+        eprint("No image provided")
+        parser.print_help()
+        sys.exit(1)
+    elif os.path.isfile(args.image):
+        process_image(args.image, config, xml_generator_args)
+    elif os.path.isdir(args.image):
+        image_files = get_all_image_files_in_folder(args.image)
+        eprint("Processing", len(image_files), "files:", image_files)
+        error_files = []
+        for image_file in image_files:
+            eprint("=========================================")
+            try:
+                process_image(image_file, config, xml_generator_args)
+                eprint("Finished", image_file)
+            except Exception as e:
+                eprint(f"An error occurred while processing {image_file}: {e}")
+                error_files.append(image_file)
+        if len(error_files) > 0:
+            eprint("Errors occurred while processing the following files:", error_files)
+    else:
+        raise ValueError(f"{args.image} is not a valid file or directory")
 
 
 if __name__ == "__main__":
-    homr("test_img.png", cache=False)
+    main()

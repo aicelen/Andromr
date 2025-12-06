@@ -1,9 +1,10 @@
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import Any
 
 import cv2
+import cv2.typing as cvt
 import numpy as np
 
 from homr import constants
@@ -11,23 +12,10 @@ from homr.image_utils import crop_image
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
-TBounds = TypeVar("TBounds", bound="RotatedBoundingBox | BoundingBox | BoundingEllipse")
-
-
-def rotate_point_around_center(
-    point: tuple[float, float], center: tuple[float, float], angle: float
-) -> tuple[float, float]:
-    return (
-        point[0] * np.cos(angle) - point[1] * np.sin(angle) + center[0],
-        point[0] * np.sin(angle) + point[1] * np.cos(angle) + center[1],
-    )
-
 
 def calculate_edges_of_rotated_rectangle(
-    box,
-) -> tuple[
-    tuple[float, float], tuple[float, float], tuple[float, float], tuple[float, float]
-]:
+    box: cvt.RotatedRect,
+) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float], tuple[float, float]]:
     half_size = np.array([box[1][0] / 2, box[1][1] / 2])
     center = box[0]
     top_left = center - half_size
@@ -42,7 +30,7 @@ def calculate_edges_of_rotated_rectangle(
     )
 
 
-def do_polygons_overlap(poly1, poly2) -> bool:
+def do_polygons_overlap(poly1: cvt.MatLike, poly2: cvt.MatLike) -> bool:
     # Check if any point of one ellipse is inside the other ellipse
     for point in poly1:
         if cv2.pointPolygonTest(poly2, (float(point[0]), float(point[1])), False) >= 0:  # type: ignore
@@ -56,9 +44,7 @@ def do_polygons_overlap(poly1, poly2) -> bool:
 
 class DebugDrawable(ABC):
     @abstractmethod
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
         pass
 
 
@@ -72,7 +58,7 @@ class BoundingBox(AnyPolygon):
     A bounding box in the format of (x1, y1, x2, y2)
     """
 
-    def __init__(self, box, contours, debug_id: int = 0):
+    def __init__(self, box: cvt.Rect, contours: cvt.MatLike, debug_id: int = 0):
         self.debug_id = debug_id
         self.contours = contours
         self.box = box
@@ -82,9 +68,7 @@ class BoundingBox(AnyPolygon):
         self.size = (box[2] - box[0], box[3] - box[1])
         super().__init__(cv2.boxPoints(self.rotated_box).astype(np.int64))
 
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
         cv2.rectangle(
             img,
             (int(self.box[0]), int(self.box[1])),
@@ -94,9 +78,7 @@ class BoundingBox(AnyPolygon):
         )
 
     def extract(self, img: NDArray) -> NDArray:
-        return crop_image(
-            img, self.box[0], self.box[1], self.box[2] + 1, self.box[3] + 1
-        )
+        return crop_image(img, self.box[0], self.box[1], self.box[2] + 1, self.box[3] + 1)
 
     def blank_everything_outside_of_box(self, img: NDArray) -> NDArray:
         x1, y1, x2, y2 = self.box
@@ -104,18 +86,6 @@ class BoundingBox(AnyPolygon):
         white_background = np.full_like(img, 255, dtype=np.uint8)
         white_background[y1:y2, x1:x2] = img[y1:y2, x1:x2]
         return white_background
-
-    def increase_height(self, y_top: int, y_bottom: int) -> "BoundingBox":
-        return BoundingBox(
-            (
-                self.box[0],
-                min(self.box[1], int(y_top)),
-                self.box[2],
-                max(self.box[1], int(y_bottom)),
-            ),
-            self.contours,
-            self.debug_id,
-        )
 
     def increase_size_in_each_dimension(
         self, increase: int, image_size: tuple[int, ...]
@@ -131,80 +101,26 @@ class BoundingBox(AnyPolygon):
             self.debug_id,
         )
 
-    def get_overlapping_area_size(self, other: "BoundingBox") -> float:
-        x1_min, y1_min, x1_max, y1_max = self.box
-        x2_min, y2_min, x2_max, y2_max = other.box
-
-        inter_x_min = max(x1_min, x2_min)
-        inter_y_min = max(y1_min, y2_min)
-        inter_x_max = min(x1_max, x2_max)
-        inter_y_max = min(y1_max, y2_max)
-
-        inter_width = max(0, inter_x_max - inter_x_min)
-        inter_height = max(0, inter_y_max - inter_y_min)
-        overlap_area = inter_width * inter_height
-
-        return overlap_area
-
-    def increase_width(self, x_left: int, x_right: int) -> "BoundingBox":
-        return BoundingBox(
-            (
-                min(self.box[0], int(x_left)),
-                self.box[1],
-                max(self.box[0], int(x_right)),
-                self.box[3],
-            ),
-            self.contours,
-            self.debug_id,
-        )
-
-    def split_into_quadrants(self) -> list["BoundingBox"]:
-        """
-        Splits the bounding box into four equally sized quadrants.
-        It returns them in the order: top left, top right, bottom left, bottom right
-        """
-        x_center = int(self.box[0] + self.size[0] / 2)
-        y_center = int(self.box[1] + self.size[1] / 2)
-        return [
-            BoundingBox(
-                (self.box[0], self.box[1], x_center, y_center),
-                self.contours,
-                self.debug_id,
-            ),
-            BoundingBox(
-                (x_center, self.box[1], self.box[2], y_center),
-                self.contours,
-                self.debug_id,
-            ),
-            BoundingBox(
-                (self.box[0], y_center, x_center, self.box[3]),
-                self.contours,
-                self.debug_id,
-            ),
-            BoundingBox(
-                (x_center, y_center, self.box[2], self.box[3]),
-                self.contours,
-                self.debug_id,
-            ),
-        ]
-
 
 class AngledBoundingBox(AnyPolygon):
-    def __init__(self, box, contours, polygon: Any, debug_id: int = 0):
+    def __init__(
+        self, box: cvt.RotatedRect, contours: cvt.MatLike, polygon: Any, debug_id: int = 0
+    ):
         super().__init__(polygon)
         self.debug_id = debug_id
         self.contours = contours
         angle = box[2]
-        if angle > 135:  # noqa: PLR2004
+        self.box: cvt.RotatedRect
+        if angle > 135:
             angle = angle - 180
             self.box = ((box[0][0], box[0][1]), (box[1][0], box[1][1]), angle)
-        elif angle < -135:  # noqa: PLR2004
+        elif angle < -135:
             angle = angle + 180
             self.box = ((box[0][0], box[0][1]), (box[1][0], box[1][1]), angle)
-        elif angle > 45:  # noqa: PLR2004
+        elif angle > 45:
             angle = angle - 90
             self.box = ((box[0][0], box[0][1]), (box[1][1], box[1][0]), angle)
-        elif angle < -45:  # noqa: PLR2004
+        elif angle < -45:
             angle = angle + 90
             self.box = ((box[0][0], box[0][1]), (box[1][1], box[1][0]), angle)
         else:
@@ -253,9 +169,7 @@ class AngledBoundingBox(AnyPolygon):
         major_axis2 = max(axes2)
 
         # Calculate the distance between the centers
-        distance = (
-            (center1[0] - center2[0]) ** 2 + (center1[1] - center2[1]) ** 2
-        ) ** 0.5
+        distance = ((center1[0] - center2[0]) ** 2 + (center1[1] - center2[1]) ** 2) ** 0.5
 
         # If the distance is greater than the sum of the major axes, the rectangles do not overlap
         if distance > major_axis1 + major_axis2:
@@ -278,42 +192,15 @@ class AngledBoundingBox(AnyPolygon):
         return str(self)
 
     @abstractmethod
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
         pass
-
-    @abstractmethod
-    def extract_point_sequence_from_image(self, img: NDArray) -> NDArray:
-        pass
-
-    def get_color_ratio(self, img: NDArray) -> float:
-        """
-        Gets the ratio of white to total pixels for this bounding box in the image.
-        """
-        colors = self.extract_point_sequence_from_image(img)
-        white = len([color for color in colors if color == 1])
-        total = len(colors)
-        ratio = white / total
-        return ratio
-
-    def crop_rect_from_image(self, img: NDArray) -> NDArray:
-        return crop_image(
-            img,
-            self.top_left[0],
-            self.top_left[1],
-            self.bottom_right[0] + 1,
-            self.bottom_right[1] + 1,
-        )
 
 
 class RotatedBoundingBox(AngledBoundingBox):
-    def __init__(self, box, contours, debug_id: int = 0):
+    def __init__(self, box: cvt.RotatedRect, contours: cvt.MatLike, debug_id: int = 0):
         super().__init__(box, contours, cv2.boxPoints(box).astype(np.int64), debug_id)
 
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
         box = cv2.boxPoints(self.box).astype(np.int64)
         cv2.drawContours(img, [box], 0, color, 2)
 
@@ -321,50 +208,9 @@ class RotatedBoundingBox(AngledBoundingBox):
         if not self._can_shapes_possibly_touch(other):
             return False
         # TODO: How is this different from is_overlapping?
-        return (
-            cv2.rotatedRectangleIntersection(self.box, other.box)[0]
-            != cv2.INTERSECT_NONE
-        )
+        return cv2.rotatedRectangleIntersection(self.box, other.box)[0] != cv2.INTERSECT_NONE
 
-    def distance_of_center(self, other: "RotatedBoundingBox") -> tuple[float, float]:
-        sx, sy = self.center
-        ox, oy = other.center
-        dx = sx - ox
-        dy = sy - oy
-        return (abs(dx), abs(dy))
-
-    def closest_distance(self, other: "RotatedBoundingBox") -> tuple[float, float]:
-        x1, y1 = self.top_left
-        x2, y2 = self.bottom_right
-        ox1, oy1 = other.top_left
-        ox2, oy2 = other.bottom_right
-
-        # Calculate horizontal distance
-        if x2 < ox1:
-            dx = ox1 - x2
-        elif ox2 < x1:
-            dx = ox2 - x1
-        else:
-            dx = 0.0  # Overlapping in X
-
-        # Calculate vertical distance
-        if y2 < oy1:
-            dy = oy1 - y2
-        elif oy2 < y1:
-            dy = oy2 - y1
-        else:
-            dy = 0.0  # Overlapping in Y
-
-        return dx, dy
-
-    def is_overlapping_extrapolated(
-        self, other: "RotatedBoundingBox", unit_size: float
-    ) -> bool:
-        return self._get_intersection_point_extrapolated(other, unit_size) is not None
-
-    def ensure_min_dimension(
-        self, min_width: int, min_height: int
-    ) -> "RotatedBoundingBox":
+    def ensure_min_dimension(self, min_width: int, min_height: int) -> "RotatedBoundingBox":
         return RotatedBoundingBox(
             (
                 (self.box[0][0], self.box[0][1]),
@@ -395,9 +241,7 @@ class RotatedBoundingBox(AngledBoundingBox):
     def move_to_x_horizontal_by(self, x_delta: int) -> "RotatedBoundingBox":
         new_x = self.center[0] + x_delta
         return RotatedBoundingBox(
-            ((new_x, self.center[1]), self.box[1], self.box[2]),
-            self.contours,
-            self.debug_id,
+            ((new_x, self.center[1]), self.box[1], self.box[2]), self.contours, self.debug_id
         )
 
     def make_box_taller(self, thickness: int) -> "RotatedBoundingBox":
@@ -425,48 +269,32 @@ class RotatedBoundingBox(AngledBoundingBox):
     def get_center_extrapolated(self, x: float) -> float:
         return (x - self.box[0][0]) * np.tan(self.box[2] / 180 * np.pi) + self.box[0][1]
 
-    def _get_intersection_point_extrapolated(
-        self, other: "RotatedBoundingBox", unit_size: float
-    ) -> tuple[float, float] | None:
+    def is_overlapping_extrapolated(self, other: "RotatedBoundingBox", unit_size: float) -> bool:
+        # Pick left and right by x-coordinate of the first box corner
         if self.box[0][0] > other.box[0][0]:
             left, right = other, self
         else:
             left, right = self, other
-        center: float = float(np.mean([left.center[0], right.center[0]]))
+
+        center_x = (left.center[0] + right.center[0]) * 0.5
 
         tolerance = constants.tolerance_for_staff_line_detection(unit_size)
         max_gap = constants.max_line_gap_size(unit_size)
-        distance_between_left_and_center_considering_size = (
-            center - left.center[0] - left.size[0] // 2
-        )
-        distance_between_right_and_center_considering_size = (
-            right.center[0] - center - right.size[0] // 2
-        )
+
         if (
-            distance_between_left_and_center_considering_size > max_gap
-            or distance_between_right_and_center_considering_size > max_gap
+            center_x - left.center[0] - (left.size[0] // 2) > max_gap
+            or right.center[0] - center_x - (right.size[0] // 2) > max_gap
         ):
-            return None
-        left_at_center = left.get_center_extrapolated(center)
-        right_at_center = right.get_center_extrapolated(center)
-        if abs(left_at_center - right_at_center) > tolerance:
-            return None
-        return (center, (left_at_center + right_at_center) / 2)
+            return False
 
-    def extract_point_sequence_from_image(self, img: NDArray) -> NDArray:
-        rectangle = self.box
-        poly = cv2.boxPoints(rectangle).astype(np.int64)
+        # Compute extrapolated y-values, same as get_center_extrapolated but inlined
+        left_angle = math.tan(left.box[2] * math.pi / 180.0)
+        right_angle = math.tan(right.box[2] * math.pi / 180.0)
 
-        # Create an empty mask
-        mask = np.zeros_like(img)
+        left_y = (center_x - left.box[0][0]) * left_angle + left.box[0][1]
+        right_y = (center_x - right.box[0][0]) * right_angle + right.box[0][1]
 
-        # Fill the polygon in the mask
-        cv2.fillPoly(mask, [poly], 1)
-
-        # Use the mask to index the image
-        points = img[mask == 1]
-
-        return points
+        return abs(left_y - right_y) <= tolerance
 
     def to_bounding_box(self) -> BoundingBox:
         return BoundingBox(
@@ -482,7 +310,7 @@ class RotatedBoundingBox(AngledBoundingBox):
 
 
 class BoundingEllipse(AngledBoundingBox):
-    def __init__(self, box, contours, debug_id: int = 0):
+    def __init__(self, box: cvt.RotatedRect, contours: cvt.MatLike, debug_id: int = 0):
         super().__init__(
             box,
             contours,
@@ -497,9 +325,7 @@ class BoundingEllipse(AngledBoundingBox):
             debug_id,
         )
 
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (0, 0, 255)) -> None:
         cv2.ellipse(img, self.box, color=color, thickness=2)
 
     def make_box_thicker(self, thickness: int) -> "BoundingEllipse":
@@ -524,39 +350,10 @@ class BoundingEllipse(AngledBoundingBox):
             self.debug_id,
         )
 
-    def extract_point_sequence_from_image(self, img: NDArray) -> NDArray:
-        # Create an empty mask
-        mask = np.zeros_like(img)
 
-        # Fill the polygon in the mask
-        cv2.fillPoly(mask, [self.polygon], 1)
-
-        # Use the mask to index the image
-        points = img[mask == 1]
-
-        return points
-
-
-def create_bounding_boxes(img: NDArray) -> list[BoundingBox]:
-    contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    boxes = []
-    for i, countour in enumerate(contours):
-        boxes.append(create_bounding_box(countour, debug_id=i))
-    return boxes
-
-
-def create_bounding_box(contour, debug_id: int) -> BoundingBox:
-    x, y, w, h = cv2.boundingRect(contour)
-    box = (x, y, x + w, y + h)
-    return BoundingBox(box, contour, debug_id=debug_id)
-
-
-def _has_box_valid_size(box) -> bool:
+def _has_box_valid_size(box: cvt.RotatedRect) -> bool:
     return (
-        not math.isnan(box[1][0])
-        and not math.isnan(box[1][1])
-        and box[1][0] > 0
-        and box[1][1] > 0
+        not math.isnan(box[1][0]) and not math.isnan(box[1][1]) and box[1][0] > 0 and box[1][1] > 0
     )
 
 
@@ -574,9 +371,7 @@ def create_rotated_bounding_boxes(
         if not _has_box_valid_size(fitBox):
             continue
         box = RotatedBoundingBox(fitBox, countour, debug_id=i)
-        if min_size is not None and (
-            box.size[0] < min_size[0] or box.size[1] < min_size[1]
-        ):
+        if min_size is not None and (box.size[0] < min_size[0] or box.size[1] < min_size[1]):
             continue
         if max_size is not None:
             if max_size[0] > 0 and box.size[0] > max_size[0]:
@@ -591,7 +386,7 @@ def create_rotated_bounding_boxes(
     return _get_box_for_whole_group(merge_overlaying_bounding_boxes(boxes))
 
 
-def create_rotated_bounding_box(contour, debug_id: int) -> RotatedBoundingBox:
+def create_rotated_bounding_box(contour: cvt.MatLike, debug_id: int) -> RotatedBoundingBox:
     box = cv2.minAreaRect(contour)
     return RotatedBoundingBox(box, contour, debug_id=debug_id)
 
@@ -604,12 +399,7 @@ def create_lines(
     skip_merging: bool = False,
 ) -> list[RotatedBoundingBox]:
     lines = cv2.HoughLinesP(
-        img,
-        1,
-        np.pi / 180,
-        threshold,
-        minLineLength=min_line_length,
-        maxLineGap=max_line_gap,
+        img, 1, np.pi / 180, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap
     )
     boxes = []
     for i, line in enumerate(lines):
@@ -639,13 +429,9 @@ def create_bounding_ellipses(
         if not _has_box_valid_size(fitBox):
             continue
         box = BoundingEllipse(fitBox, countour, debug_id=i)
-        if min_size is not None and (
-            box.size[0] < min_size[0] or box.size[1] < min_size[1]
-        ):
+        if min_size is not None and (box.size[0] < min_size[0] or box.size[1] < min_size[1]):
             continue
-        if max_size is not None and (
-            box.size[0] > max_size[0] or box.size[1] > max_size[1]
-        ):
+        if max_size is not None and (box.size[0] > max_size[0] or box.size[1] > max_size[1]):
             continue
         boxes.append(box)
     if skip_merging:
@@ -653,26 +439,7 @@ def create_bounding_ellipses(
     return _get_ellipse_for_whole_group(merge_overlaying_bounding_boxes(boxes))
 
 
-def move_overlaying_bounding_boxes(
-    src: list[AngledBoundingBox], dest: list[AngledBoundingBox], dest_img: NDArray
-) -> tuple[list[AngledBoundingBox], NDArray]:
-    """
-    Every item in src which overlaps with one in dest will be transferred to dest_img
-    """
-    result_img = dest_img.copy()
-    result_src = src.copy()
-    for dest_box in dest:
-        for src_box in src:
-            if src_box.is_overlapping(dest_box):
-                result_img[src_box.contours] = 1
-                if src_box in result_src:
-                    result_src.remove(src_box)
-    return result_src, result_img
-
-
-def _do_groups_overlap(
-    group1: list[AngledBoundingBox], group2: list[AngledBoundingBox]
-) -> bool:
+def _do_groups_overlap(group1: list[AngledBoundingBox], group2: list[AngledBoundingBox]) -> bool:
     for box1 in group1:
         for box2 in group2:
             if box1.is_overlapping(box2):
@@ -713,19 +480,7 @@ def _merge_groups_recursive(
         return _merge_groups_recursive(merged, step + 1)
 
 
-def get_largest_of_every_group(
-    groups: list[list[AngledBoundingBox]],
-) -> list[AngledBoundingBox]:
-    result = []
-    for group in groups:
-        largest = max(group, key=lambda box: box.size[0] * box.size[1])
-        result.append(largest)
-    return result
-
-
-def _get_ellipse_for_whole_group(
-    groups: list[list[AngledBoundingBox]],
-) -> list[BoundingEllipse]:
+def _get_ellipse_for_whole_group(groups: list[list[AngledBoundingBox]]) -> list[BoundingEllipse]:
     result = []
     for group in groups:
         complete_contour = np.concatenate([box.contours for box in group])
@@ -734,9 +489,7 @@ def _get_ellipse_for_whole_group(
     return result
 
 
-def _get_box_for_whole_group(
-    groups: list[list[AngledBoundingBox]],
-) -> list[RotatedBoundingBox]:
+def _get_box_for_whole_group(groups: list[list[AngledBoundingBox]]) -> list[RotatedBoundingBox]:
     result = []
     for group in groups:
         complete_contour = np.concatenate([box.contours for box in group])
@@ -770,9 +523,7 @@ class UnionFind:
                 self.rank[rootX] += 1
 
 
-def _merge_groups_optimized(
-    groups: list[list[AngledBoundingBox]],
-) -> list[list[AngledBoundingBox]]:
+def _merge_groups_optimized(groups: list[list[AngledBoundingBox]]) -> list[list[AngledBoundingBox]]:
     n = len(groups)
     uf = UnionFind(n)
 

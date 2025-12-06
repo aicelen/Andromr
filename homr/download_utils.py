@@ -5,7 +5,6 @@ import zipfile
 import requests
 
 from homr.simple_logging import eprint
-from globals import appdata
 
 
 def download_file(url: str, filename: str) -> None:
@@ -30,7 +29,6 @@ def download_file(url: str, filename: str) -> None:
                             f"\rDownloaded {progressMb} of {totalMb} MB ({progressPercent}%)",
                             end="",
                         )
-                        appdata.download_progress = progressPercent
                         last_percent = progressPercent
                 else:
                     eprint(f"\rDownloaded {progressMb} MB", end="")
@@ -40,9 +38,7 @@ def download_file(url: str, filename: str) -> None:
         eprint()  # Add newline after download progress
 
 
-def unzip_file(
-    filename: str, output_folder: str, flatten_root_entry: bool = False
-) -> None:
+def unzip_file(filename: str, output_folder: str, flatten_root_entry: bool = False) -> None:
     with zipfile.ZipFile(filename, "r") as zip_ref:
         zip_contents = zip_ref.namelist()
 
@@ -105,10 +101,3 @@ def untar_file(filename: str, output_folder: str) -> None:
                     if not chunk:
                         break
                     target.write(chunk)
-
-
-if __name__ == "__main__":
-    download_file(
-        "https://github.com/aicelen/Andromr/releases/download/v1.0/cnn_encoder_188_wi_8_afp32.zip",
-        "models/out.zip",
-    )
