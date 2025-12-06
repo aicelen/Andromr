@@ -4,6 +4,7 @@ import os
 import sys
 from concurrent.futures import Future
 from dataclasses import dataclass
+from time import perf_counter
 
 import cv2
 import numpy as np
@@ -30,7 +31,7 @@ from homr.music_xml_generator import XmlGeneratorArguments, generate_xml
 from homr.noise_filtering import filter_predictions
 from homr.note_detection import add_notes_to_staffs, combine_noteheads_with_stems
 from homr.resize import resize_image
-from homr.segmentation.config import segnet_path_onnx
+from homr.segmentation.config import segnet_path_tflite
 from homr.segmentation.inference_segnet import extract
 from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
@@ -39,6 +40,8 @@ from homr.staff_position_save_load import load_staff_positions, save_staff_posit
 from homr.title_detection import detect_title, download_ocr_weights
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
+
+from globals import appdata
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -271,112 +274,53 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
 
 
 def download_weights() -> None:
-    base_url = "https://github.com/liebharc/homr/releases/download/onnx_checkpoints/"
-    models = [
-        segnet_path_onnx,
-        default_config.filepaths.encoder_path,
-        default_config.filepaths.decoder_path,
-    ]
-    missing_models = [model for model in models if not os.path.exists(model)]
-
+    base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
+    missing_models = check_for_missing_models()
     if len(missing_models) == 0:
         return
 
     eprint("Downloading", len(missing_models), "models - this is only required once")
-    for model in missing_models:
-        if not os.path.exists(model):
-            base_name = os.path.basename(model).split(".")[0]
-            eprint(f"Downloading {base_name}")
-            try:
-                zip_name = base_name + ".zip"
-                download_url = base_url + zip_name
-                downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
-                download_utils.download_file(download_url, downloaded_zip)
+    for idx, model in enumerate(missing_models):
+        base_name = os.path.basename(model).split(".")[0]
+        eprint(f"Downloading {base_name}")
+        try:
+            zip_name = base_name + ".zip"
+            download_url = base_url + zip_name
+            downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
+            download_utils.download_file(download_url, downloaded_zip)
 
-                destination_dir = os.path.dirname(model)
-                download_utils.unzip_file(downloaded_zip, destination_dir)
-            finally:
-                if os.path.exists(downloaded_zip):
-                    os.remove(downloaded_zip)
+            destination_dir = os.path.dirname(model)
+            download_utils.unzip_file(downloaded_zip, destination_dir)
+        finally:
+            if os.path.exists(downloaded_zip):
+                os.remove(downloaded_zip)
+
+        appdata.downloaded_assets = f"{idx + 1}/{len(missing_models)}"
+
+    appdata.download_running = False
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        prog="homer", description="An optical music recognition (OMR) system"
-    )
-    parser.add_argument("image", type=str, nargs="?", help="Path to the image to process")
-    parser.add_argument(
-        "--init",
-        action="store_true",
-        help="Downloads the models if they are missing and then exits. "
-        + "You don't have to call init before processing images, "
-        + "it's only useful if you want to prepare for example a Docker image.",
-    )
-    parser.add_argument("--debug", action="store_true", help="Enable debug output")
-    parser.add_argument(
-        "--cache", action="store_true", help="Read an existing cache file or create a new one"
-    )
-    parser.add_argument(
-        "--output-large-page",
-        action="store_true",
-        help="Adds instructions to the musicxml so that it gets rendered on larger pages",
-    )
-    parser.add_argument(
-        "--output-metronome", type=int, help="Adds a metronome to the musicxml with the given bpm"
-    )
-    parser.add_argument(
-        "--output-tempo", type=int, help="Adds a tempo to the musicxml with the given bpm"
-    )
-    parser.add_argument(
-        "--write-staff-positions",
-        action="store_true",
-        help="Writes the position of all detected staffs to a txt file.",
-    )
-    parser.add_argument(
-        "--read-staff-positions",
-        action="store_true",
-        help="Reads the position of all staffs from a txt file instead"
-        + " of running the built-in staff detection.",
-    )
-    args = parser.parse_args()
+def check_for_missing_models() -> list:
+    """
+    Checks for missing models and returns a list with all the links to the missing models.
+    """
+    models = [
+        segnet_path_tflite,
+        default_config.filepaths.encoder_cnn_path_tflite,
+        default_config.filepaths.encoder_transformer_path,
+        default_config.filepaths.decoder_path,
+    ]
+    missing_models = [model for model in models if not os.path.exists(model)]
+    return missing_models
 
-    download_weights()
-    if args.init:
-        download_ocr_weights()
-        eprint("Init finished")
-        return
 
-    config = ProcessingConfig(
-        args.debug, args.cache, args.write_staff_positions, args.read_staff_positions, -1
-    )
-
-    xml_generator_args = XmlGeneratorArguments(
-        args.output_large_page, args.output_metronome, args.output_tempo
-    )
-
-    if not args.image:
-        eprint("No image provided")
-        parser.print_help()
-        sys.exit(1)
-    elif os.path.isfile(args.image):
-        process_image(args.image, config, xml_generator_args)
-    elif os.path.isdir(args.image):
-        image_files = get_all_image_files_in_folder(args.image)
-        eprint("Processing", len(image_files), "files:", image_files)
-        error_files = []
-        for image_file in image_files:
-            eprint("=========================================")
-            try:
-                process_image(image_file, config, xml_generator_args)
-                eprint("Finished", image_file)
-            except Exception as e:
-                eprint(f"An error occurred while processing {image_file}: {e}")
-                error_files.append(image_file)
-        if len(error_files) > 0:
-            eprint("Errors occurred while processing the following files:", error_files)
-    else:
-        raise ValueError(f"{args.image} is not a valid file or directory")
-
+def homr(path, cache=False):
+    t0 = perf_counter()
+    config = ProcessingConfig(False, False, False, False, -1)
+    xml_generator_args = XmlGeneratorArguments(False, False, False)
+    out_path = process_image(path, config, xml_generator_args)
+    eprint(f"Homr took {perf_counter() - t0} seconds.")
+    return out_path
 
 if __name__ == "__main__":
-    main()
+    homr("taken_img.jpg", cache=False)

@@ -11,14 +11,21 @@ root_dir = os.getcwd()
 class FilePaths:
     def __init__(self) -> None:
         model_name = "pytorch_model_236-922ad08f8895f6d9c0ae61954cd78a021ff950a7"
-        self.encoder_path = os.path.join(
-            workspace,
-            f"encoder_{model_name}_kv.onnx",
+
+        self.encoder_cnn_path_tflite = os.path.join(
+            workspace, f"cnn_encoder_{model_name}.tflite"
         )  # noqa: E501
+
+        self.encoder_transformer_path = os.path.join(
+            workspace,
+            f"transformer_encoder_{model_name}.onnx",
+        )  # noqa: E501
+
         self.decoder_path = os.path.join(
             workspace,
-            f"decoder_{model_name}_kv.onnx",
+            f"decoder{model_name}.onnx",
         )  # noqa: E501
+
         self.checkpoint = os.path.join(
             root_dir,
             "training",
