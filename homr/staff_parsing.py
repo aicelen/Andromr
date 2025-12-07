@@ -6,7 +6,6 @@ from homr.debug import Debug
 from homr.image_utils import crop_image_and_return_new_top
 from homr.model import MultiStaff, Staff
 from homr.simple_logging import eprint
-from homr.staff_dewarping import StaffDewarping, dewarp_staff_image
 from homr.staff_parsing_tromr import parse_staff_tromr
 from homr.staff_regions import StaffRegions
 from homr.transformer.configs import default_config
@@ -198,9 +197,7 @@ def prepare_staff_image(
     staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step1)
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
-    staff = _dewarp_staff(staff, None, top_left, scaling_factor)
-    dewarp = dewarp_staff_image(staff_image, staff, index, debug)
-    staff_image = (255 * dewarp.dewarp(staff_image)).astype(np.uint8)
+    staff_image = staff_image.astype(np.uint8)
     staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step2)
     scaling_factor = 1
 
@@ -210,7 +207,7 @@ def prepare_staff_image(
     staff_image = center_image_on_canvas(staff_image, image_dimensions, margin_bottom=margin_bottom)
     debug.write_image_with_fixed_suffix(f"_staff-{index}_input.jpg", staff_image)
     if debug.debug:
-        transformed_staff = _dewarp_staff(staff, dewarp, top_left, scaling_factor)
+        transformed_staff = staff
         transformed_staff_image = staff_image.copy()
         for symbol in transformed_staff.symbols:
             center = symbol.center
@@ -228,26 +225,6 @@ def prepare_staff_image(
             f"_staff-{index}_debug_annotated.jpg", transformed_staff_image
         )
     return staff_image, staff
-
-
-def _dewarp_staff(
-    staff: Staff, dewarp: StaffDewarping | None, region: NDArray, scaling: float
-) -> Staff:
-    """
-    Applies the same transformation on the staff coordinates as we did on the image.
-    """
-
-    def transform_coordinates(point: tuple[float, float]) -> tuple[float, float]:
-        x, y = point
-        x -= region[0]
-        y -= region[1]
-        if dewarp is not None:
-            x, y = dewarp.dewarp_point((x, y))
-        x = x * scaling
-        y = y * scaling
-        return x, y
-
-    return staff.transform_coordinates(transform_coordinates)
 
 
 def parse_staff_image(

@@ -7,7 +7,7 @@ import numpy as np
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
 from homr.transformer.decoder_inference import get_decoder
-from homr.transformer.encoder_inference import Encoder
+from homr.transformer.encoder_inference import EncoderDual
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
@@ -19,7 +19,7 @@ class Staff2Score:
 
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = Encoder(self.config.filepaths.encoder_path, use_gpu)
+        self.encoder = EncoderDual(self.config.filepaths.encoder_cnn_path_tflite, self.config.filepaths.encoder_transformer_path)
         self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path, use_gpu)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
