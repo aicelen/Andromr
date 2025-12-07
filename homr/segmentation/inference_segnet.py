@@ -6,33 +6,13 @@ from time import perf_counter
 
 import cv2
 import numpy as np
-import onnxruntime as ort
 
-from homr.segmentation.config import segmentation_version, segnet_path_onnx
+from homr.segmentation.config import segnet_path_tflite, segmentation_version
+from homr.inference_engine import TensorFlowModel
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
-
-class Segnet:
-    def __init__(self, model_path: str, use_gpu: bool) -> None:
-        if use_gpu:
-            try:
-                self.model = ort.InferenceSession(model_path, providers=["CUDAExecutionProvider"])
-            except Exception as e:
-                eprint(
-                    "Error while trying to load model using CUDA. You probably don't have a compatible gpu"  # noqa: E501
-                )
-                eprint(e)
-                self.model = ort.InferenceSession(model_path)
-        else:
-            self.model = ort.InferenceSession(model_path)
-        self.input_name = self.model.get_inputs()[0].name  # size: [batch_size, 3, 320, 320]
-        self.output_name = self.model.get_outputs()[0].name
-
-    def run(self, input_data: NDArray) -> NDArray:
-        out = self.model.run([self.output_name], {self.input_name: input_data})[0]
-        return out
-
+from globals import appdata
 
 class ExtractResult:
     def __init__(
@@ -103,7 +83,7 @@ def inference(
     if step_size < 0:
         step_size = win_size // 2
 
-    model = Segnet(segnet_path_onnx, use_gpu)
+    model = TensorFlowModel(segnet_path_tflite)
     data = []
     batch = []
     image = np.transpose(image_org, (2, 0, 1)).astype(np.float32)

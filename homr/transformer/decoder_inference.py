@@ -2,18 +2,20 @@ from math import ceil
 from typing import Any
 
 import numpy as np
-import onnxruntime as ort
 
 from homr.transformer.configs import Config
 from homr.transformer.utils import softmax
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
+from homr.inference_engine.onnx_model import OnnxModel
+from homr.transformer.configs import default_config
 
+from globals import appdata
 
 class ScoreDecoder:
     def __init__(
         self,
-        transformer: ort.InferenceSession,
+        transformer: OnnxModel,
         config: Config,
         ignore_index: int = -100,
     ):
@@ -80,19 +82,22 @@ class ScoreDecoder:
                 "context": context,
                 "cache_len": np.array([step]),
             }
-            for i in range(32):
-                inputs[kv_input_names[i]] = cache[i]
 
-            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
-                output_names=[
+            outputs = {
                     "out_rhythms",
                     "out_pitchs",
                     "out_lifts",
                     "out_positions",
                     "out_articulations",
                     *kv_output_names,
-                ],
-                input_feed=inputs,
+            }
+
+            for i in range(32):
+                inputs[kv_input_names[i]] = cache[i]
+
+            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
+                inputs=inputs,
+                outputs=outputs
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
@@ -194,13 +199,4 @@ def get_decoder(config: Config, path: str, use_gpu: bool) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    if use_gpu:
-        try:
-            onnx_transformer = ort.InferenceSession(path, providers=["CUDAExecutionProvider"])
-        except Exception:
-            onnx_transformer = ort.InferenceSession(path)
-
-    else:
-        onnx_transformer = ort.InferenceSession(path)
-
-    return ScoreDecoder(onnx_transformer, config=config)
+    return ScoreDecoder(OnnxModel(default_config.filepaths.decoder_path), config=config)
