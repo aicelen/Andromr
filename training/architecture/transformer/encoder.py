@@ -1,5 +1,8 @@
 from typing import Any
 
+import torch
+from torch import nn
+
 from timm.layers import StdConv2dSame  # type: ignore
 from timm.models.resnetv2 import ResNetV2
 from timm.models.vision_transformer import VisionTransformer
@@ -44,3 +47,79 @@ def get_encoder(config: Config) -> Any:
         global_pool="",
     )
     return encoder
+
+
+def _get_resnet(config: Config) -> ResNetV2:
+    """Return the ResNetV2 backbone architecture."""
+    backbone_layers = list(config.backbone_layers)
+    min_patch_size = 16
+    return ResNetV2(
+        num_classes=0,
+        global_pool="",
+        in_chans=config.channels,
+        drop_rate=0.1,
+        output_stride=min_patch_size,
+        drop_path_rate=0.1,
+        layers=backbone_layers,
+        preact=True,
+        stem_type="same",
+        conv_layer=StdConv2dSame,
+    )
+
+
+class TransformerEncoderOnly(nn.Module):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.encoder = VisionTransformer(
+            img_size=(config.max_height, config.max_width),
+            patch_size=config.patch_size,
+            in_chans=config.channels,
+            num_classes=0,
+            embed_dim=config.encoder_dim,
+            depth=config.encoder_depth,
+            num_heads=config.encoder_heads,
+            global_pool="",
+        )
+        # Remove patch embedding since backbone already does this
+        del self.encoder.patch_embed
+
+    def forward(self, x):
+        # x should already be patch embeddings from your backbone
+        # cls_token = self.encoder.cls_token.expand(x.shape[0], -1, -1)
+        x = torch.reshape(x, (1, 312, 1280)) # input: [1, 312, 16, 80]
+        x = torch.transpose(x, 1, 2) # output: [1, 1280, 312]
+        x = torch.cat([self.encoder.cls_token, x], dim=1) # output: [1, 1281, 312]
+        x += self.encoder.pos_embed # last custom: adding pos_embed
+        x = self.encoder.blocks(x)
+        x = self.encoder.norm(x)
+        return x
+
+
+def get_transformer(config: Config) -> nn.Module:
+    return TransformerEncoderOnly(config)
+
+
+class BackboneWithHead(nn.Module):
+    def __init__(self, config: Config):
+        super().__init__()
+        # original backbone
+        self.backbone = _get_resnet(config)
+
+        # /patch_embed/proj/Conv
+        self.proj = nn.Conv2d(
+            in_channels=2048,
+            out_channels=312,
+            kernel_size=(1, 1),
+            stride=(1, 1),
+            padding=(0, 0),
+            bias=True,
+        )
+
+    def forward(self, x):
+        x = self.backbone(x)  # (B, C, H, W)
+        x = self.proj(x)
+        return x
+
+
+def get_backbone(config: Config):
+    return BackboneWithHead(config)

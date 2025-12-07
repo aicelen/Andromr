@@ -11,7 +11,7 @@ from training.architecture.transformer.decoder import (
     get_score_wrapper,
     init_cache,
 )
-from training.architecture.transformer.encoder import get_encoder
+from training.architecture.transformer.encoder import get_encoder, get_backbone, get_transformer
 
 
 class DecoderWrapper(torch.nn.Module):
@@ -179,3 +179,89 @@ def convert_segnet() -> str:
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
     )
     return f"{os.path.splitext(segnet_path_torch)[0]}.onnx"
+
+
+def convert_cnn_encoder():
+    """
+    Converts the encoder to onnx
+    """
+    config = Config()
+
+    dir_path = os.path.dirname(config.filepaths.checkpoint)
+    filename = os.path.splitext(os.path.basename(config.filepaths.checkpoint))[0]
+    path_out = os.path.join(dir_path, f"cnn_encoder_{filename}.onnx")
+
+    # Get Encoder
+    model = get_backbone(config)
+
+    # Load weights
+    model.load_state_dict(
+        torch.load(
+            r"cnn_encoder.pt", weights_only=True, map_location=torch.device("cpu")
+        ),
+        strict=True,
+    )
+
+    # Set eval mode
+    model.eval()
+
+    # Prepare input tensor
+    input_tensor = torch.randn(1, 1, 256, 1280).float()
+
+    # Export to onnx
+    torch.onnx.export(
+        model,
+        input_tensor,  # type: ignore
+        path_out,
+        export_params=True,
+        opset_version=17,
+        do_constant_folding=True,
+        input_names=["input"],
+        output_names=["output"],
+    )
+
+    return path_out
+
+
+def convert_transformer_encoder():
+    """
+    Converts the encoder to onnx
+    """
+    config = Config()
+
+    dir_path = os.path.dirname(config.filepaths.checkpoint)
+    filename = os.path.splitext(os.path.basename(config.filepaths.checkpoint))[0]
+    path_out = os.path.join(dir_path, f"transformer_encoder_{filename}.onnx")
+
+    # Get Encoder
+    model = get_transformer(config)
+
+    # Load weights
+    model.load_state_dict(
+        torch.load(
+            r"transformer_encoder.pt",
+            weights_only=True,
+            map_location=torch.device("cpu"),
+        ),
+        strict=True,
+    )
+
+    # Set eval mode
+    model.eval()
+
+    # Prepare input tensor
+    input_tensor = torch.randn(1, 312, 16, 80).float()
+
+    # Export to onnx
+    torch.onnx.export(
+        model,
+        input_tensor,  # type: ignore
+        path_out,
+        export_params=True,
+        opset_version=17,
+        do_constant_folding=True,
+        input_names=["input"],
+        output_names=["output"],
+    )
+
+    return path_out
