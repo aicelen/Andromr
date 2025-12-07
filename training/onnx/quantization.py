@@ -29,3 +29,4 @@ def quantization_int8(
         quantize_dynamic(model_path, out_path, weight_type=QuantType.QUInt8)
 
     os.remove("model_preprocessed.onnx")
+    return out_path

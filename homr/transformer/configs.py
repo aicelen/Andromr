@@ -23,7 +23,7 @@ class FilePaths:
 
         self.decoder_path = os.path.join(
             workspace,
-            f"decoder{model_name}.onnx",
+            f"decoder_{model_name}.onnx",
         )  # noqa: E501
 
         self.checkpoint = os.path.join(

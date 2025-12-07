@@ -71,7 +71,7 @@ def convert_encoder() -> str:
         input_tensor,  # type: ignore
         path_out,
         export_params=True,
-        opset_version=17,
+        opset_version=18,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
@@ -143,6 +143,7 @@ def convert_decoder() -> str:
         opset_version=18,
         do_constant_folding=True,
         export_params=True,
+        dynamo=False
     )
     return path_out
 
@@ -171,7 +172,7 @@ def convert_segnet() -> str:
         model,
         sample_inputs,  # type: ignore
         path_out,
-        opset_version=17,
+        opset_version=18,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
@@ -214,7 +215,7 @@ def convert_cnn_encoder():
         input_tensor,  # type: ignore
         path_out,
         export_params=True,
-        opset_version=17,
+        opset_version=18,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
@@ -258,7 +259,7 @@ def convert_transformer_encoder():
         input_tensor,  # type: ignore
         path_out,
         export_params=True,
-        opset_version=17,
+        opset_version=18,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],

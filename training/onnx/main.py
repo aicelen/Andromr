@@ -4,12 +4,14 @@ import os
 
 from training.onnx.convert import (
     convert_decoder,
-    convert_encoder,
     convert_segnet,
+    convert_cnn_encoder,
+    convert_transformer_encoder
+
 )
 from training.onnx.quantization import quantization_int8
 from training.onnx.simplify import main as simplify_onnx_model
-from training.onnx.split_weights import split_weights
+from training.onnx.split_weights import split_weights, split_weights_encoder
 
 
 def convert_all(transformer_path: str | None = None, segnet_path: str | None = None) -> None:
@@ -24,20 +26,18 @@ def convert_all(transformer_path: str | None = None, segnet_path: str | None = N
 
     if transformer_path is not None:
         split_weights(transformer_path)  # Make sure to the filepath of the transformer!
-        path_to_encoder = convert_encoder()
-        simplify_onnx_model(path_to_encoder)
-        print(path_to_encoder)
+        split_weights_encoder("encoder_weights.pt")
 
+        path_to_encoder_cnn = convert_cnn_encoder()
+        path_to_encoder_transformer = convert_transformer_encoder()
         path_to_decoder = convert_decoder()
-        simplify_onnx_model(path_to_decoder)
 
-        # Only the decoder gets quantized.
-        # The segnet showed 80% worse performance on x86-64.
-        # Only improved size by around 15MB without any speedups
-        # (maybe even slowing inference down).
-        # FP16 slowed inference speed down (CPU).
+        quantization_int8(path_to_encoder_transformer)
         quantization_int8(path_to_decoder)
-        print(path_to_decoder)
+
+        simplify_onnx_model(path_to_encoder_cnn)
+        simplify_onnx_model(path_to_encoder_transformer)
+        simplify_onnx_model(path_to_decoder)
 
     os.remove("decoder_weights.pt")
     os.remove("encoder_weights.pt")

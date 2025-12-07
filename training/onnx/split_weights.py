@@ -59,5 +59,43 @@ def remove_score_decoder_weights(full_state_dict: dict[str, Any]) -> dict[str, A
     return transformer_state_dict
 
 
+def split_weights_encoder(input_path: str) -> None:
+    """
+    Splits weights of the Encoder between the Transformer and the CNN-Embedder
+    Args:
+        input_path(str): Path to Encoder weights
+    """
+    # Load model
+    state_dict = torch.load(input_path, map_location=torch.device("cpu"))
+
+    cnn_encoder = {}
+    transformer_encoder = {}
+
+    for key, value in state_dict.items():
+        if key.startswith("patch_embed."):
+            # Remove encoder starting
+            key = key.replace("patch_embed.", "")
+            # key = key.replace("backbone.", "")
+            # And add it to a seperate dict
+            cnn_encoder[key] = value
+
+        elif (
+            key.startswith("blocks.")
+            or key.startswith("norm.")
+            or key.startswith("pos_embed")
+            or key.startswith("cls_token")
+        ):
+            key = f"encoder.{key}"
+            transformer_encoder[key] = value
+        else:
+            print(key)
+
+    # Encoder weights can be saved directly
+    torch.save(cnn_encoder, "cnn_encoder.pt")
+
+    # Decoder weights need to be processed once more
+    torch.save(transformer_encoder, "transformer_encoder.pt")
+
+
 if __name__ == "__main__":
     split_weights(os.path.join("transformer", FilePaths().checkpoint))
