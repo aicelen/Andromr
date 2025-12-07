@@ -19,9 +19,7 @@ def load_checkpoint(path, model):
                 tensors[k] = f.get_tensor(k)
         model.load_state_dict(tensors, strict=False)
     else:
-        model.load_state_dict(
-            torch.load(path, weights_only=True, map_location="cpu"), strict=False
-        )
+        model.load_state_dict(torch.load(path, weights_only=True, map_location="cpu"), strict=False)
     return model
 
 
@@ -30,9 +28,7 @@ def average_checkpoints(checkpoint_dirs: list[str], config: Config):
     models = []
 
     for ckpt_dir in checkpoint_dirs:
-        config.filepaths.checkpoint = str(
-            Path(ckpt_dir) / "model.safetensors"
-        )  # Or another logic
+        config.filepaths.checkpoint = str(Path(ckpt_dir) / "model.safetensors")  # Or another logic
         model = TrOMR(config)
         load_checkpoint(config.filepaths.checkpoint, model)
         models.append(model)

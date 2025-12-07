@@ -1,7 +1,0 @@
-# commands used to convert from .onnx to .tflite
-
-# segnet model
-onnx2tf -i <path_to_model> -o segnet_155 -b 1
-
-# cnn encoder
-onnx2tf -i <path_to_model> -o cnn_encoder_188 -b 1

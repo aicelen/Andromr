@@ -15,7 +15,6 @@ from training.segmentation.dense_dataset_definitions import (
 HALF_WHOLE_NOTE = DEF.NOTEHEADS_HOLLOW + DEF.NOTEHEADS_WHOLE + [42]
 
 
-# ruff: noqa: C901, PLR0912
 def fill_hole(gt: NDArray, tar_color: int) -> NDArray:
     if tar_color not in HALF_WHOLE_NOTE:
         raise ValueError("The color is not a notehead color")
@@ -71,48 +70,6 @@ def fill_hole(gt: NDArray, tar_color: int) -> NDArray:
     return tar
 
 
-def close_lines(img):
-    # Use hough transform to find lines
-    width = img.shape[1]
-    lines = cv2.HoughLinesP(
-        img,
-        1,
-        np.pi / 180,
-        threshold=width // 32,
-        minLineLength=width // 16,
-        maxLineGap=50,
-    )
-    if lines is not None:
-        angles = []
-        # Draw lines
-        for line in lines:
-            x1, y1, x2, y2 = line[0]  # type: ignore
-            angle = np.arctan2(y2 - y1, x2 - x1)
-            angles.append(angle)
-        mean_angle = np.mean(angles)
-        # Draw lines
-        for line in lines:
-            x1, y1, x2, y2 = line[0]  # type: ignore
-            angle = np.arctan2(y2 - y1, x2 - x1)
-            is_horizontal = abs(angle - mean_angle) < np.pi / 16
-            if is_horizontal:
-                cv2.line(img, (int(x1), int(y1)), (int(x2), int(y2)), 255, 1)
-    else:
-        eprint("No lines found")
-
-    return img
-
-
-def make_symbols_stronger(
-    img: NDArray, kernel_size: tuple[int, int] = (5, 5)
-) -> NDArray:
-    """
-    Dilates the symbols to make them stronger
-    """
-    kernel = np.ones(kernel_size, np.uint8)
-    return cv2.dilate(img, kernel, iterations=1)
-
-
 def find_example(
     dataset_path: str, color: int, max_count: int = 100, mark_value: int = 255
 ) -> NDArray | None:
@@ -155,9 +112,7 @@ def reconstruct_lines_between_staffs(image: NDArray, mask: NDArray) -> NDArray:
     black_pixels = (gray_img == 0).astype(np.uint8) * 255
 
     # Morphological operation to connect vertical structures
-    vertical_kernel = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (1, min_required_height)
-    )
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, min_required_height))
     connected = cv2.morphologyEx(black_pixels, cv2.MORPH_OPEN, vertical_kernel)
 
     # Find connected components again to isolate tall vertical lines
