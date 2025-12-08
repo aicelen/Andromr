@@ -55,9 +55,18 @@ class ScoreDecoder:
         clef_upper = "clef_G2"
         clef_lower = "clef_F4"
         states = np.array([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]])
-        cache, kv_input_names, kv_output_names = self.init_cache()
+        cache, kv_input_names, kv_outputs_dicts = self.init_cache()
         context = kwargs["context"]
         context_reduced = kwargs["context"][:, :1]
+
+        outputs_dict = {
+            "out_rhythms": [1, 1, 260],
+            "out_pitchs": [1, 1, 72],
+            "out_lifts": [1, 1, 7],
+            "out_positions": [1, 1, 3],
+            "out_articulations": [1, 1, 171],
+        }
+
 
         symbols: list[EncodedSymbol] = []
 
@@ -83,21 +92,12 @@ class ScoreDecoder:
                 "cache_len": np.array([step]),
             }
 
-            outputs = {
-                    "out_rhythms",
-                    "out_pitchs",
-                    "out_lifts",
-                    "out_positions",
-                    "out_articulations",
-                    *kv_output_names,
-            }
-
             for i in range(32):
                 inputs[kv_input_names[i]] = cache[i]
 
             rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
                 inputs=inputs,
-                outputs=outputs
+                outputs=outputs_dict | kv_outputs_dicts # merges the dicts
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
@@ -157,12 +157,12 @@ class ScoreDecoder:
     def init_cache(self, cache_len: int = 0) -> tuple[list[NDArray], list[str], list[str]]:
         cache = []
         input_names = []
-        output_names = []
+        output_dict = {}
         for i in range(32):
             cache.append(np.zeros((1, 8, cache_len, 64), dtype=np.float32))
             input_names.append(f"cache_in{i}")
-            output_names.append(f"cache_out{i}")
-        return cache, input_names, output_names
+            output_dict[f"cache_out{i}"] = None # this is used to check if this is cache or not
+        return cache, input_names, output_dict
 
 
 def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:

@@ -67,7 +67,7 @@ class ConvertToArray:
 
     def __call__(self, image: NDArray) -> NDArray:
         arr = np.array(image) / 255
-        arr = arr[np.newaxis, np.newaxis, :, :]
+        arr = arr[np.newaxis, :, :, np.newaxis]
         return self.normalize(arr).astype(np.float32)
 
 

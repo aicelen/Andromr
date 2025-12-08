@@ -122,9 +122,9 @@ else:
             session_options.intra_op_num_threads = num_threads
             self.model = ort.InferenceSession(model_path, session_options)
 
-        def run(self, inputs: dict, outputs: dict = None) -> dict:
+        def run(self, inputs: dict, outputs: dict) -> dict:
             result = self.model.run(
-                output_names=list(outputs.keys()), input_feed=inputs
+                output_names=list(outputs), input_feed=inputs
             )
             return result
 
