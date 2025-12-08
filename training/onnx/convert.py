@@ -75,6 +75,7 @@ def convert_encoder() -> str:
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
+        dynamo=False
     )
 
     return path_out
@@ -178,6 +179,7 @@ def convert_segnet() -> str:
         output_names=["output"],
         # dyamic axes are required for dynamic batch_size
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+        dynamo=False
     )
     return f"{os.path.splitext(segnet_path_torch)[0]}.onnx"
 
@@ -215,10 +217,11 @@ def convert_cnn_encoder():
         input_tensor,  # type: ignore
         path_out,
         export_params=True,
-        opset_version=18,
+        opset_version=17,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
+        dynamo=False
     )
 
     return path_out
@@ -259,10 +262,11 @@ def convert_transformer_encoder():
         input_tensor,  # type: ignore
         path_out,
         export_params=True,
-        opset_version=18,
+        opset_version=17,
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
+        dynamo=False
     )
 
     return path_out

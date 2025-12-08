@@ -11,6 +11,7 @@ build/
 #tflite model folders
 /segnet_155/
 /cnn_encoder_188/
+/cnn_encoder_236/
 /decoder_188/
 /transformer_encoder188/
 
