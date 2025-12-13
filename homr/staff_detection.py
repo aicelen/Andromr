@@ -1,7 +1,6 @@
 from collections.abc import Generator, Iterable
 
 import cv2
-import cv2.typing as cvt
 import numpy as np
 
 from custom_scipy.peaks import find_peaks
@@ -132,11 +131,11 @@ class StaffAnchor(DebugDrawable):
         cv2.line(img, [x - 50, self.zone.stop], [x + 50, self.zone.stop], color, 2)
 
 
-def _get_all_contours(lines: list[StaffLineSegment]) -> list[cvt.MatLike]:
+def _get_all_contours(lines: list[StaffLineSegment]) -> list:
     all_fragments: list[RotatedBoundingBox] = []
     for line in lines:
         all_fragments.extend(line.staff_fragments)
-    result: list[cvt.MatLike] = []
+    result: list = []
     for fragment in all_fragments:
         result.extend(fragment.contours)
     return result

@@ -717,3 +717,21 @@ if __name__ == "__main__":
     )
     for symbol in random.sample(valid_combinations, 10):
         eprint(symbol)
+
+
+def sort_token_chords(
+    symbols: list[EncodedSymbol], keep_chord_symbol: bool = False
+) -> list[list[EncodedSymbol]]:
+    chords: list[list[EncodedSymbol]] = []
+    is_in_chord = False
+    for symbol in symbols:
+        if symbol.rhythm == "chord":
+            is_in_chord = True
+        elif is_in_chord and len(chords) > 0:
+            if keep_chord_symbol:
+                chords[-1].append(EncodedSymbol("chord"))
+            chords[-1].append(symbol)
+            is_in_chord = False
+        else:
+            chords.append([symbol])
+    return chords

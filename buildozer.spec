@@ -31,7 +31,7 @@ source.include_exts = py, png, kv, atlas, json, pkl, txt
 source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, cnn_encoder_188, datasets, segnet_155, training, validation 
+source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, datasets, training, validation, segnet_155, cnn_encoder_188, decoder_188, cnn_encoder_236
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
