@@ -783,45 +783,40 @@ class Andromr(MDApp):
             path(str): path to the image
             output_path(str): path where the musicxml is stored
         """
-        try:
-            # run homr
-            return_path = homr(path)
-            appdata.homr_running = False
+        # run homr
+        return_path = homr(path)
+        appdata.homr_running = False
 
-            if self.root.get_screen("progress").ids.title.text == "":
-                # if there's no user given title we give it a unique id based on time
-                music_title = (
-                    f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-                )
-            else:
-                # otherwise we set it to the users title
-                music_title = str(self.root.get_screen("progress").ids.title.text)
-
-            # get user inputs of the beat and the division
-            beat = self.root.get_screen("progress").ids.beat.text
-            division = self.root.get_screen("progress").ids.division.text
-
-            # if we got valid integers
-            if beat.isdigit() and division.isdigit():
-                # we can add them
-                add_measure_type(return_path, beat, division)
-
-            # rename the file
-            os.rename(
-                return_path,
-                os.path.join(
-                    APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"
-                ),
+        if self.root.get_screen("progress").ids.title.text == "":
+            # if there's no user given title we give it a unique id based on time
+            music_title = (
+                f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
             )
+        else:
+            # otherwise we set it to the users title
+            music_title = str(self.root.get_screen("progress").ids.title.text)
 
-            # and update self.files (needed for the scorllview)
-            self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
-            self.text_lables = [os.path.splitext(file)[0] for file in self.files]
+        # get user inputs of the beat and the division
+        beat = self.root.get_screen("progress").ids.beat.text
+        division = self.root.get_screen("progress").ids.division.text
 
-        except Exception as e:
-            # if anything fails during transcription it prints the error
-            print(e)
-            # and switches back to the landing screen as if nothing ever happend
+        # if we got valid integers
+        if beat.isdigit() and division.isdigit():
+            # we can add them
+            add_measure_type(return_path, beat, division)
+
+        # rename the file
+        os.rename(
+            return_path,
+            os.path.join(
+                APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"
+            ),
+        )
+
+        # and update self.files (needed for the scorllview)
+        self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
+        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
+
 
         # switch to landing screen
         Clock.schedule_once(lambda dt: self.change_screen("landing"))

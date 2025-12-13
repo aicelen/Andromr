@@ -11,6 +11,7 @@ from homr.inference_engine.onnx_model import OnnxModel
 from homr.transformer.configs import default_config
 
 from globals import appdata
+from kivy import platform
 
 class ScoreDecoder:
     def __init__(
@@ -76,11 +77,6 @@ class ScoreDecoder:
             x_articulations = out_articulations[:, -1:]
             x_states = states[:, -1:]
 
-            if step != 0:  # after the first step we don't pass the full context into the decoder
-                # x_transformers uses [:, :0] to split the context
-                # which caused a Reshape error when loading the onnx model
-                context = context_reduced
-
             inputs = {
                 "rhythms": x_rhythm,
                 "pitchs": x_pitch,
@@ -91,8 +87,19 @@ class ScoreDecoder:
                 "cache_len": np.array([step]),
             }
 
-            for i in range(32):
-                inputs[kv_input_names[i]] = cache[i]
+            if step == 0:
+                # only in the first step the cache get's passed in (on android)
+                for i in range(32):
+                    inputs[kv_input_names[i]] = cache[i]
+
+            else:
+                # after the first step we don't pass the full context into the decoder
+                # x_transformers uses [:, :0] to split the context
+                # which caused a Reshape error when loading the onnx model
+                context = context_reduced
+                if platform != 'android':
+                    for i in range(32):
+                        inputs[kv_input_names[i]] = cache[i]
 
             rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
                 inputs=inputs,

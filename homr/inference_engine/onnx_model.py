@@ -67,10 +67,11 @@ if platform == "android":
                 Outputs of the model
             """
 
-            for input_name, tensor in self.cached_tensors.items():
-                jmap.put(input_name, self.cached_tensors[out_name])
-
             jmap = HashMap()
+
+            for input_name, tensor in self.cached_tensors.items():
+                jmap.put(input_name, tensor)
+
             for name, value in inputs.items():
                 arr = np.ascontiguousarray(value)
                 shape = list(arr.shape)
@@ -110,14 +111,14 @@ if platform == "android":
 
                     # Reshape and add the output data to the dict.
                     output_list.append(numpy_array.reshape(*shape))
+                    tensor_obj.close()
 
                 # Leave as java tensor to input next inference step
                 elif isinstance(shape, str):
+                    if shape in self.cached_tensors:
+                        self.cached_tensors[shape].close()
                     self.cached_tensors[shape] = tensor_obj
 
-                tensor_obj.close()
-
-            results.close()
             return output_list
 
         def close_session(self):
