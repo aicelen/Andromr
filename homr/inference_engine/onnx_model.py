@@ -48,6 +48,7 @@ if platform == "android":
                 so.setIntraOpNumThreads(num_threads)
 
             self.session = self.env.createSession(model_path, so)
+            self.cached_tensors = {}
 
         def run(self, inputs: dict, outputs: dict) -> dict:
             """
@@ -65,6 +66,10 @@ if platform == "android":
             dict
                 Outputs of the model
             """
+
+            for input_name, tensor in self.cached_tensors.items():
+                jmap.put(input_name, self.cached_tensors[out_name])
+
             jmap = HashMap()
             for name, value in inputs.items():
                 arr = np.ascontiguousarray(value)
@@ -97,11 +102,19 @@ if platform == "android":
             output_list = []
             for out_name, shape in outputs.items():
                 tensor_obj = results.get(out_name).get()
-                bytebuffer = bytes(tensor_obj.getByteBuffer().array())
-                numpy_array = np.frombuffer(bytebuffer, dtype=np.float32)
 
-                # Reshape and add the output data to the dict.
-                output_list.append(numpy_array.reshape(*shape))
+                # Convert to python
+                if isinstance(shape, list):
+                    bytebuffer = bytes(tensor_obj.getByteBuffer().array())
+                    numpy_array = np.frombuffer(bytebuffer, dtype=np.float32)
+
+                    # Reshape and add the output data to the dict.
+                    output_list.append(numpy_array.reshape(*shape))
+
+                # Leave as java tensor to input next inference step
+                elif isinstance(shape, str):
+                    self.cached_tensors[shape] = tensor_obj
+
                 tensor_obj.close()
 
             results.close()

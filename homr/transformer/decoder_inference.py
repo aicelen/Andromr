@@ -67,7 +67,6 @@ class ScoreDecoder:
             "out_articulations": [1, 1, 171],
         }
 
-
         symbols: list[EncodedSymbol] = []
 
         for step in range(self.max_seq_len):
@@ -161,7 +160,7 @@ class ScoreDecoder:
         for i in range(32):
             cache.append(np.zeros((1, 8, cache_len, 64), dtype=np.float32))
             input_names.append(f"cache_in{i}")
-            output_dict[f"cache_out{i}"] = None # this is used to check if this is cache or not
+            output_dict[f"cache_out{i}"] = f"cache_in{i}" # this is used to check if this gets converted to python or not
         return cache, input_names, output_dict
 
 
