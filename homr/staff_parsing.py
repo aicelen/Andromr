@@ -83,7 +83,7 @@ def center_image_on_canvas(
     image: NDArray, canvas_size: NDArray, margin_top: int = 0, margin_bottom: int = 0
 ) -> NDArray:
 
-    resized = cv2.resize(image, canvas_size)  # type: ignore
+    resized = cv2.resize(image, tuple(canvas_size))
 
     new_image = np.zeros((tr_omr_max_height, tr_omr_max_width, 3), np.uint8)
     new_image[:, :] = (255, 255, 255)
@@ -192,38 +192,21 @@ def prepare_staff_image(
     )
     staff_image = augment_staff_image(staff_image)
     region = np.round(region * scaling_factor)
-    eprint("Dewarping staff", index)
+
     region_step1 = np.array(region) + np.array([-10, -50, 10, 50])
-    staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step1)
+    staff_image, top_left = crop_image_and_return_new_top(
+        staff_image, region_step1[0], region_step1[1], region_step1[2], region_step1[3]
+    )
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
-    staff_image = staff_image.astype(np.uint8)
-    staff_image, top_left = crop_image_and_return_new_top(staff_image, *region_step2)
-    scaling_factor = 1
+    staff_image, top_left = crop_image_and_return_new_top(
+        staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3]
+    )
 
-    eprint("Dewarping staff", index, "done")
+    scaling_factor = 1
 
     staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
     staff_image = center_image_on_canvas(staff_image, image_dimensions, margin_bottom=margin_bottom)
-    debug.write_image_with_fixed_suffix(f"_staff-{index}_input.jpg", staff_image)
-    if debug.debug:
-        transformed_staff = staff
-        transformed_staff_image = staff_image.copy()
-        for symbol in transformed_staff.symbols:
-            center = symbol.center
-            cv2.circle(transformed_staff_image, (int(center[0]), int(center[1])), 5, (0, 0, 255))
-            cv2.putText(
-                transformed_staff_image,
-                type(symbol).__name__,
-                (int(center[0]), int(center[1])),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.3,
-                (0, 0, 255),
-                1,
-            )
-        debug.write_image_with_fixed_suffix(
-            f"_staff-{index}_debug_annotated.jpg", transformed_staff_image
-        )
     return staff_image, staff
 
 
