@@ -160,6 +160,9 @@ def process_image(
             multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
+        appdata.homr_state = "Transforming"
+        appdata.homr_progress = 1
+
         result_staffs = parse_staffs(
             debug, multi_staffs, image, selected_staff=config.selected_staff
         )
@@ -184,14 +187,23 @@ def process_image(
     finally:
         if debug_cleanup is not None:
             debug_cleanup.clean_debug_files_from_previous_runs()
+    return xml_file
 
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
 ) -> tuple[list[MultiStaff], NDArray, Debug]:
+
+    appdata.homr_state = "Segementing"
+    appdata.homr_progress = 1
+
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache
     )
+
+    appdata.homr_state = "Extracting"
+    appdata.homr_progress = 1
+
     symbols = predict_symbols(debug, predictions)
 
     symbols.staff_fragments = break_wide_fragments(symbols.staff_fragments)
@@ -203,6 +215,8 @@ def detect_staffs_in_image(
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
+    
+    appdata.homr_progress = 7
 
     average_note_head_height = float(
         np.median([notehead.notehead.size[1] for notehead in noteheads_with_stems])
@@ -224,9 +238,15 @@ def detect_staffs_in_image(
     debug.write_bounding_boxes(
         "anchor_input", symbols.staff_fragments + bar_line_boxes + symbols.clefs_keys
     )
+
+    appdata.homr_progress = 10
+
     staffs = detect_staff(
         debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
     )
+
+    appdata.homr_progress = 90
+    
     if len(staffs) == 0:
         raise Exception("No staffs found")
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)

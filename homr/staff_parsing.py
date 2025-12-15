@@ -12,6 +12,7 @@ from homr.transformer.configs import default_config
 from homr.transformer.vocabulary import EncodedSymbol, remove_duplicated_symbols
 from homr.type_definitions import NDArray
 
+from globals import appdata
 
 def _have_all_the_same_number_of_staffs(staffs: list[MultiStaff]) -> bool:
     for staff in staffs:
@@ -238,12 +239,14 @@ def parse_staffs(
     for voice in range(number_of_voices):
         staffs_for_voice = [staff.staffs[voice] for staff in staffs]
         result_for_voice = []
+        progress_increment = 100 / (len(staffs_for_voice) * number_of_voices)
         for staff_index, staff in enumerate(staffs_for_voice):
             if selected_staff >= 0 and staff_index != selected_staff:
                 eprint("Ignoring staff due to selected_staff argument", i)
                 i += 1
                 continue
             result_staff = parse_staff_image(debug, i, staff, image, regions)
+            appdata.homr_progress += progress_increment
             if len(result_staff) == 0:
                 eprint("Skipping empty staff", i)
                 i += 1
