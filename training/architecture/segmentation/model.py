@@ -97,9 +97,7 @@ class CamVidModel(pl.LightningModule):
         avg_loss = losses.mean()
 
         # Per-image IoU and dataset IoU calculations
-        per_image_iou = smp.metrics.iou_score(
-            tp, fp, fn, tn, reduction="micro-imagewise"
-        )
+        per_image_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro-imagewise")
         dataset_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro")
 
         metrics = {
@@ -153,15 +151,11 @@ class CamVidModel(pl.LightningModule):
 
 def create_unet(skip_weights_download: bool = False) -> CamVidModel:
     return CamVidModel(
-        encoder_name="resnet34",
-        out_classes=3,
-        skip_weights_download=skip_weights_download,
+        encoder_name="resnet34", out_classes=3, skip_weights_download=skip_weights_download
     )
 
 
 def create_segnet(skip_weights_download: bool = False) -> CamVidModel:
     return CamVidModel(
-        encoder_name="resnet18",
-        out_classes=6,
-        skip_weights_download=skip_weights_download,
+        encoder_name="resnet18", out_classes=6, skip_weights_download=skip_weights_download
     )

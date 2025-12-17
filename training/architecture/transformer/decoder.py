@@ -1,22 +1,20 @@
 from math import ceil
 from typing import Any
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from x_transformers.x_transformers import (
+
+from homr.transformer.configs import Config
+from homr.transformer.vocabulary import EncodedSymbol, has_rhythm_symbol_a_position
+from training.architecture.transformer.custom_x_transformer import (
     AbsolutePositionalEmbedding,
     AttentionLayers,
-    Decoder,
+    CustomDecoder,
+    Intermediates,
+    LayerIntermediates,
     TokenEmbedding,
 )
-
-from homr.debug import AttentionDebug
-from homr.results import TransformerChord
-from homr.simple_logging import eprint
-from homr.transformer.configs import Config
-from training.architecture.transformer.split_merge_symbols import SymbolMerger
 
 
 class ScoreTransformerWrapper(nn.Module):
@@ -46,21 +44,17 @@ class ScoreTransformerWrapper(nn.Module):
         self.rhythm_emb = TokenEmbedding(
             config.decoder_dim, config.num_rhythm_tokens, l2norm_embed=l2norm_embed
         )
+        self.articulation_emb = TokenEmbedding(
+            config.decoder_dim, config.num_articulation_tokens, l2norm_embed=l2norm_embed
+        )
+        self.states_emb = TokenEmbedding(
+            config.decoder_dim, config.num_state_tokens, l2norm_embed=l2norm_embed
+        )
         self.pos_emb = AbsolutePositionalEmbedding(
             config.decoder_dim, config.max_seq_len, l2norm_embed=l2norm_embed
         )
-        self.attention_dim = (
-            config.max_width * config.max_height // config.patch_size**2 + 1
-        )
-        self.attention_width = config.max_width // config.patch_size
-        self.attention_height = config.max_height // config.patch_size
         self.patch_size = config.patch_size
 
-        self.project_emb = (
-            nn.Linear(config.decoder_dim, dim)
-            if config.decoder_dim != dim
-            else nn.Identity()
-        )
         self.attn_layers = attn_layers
         self.post_emb_norm = nn.LayerNorm(dim)
         self.init_()
@@ -68,7 +62,8 @@ class ScoreTransformerWrapper(nn.Module):
         self.to_logits_lift = nn.Linear(dim, config.num_lift_tokens)
         self.to_logits_pitch = nn.Linear(dim, config.num_pitch_tokens)
         self.to_logits_rhythm = nn.Linear(dim, config.num_rhythm_tokens)
-        self.to_logits_note = nn.Linear(dim, config.num_note_tokens)
+        self.to_logits_position = nn.Linear(dim, config.num_position_tokens)
+        self.to_logits_articulations = nn.Linear(dim, config.num_articulation_tokens)
 
     def init_(self) -> None:
         if self.l2norm_embed:
@@ -76,6 +71,7 @@ class ScoreTransformerWrapper(nn.Module):
             nn.init.normal_(self.pitch_emb.emb.weight, std=1e-5)
             nn.init.normal_(self.rhythm_emb.emb.weight, std=1e-5)
             nn.init.normal_(self.pos_emb.emb.weight, std=1e-5)
+            nn.init.normal_(self.articulation_emb.emb.weight, std=1e-5)
             return
 
     def forward(
@@ -83,65 +79,85 @@ class ScoreTransformerWrapper(nn.Module):
         rhythms: torch.Tensor,
         pitchs: torch.Tensor,
         lifts: torch.Tensor,
+        articulations: torch.Tensor,
+        states: torch.Tensor,
+        context: torch.Tensor | None = None,
+        cache_len: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
-        return_center_of_attention: bool = False,
-        **kwargs: Any,
+        **kwargs: torch.Tensor,
     ) -> Any:
-        x = (
-            self.rhythm_emb(rhythms)
-            + self.pitch_emb(pitchs)
-            + self.lift_emb(lifts)
-            + self.pos_emb(rhythms)
-        )
-
-        x = self.post_emb_norm(x)
-        x = self.project_emb(x)
-        debug = kwargs.pop("debug", None)
-
-        if return_center_of_attention and False:
-            x, hiddens = self.attn_layers(x, mask=mask, return_hiddens=True, **kwargs)
-            center_of_attention = self.calculate_center_of_attention(
-                debug, hiddens.attn_intermediates
+        cache = kwargs.pop("cache", None)
+        if cache is None:
+            x = (
+                self.rhythm_emb(rhythms)
+                + self.pitch_emb(pitchs)
+                + self.lift_emb(lifts)
+                + self.articulation_emb(articulations)
+                + self.pos_emb(rhythms)
+                + self.states_emb(states)
             )
-        else:
+
+            x = self.post_emb_norm(x)
+
             x = self.attn_layers(x, mask=mask, return_hiddens=False, **kwargs)
-            center_of_attention = None
 
-        out_lifts = self.to_logits_lift(x)
-        out_pitchs = self.to_logits_pitch(x)
-        out_rhythms = self.to_logits_rhythm(x)
-        out_notes = self.to_logits_note(x)
-        return out_rhythms, out_pitchs, out_lifts, out_notes, x, center_of_attention
+            out_lifts = self.to_logits_lift(x)
+            out_pitchs = self.to_logits_pitch(x)
+            out_rhythms = self.to_logits_rhythm(x)
+            out_articulations = self.to_logits_articulations(x)
+            out_positions = self.to_logits_position(x)
+            return out_rhythms, out_pitchs, out_lifts, out_positions, out_articulations, x
 
-    def calculate_center_of_attention(
-        self, debug: AttentionDebug | None, intermediates: Any
-    ) -> tuple[float, float]:
-        filtered_intermediate = [
-            tensor.post_softmax_attn[:, :, -1, :]
-            for tensor in intermediates
-            if tensor.post_softmax_attn.shape[-1] == self.attention_dim
-        ]
+        else:
+            x = (
+                self.rhythm_emb(rhythms)
+                + self.pitch_emb(pitchs)
+                + self.lift_emb(lifts)
+                + self.articulation_emb(articulations)
+                + self.pos_emb(rhythms, offset=cache_len)
+                + self.states_emb(states)
+            )
 
-        attention_all_layers = torch.mean(torch.stack(filtered_intermediate), dim=0)
-        attention_all_layers = attention_all_layers.squeeze(0).squeeze(1)
-        attention_all_layers = attention_all_layers.mean(dim=0)
+            x = self.post_emb_norm(x)
 
-        image_attention = attention_all_layers[1:]
-        image_attention_2d = (
-            image_attention.reshape(self.attention_height, self.attention_width)
-            .cpu()
-            .numpy()
-        )
-        center = np.unravel_index(image_attention_2d.argmax(), image_attention_2d.shape)
-        center_of_attention = (
-            float(center[0] * self.patch_size),
-            float(center[1] * self.patch_size),
-        )
+            # reconstruct x_transformers LayerIntermediates from the input_cache
+            inters = []
+            for i in range(0, 32, 2):
+                inters.append(Intermediates(cached_kv=(cache[i], cache[i + 1])))
 
-        if debug is not None:
-            debug.add_attention(image_attention_2d, center_of_attention)
+            cache_input = LayerIntermediates(attn_intermediates=inters, cache_length=cache_len)
 
-        return center_of_attention
+            x, cache = self.attn_layers(
+                x, cache=cache_input, mask=mask, return_hiddens=True, context=context
+            )
+
+            # get the kv cache tensors from the LayerIntermediates class
+            # the cache is built up like this:
+            # LayerIntermediates(atten_intermediates=Intermediates(cached_kv=(cache_k, cache_v)))
+            # cache is alternating between shapes (batch, 8, seq_len, 64) and (batch, 8, 1281, 64)
+            # 8 probably corresponds to the number of decoder_heads
+            # 1281 is the same as the encoder output
+            cache_out = []
+            attn_inters = cache.attn_intermediates
+            for i in range(16):  # 16x2
+                k, v = attn_inters[i].cached_kv
+                cache_out.append(k)
+                cache_out.append(v)
+
+            out_lifts = self.to_logits_lift(x)
+            out_pitchs = self.to_logits_pitch(x)
+            out_rhythms = self.to_logits_rhythm(x)
+            out_articulations = self.to_logits_articulations(x)
+            out_positions = self.to_logits_position(x)
+            return (
+                out_rhythms,
+                out_pitchs,
+                out_lifts,
+                out_positions,
+                out_articulations,
+                x,
+                cache_out,
+            )
 
 
 def top_k(logits: torch.Tensor, thres: float = 0.9) -> torch.Tensor:
@@ -156,7 +172,6 @@ class ScoreDecoder(nn.Module):
     def __init__(
         self,
         transformer: ScoreTransformerWrapper,
-        noteindexes: list[int],
         config: Config,
         ignore_index: int = -100,
     ):
@@ -165,30 +180,34 @@ class ScoreDecoder(nn.Module):
         self.ignore_index = ignore_index
         self.config = config
         self.net = transformer
-        self.max_seq_len = transformer.max_seq_len
+        self.max_seq_len = config.max_seq_len
+        self.eos_token = config.eos_token
 
         self.inv_rhythm_vocab = {v: k for k, v in config.rhythm_vocab.items()}
         self.inv_pitch_vocab = {v: k for k, v in config.pitch_vocab.items()}
         self.inv_lift_vocab = {v: k for k, v in config.lift_vocab.items()}
+        self.inv_articulation_vocab = {v: k for k, v in config.articulation_vocab.items()}
+        self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
+        self.state_vocab = config.state_vocab
 
         note_mask = torch.zeros(config.num_rhythm_tokens)
-        note_mask[noteindexes] = 1
+        for index, rhythm_symbol in enumerate(config.rhythm_vocab.keys()):
+            if has_rhythm_symbol_a_position(rhythm_symbol):
+                note_mask[index] = 1
         self.note_mask = nn.Parameter(note_mask)
 
         # Weight the actual lift tokens (so neither nonote nor null) higher
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     @torch.no_grad()
-    def generate(  # noqa: PLR0915
+    def generate(
         self,
         start_tokens: torch.Tensor,
         nonote_tokens: torch.Tensor,
-        seq_len: int,
-        eos_token: int | None = None,
         temperature: float = 1.0,
         filter_thres: float = 0.7,
         **kwargs: Any,
-    ) -> list[TransformerChord]:
+    ) -> list[EncodedSymbol]:
         was_training = self.net.training
         num_dims = len(start_tokens.shape)
 
@@ -201,143 +220,158 @@ class ScoreDecoder(nn.Module):
         out_rhythm = start_tokens
         out_pitch = nonote_tokens
         out_lift = nonote_tokens
+        out_articulations = nonote_tokens
         mask = kwargs.pop("mask", None)
-        merger = SymbolMerger()
+        context_first = kwargs.pop("context")
+        context_later = context_first[:, :0]
 
         if mask is None:
-            mask = torch.full_like(
-                out_rhythm, True, dtype=torch.bool, device=out_rhythm.device
-            )
+            # the mask is always (True, True) because the x_ are always (1, 1)
+            # and contain only the last token
+            # the information about the rest of the tokens gets passed via the kv cache
+            mask = torch.ones((1, 1), dtype=torch.bool, device=self.device)
 
-        for _position_in_seq in range(seq_len):
-            mask = mask[:, -self.max_seq_len :]
-            x_lift = out_lift[:, -self.max_seq_len :]
-            x_pitch = out_pitch[:, -self.max_seq_len :]
-            x_rhythm = out_rhythm[:, -self.max_seq_len :]
+        symbols: list[EncodedSymbol] = []
+        key = "keySignature_0"
+        clef_upper = "clef_G2"
+        clef_lower = "clef_F4"
+        states = torch.Tensor([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]]).to(
+            start_tokens.device
+        )
+        cache = init_cache()[0]
 
-            rhythmsp, pitchsp, liftsp, notesp, _ignored, center_of_attention = self.net(
+        for step in range(self.max_seq_len):
+            x_lift = out_lift[:, -1:]
+            x_pitch = out_pitch[:, -1:]
+            x_rhythm = out_rhythm[:, -1:]
+            x_articulations = out_articulations[:, -1:]
+
+            if step == 0:
+                context = context_first
+            else:
+                context = context_later
+
+            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, _, cache = self.net(
                 x_rhythm,
                 x_pitch,
                 x_lift,
-                mask=mask,
-                return_center_of_attention=True,
+                x_articulations,
+                states[:, -1:],
+                context,
+                torch.Tensor([step], device=self.device).long(),
+                mask,
+                cache=cache,
                 **kwargs,
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
             filtered_pitch_logits = top_k(pitchsp[:, -1, :], thres=filter_thres)
             filtered_rhythm_logits = top_k(rhythmsp[:, -1, :], thres=filter_thres)
+            filtered_articulations_logits = top_k(articulationsp[:, -1, :], thres=filter_thres)
+            filtered_position_logits = top_k(positionsp[:, -1, :], thres=filter_thres)
 
-            current_temperature = temperature
-            retry = True
-            attempt = 0
-            max_attempts = 5
+            lift_probs = F.softmax(filtered_lift_logits / temperature, dim=-1)
+            pitch_probs = F.softmax(filtered_pitch_logits / temperature, dim=-1)
+            rhythm_probs = F.softmax(filtered_rhythm_logits / temperature, dim=-1)
+            articulation_probs = F.softmax(filtered_articulations_logits / temperature, dim=-1)
+            position_probs = F.softmax(filtered_position_logits / temperature, dim=-1)
 
-            while retry and attempt < max_attempts:
-                lift_probs = F.softmax(
-                    filtered_lift_logits / current_temperature, dim=-1
-                )
-                pitch_probs = F.softmax(
-                    filtered_pitch_logits / current_temperature, dim=-1
-                )
-                rhythm_probs = F.softmax(
-                    filtered_rhythm_logits / current_temperature, dim=-1
-                )
+            lift_sample = torch.multinomial(lift_probs, 1)
+            pitch_sample = torch.multinomial(pitch_probs, 1)
+            rhythm_sample = torch.multinomial(rhythm_probs, 1)
+            articulation_sample = torch.multinomial(articulation_probs, 1)
+            position_sample = torch.multinomial(position_probs, 1)
 
-                lift_sample = torch.multinomial(lift_probs, 1)
-                pitch_sample = torch.multinomial(pitch_probs, 1)
-                rhythm_sample = torch.multinomial(rhythm_probs, 1)
+            lift_token = detokenize(lift_sample, self.inv_lift_vocab)
+            pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
+            rhythm_token = detokenize(rhythm_sample, self.inv_rhythm_vocab)
+            articulation_token = detokenize(articulation_sample, self.inv_articulation_vocab)
+            position_token = detokenize(position_sample, self.inv_position_vocab)
 
-                sorted_probs, sorted_indices = torch.sort(rhythm_probs, descending=True)
+            if rhythm_sample[0][0] == self.eos_token:
+                break
 
-                rhythm_confidence = sorted_probs[0, 0].item()
-                alternative_confidence = sorted_probs[0, 1].item()
-
-                top_token_id = sorted_indices[0, 0].unsqueeze(0)
-                alt_token_id = sorted_indices[0, 1].unsqueeze(0)
-
-                rhythm_token = detokenize(top_token_id, self.inv_rhythm_vocab)
-                alternative_rhythm_token = detokenize(
-                    alt_token_id, self.inv_rhythm_vocab
-                )
-
-                lift_token = detokenize(lift_sample, self.inv_lift_vocab)
-                pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
-
-                is_eos = len(rhythm_token)
-                if is_eos == 0:
-                    break
-
-                if len(alternative_rhythm_token) == 0:
-                    alternative_rhythm_token = [""]
-                    alternative_confidence = 0
-
-                retry = merger.add_symbol_and_alternative(
-                    rhythm_token[0],
-                    rhythm_confidence,
-                    pitch_token[0],
-                    lift_token[0],
-                    alternative_rhythm_token[0],
-                    alternative_confidence,
-                )
-
-                current_temperature *= 3.5
-                attempt += 1
+            symbol = EncodedSymbol(
+                rhythm=rhythm_token[0],
+                pitch=pitch_token[0],
+                lift=lift_token[0],
+                articulation=articulation_token[0],
+                position=position_token[0],
+            )
+            symbols.append(symbol)
+            if symbol.rhythm.startswith("keySignature"):
+                key = symbol.rhythm
+            elif symbol.rhythm.startswith("clef"):
+                if symbol.position == "upper":
+                    clef_upper = symbol.rhythm
+                else:
+                    clef_lower = symbol.rhythm
+            states = torch.concat(
+                (
+                    states,
+                    torch.Tensor([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]]).to(
+                        states.device
+                    ),
+                ),
+                dim=-1,
+            )
 
             out_lift = torch.cat((out_lift, lift_sample), dim=-1)
             out_pitch = torch.cat((out_pitch, pitch_sample), dim=-1)
             out_rhythm = torch.cat((out_rhythm, rhythm_sample), dim=-1)
+            out_articulations = torch.cat((out_articulations, articulation_sample), dim=-1)
             mask = F.pad(mask, (0, 1), value=True)
 
-            if (
-                eos_token is not None
-                and (torch.cumsum(out_rhythm == eos_token, 1)[:, -1] >= 1).all()
-            ):
-                break
-
-        out_lift = out_lift[:, t:]
-        out_pitch = out_pitch[:, t:]
-        out_rhythm = out_rhythm[:, t:]
-
         self.net.train(was_training)
-        return merger.complete()
+        return symbols
 
     def forward(
         self,
         rhythms: torch.Tensor,
         pitchs: torch.Tensor,
         lifts: torch.Tensor,
-        notes: torch.Tensor,
+        articulations: torch.Tensor,
+        states: torch.Tensor,
+        positions: torch.Tensor,
+        mask: torch.Tensor,
         **kwargs: Any,
     ) -> dict[str, torch.Tensor]:
         liftsi = lifts[:, :-1]
         liftso = lifts[:, 1:]
+        articulationsi = articulations[:, :-1]
+        articulationso = articulations[:, 1:]
         pitchsi = pitchs[:, :-1]
         pitchso = pitchs[:, 1:]
         rhythmsi = rhythms[:, :-1]
         rhythmso = rhythms[:, 1:]
-        noteso = notes[:, 1:]
+        positionso = positions[:, 1:]
+        statesi = states[:, :-1]
 
-        mask = kwargs.get("mask", None)
-        if mask is not None and mask.shape[1] == rhythms.shape[1]:
+        if mask.shape[1] == rhythms.shape[1]:
             mask = mask[:, :-1]
-            kwargs["mask"] = mask
-        if mask is None:
-            raise ValueError("A mask is required")
 
-        rhythmsp, pitchsp, liftsp, notesp, x, _attention = self.net(
-            rhythmsi, pitchsi, liftsi, **kwargs
+        rhythmsp, pitchsp, liftsp, positionsp, articulationsp, x = self.net(
+            rhythms=rhythmsi,
+            pitchs=pitchsi,
+            lifts=liftsi,
+            articulations=articulationsi,
+            states=statesi,
+            mask=mask,
+            **kwargs,
         )  # this calls ScoreTransformerWrapper.forward
 
-        loss_consist = self.calConsistencyLoss(rhythmsp, pitchsp, liftsp, notesp, mask)
+        loss_consist = self.calConsistencyLoss(
+            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, mask
+        )
         loss_rhythm = self.masked_logits_cross_entropy(rhythmsp, rhythmso, mask)
         loss_pitch = self.masked_logits_cross_entropy(pitchsp, pitchso, mask)
         loss_lift = self.masked_logits_cross_entropy(liftsp, liftso, mask)
-        loss_note = self.masked_logits_cross_entropy(notesp, noteso, mask)
+        loss_articulations = self.masked_logits_cross_entropy(articulationsp, articulationso, mask)
+        loss_position = self.masked_logits_cross_entropy(positionsp, positionso, mask)
         # From the TR OMR paper equation 2, we use however different values for alpha and beta
-        alpha = 0.1
+        alpha = 1
         beta = 1
-        loss_sum = loss_rhythm + loss_pitch + loss_lift + loss_note
+        loss_sum = loss_rhythm + loss_pitch + loss_lift + loss_position + loss_articulations
         loss = alpha * loss_sum + beta * loss_consist
 
         return {
@@ -345,7 +379,8 @@ class ScoreDecoder(nn.Module):
             "loss_pitch": loss_pitch,
             "loss_lift": loss_lift,
             "loss_consist": loss_consist,
-            "loss_note": loss_note,
+            "loss_position": loss_position,
+            "loss_articulations": loss_articulations,
             "loss": loss,
         }
 
@@ -354,12 +389,13 @@ class ScoreDecoder(nn.Module):
         rhythmsp: torch.Tensor,
         pitchsp: torch.Tensor,
         liftsp: torch.Tensor,
-        notesp: torch.Tensor,
+        positionsp: torch.Tensor,
+        articulationsp: torch.Tensor,
         mask: torch.Tensor,
         gamma: int = 10,
     ) -> torch.Tensor:
-        notesp_soft = torch.softmax(notesp, dim=2)
-        note_flag = notesp_soft[:, :, 1] * mask
+        positionsp_soft = torch.softmax(positionsp, dim=2)
+        positionsp_note = torch.sum(positionsp_soft[:, :, 1:], dim=2) * mask
 
         rhythmsp_soft = torch.softmax(rhythmsp, dim=2)
         rhythmsp_note = torch.sum(rhythmsp_soft * self.note_mask, dim=2) * mask
@@ -370,14 +406,18 @@ class ScoreDecoder(nn.Module):
         liftsp_soft = torch.softmax(liftsp, dim=2)
         liftsp_note = torch.sum(liftsp_soft[:, :, 1:], dim=2) * mask
 
+        articulationsp_soft = torch.softmax(articulationsp, dim=2)
+        articulationsp_note = torch.sum(articulationsp_soft[:, :, 1:], dim=2) * mask
+
         loss = (
             gamma
             * (
-                F.l1_loss(rhythmsp_note, note_flag, reduction="none")
-                + F.l1_loss(note_flag, liftsp_note, reduction="none")
-                + F.l1_loss(note_flag, pitchsp_note, reduction="none")
+                F.l1_loss(rhythmsp_note, positionsp_note, reduction="none")
+                + F.l1_loss(positionsp_note, liftsp_note, reduction="none")
+                + F.l1_loss(positionsp_note, pitchsp_note, reduction="none")
+                + F.l1_loss(positionsp_note, articulationsp_note, reduction="none")
             )
-            / 3.0
+            / 4.0
         )
 
         # Apply the mask to the loss and average over the non-masked elements
@@ -409,27 +449,32 @@ class ScoreDecoder(nn.Module):
         return loss
 
 
+def init_cache(
+    cache_len: int = 0,
+) -> tuple[list[torch.Tensor], list[str], list[str], dict[str, dict[int, str]], int]:
+    cache = []
+    input_names = []
+    output_names = []
+    dynamic = {}
+    for i in range(32):
+        cache.append(torch.zeros((1, 8, cache_len, 64), dtype=torch.float32))
+        input_names.append(f"cache_in{i}")
+        output_names.append(f"cache_out{i}")
+        dynamic[f"cache_in{i}"] = {2: "seq_len"}
+    return cache, input_names, output_names, dynamic, cache_len
+
+
 def get_decoder(config: Config) -> ScoreDecoder:
     return ScoreDecoder(
-        ScoreTransformerWrapper(
-            config=config,
-            attn_layers=Decoder(
-                dim=config.decoder_dim,
-                depth=config.decoder_depth,
-                heads=config.decoder_heads,
-                attn_flash=True,
-                **config.decoder_args.to_dict(),
-            ),
-        ),
+        get_score_wrapper(config),
         config=config,
-        noteindexes=config.noteindexes,
     )
 
 
-def get_decoder_onnx(config: Config) -> ScoreTransformerWrapper:
+def get_score_wrapper(config: Config) -> ScoreTransformerWrapper:
     return ScoreTransformerWrapper(
         config=config,
-        attn_layers=Decoder(
+        attn_layers=CustomDecoder(
             dim=config.decoder_dim,
             depth=config.decoder_depth,
             heads=config.decoder_heads,
@@ -443,24 +488,3 @@ def detokenize(tokens: torch.Tensor, vocab: Any) -> list[str]:
     toks = [vocab[tok.item()] for tok in tokens]
     toks = [t for t in toks if t not in ("[BOS]", "[EOS]", "[PAD]")]
     return toks
-
-
-def tokenize(
-    symbols: list[str], vocab: Any, default_token: int, vocab_name: str, file_name: str
-) -> list[int]:
-    result = []
-    for symbol in symbols:
-        if symbol in vocab:
-            result.append(vocab[symbol])
-        else:
-            eprint(
-                "Warning "
-                + file_name
-                + ": "
-                + symbol
-                + " not in "
-                + vocab_name
-                + " vocabulary"
-            )
-            result.append(default_token)
-    return result

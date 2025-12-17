@@ -2,7 +2,7 @@ import numpy as np
 
 from homr import constants
 from homr.bounding_boxes import BoundingEllipse, DebugDrawable, RotatedBoundingBox
-from homr.model import Note, NoteGroup, Staff, StemDirection, SymbolOnStaff
+from homr.model import Note, Staff, StemDirection
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
@@ -18,9 +18,7 @@ class NoteheadWithStem(DebugDrawable):
         self.stem = stem
         self.stem_direction = stem_direction
 
-    def draw_onto_image(
-        self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)
-    ) -> None:
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
         self.notehead.draw_onto_image(img, color)
         if self.stem is not None:
             self.stem.draw_onto_image(img, color)
@@ -43,14 +41,14 @@ def get_center(bbox) -> tuple[int, int]:
     return cen_x, cen_y
 
 
-def check_bbox_size(bbox, noteheads: NDArray, unit_size: float):
+def check_bbox_size(bbox, noteheads: NDArray, unit_size: float) -> list:
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
     cen_x, _ = get_center(bbox)
     note_w = constants.NOTEHEAD_SIZE_RATIO * unit_size
     note_h = unit_size
 
-    new_bbox = []
+    new_bbox: list = []
     if abs(w - note_w) > abs(w - note_w * 2):
         # Contains at least two notes, one left and one right.
         left_box = (bbox[0], bbox[1], cen_x, bbox[3])
@@ -109,9 +107,7 @@ def split_clumps_of_noteheads(
         size = (box[2] - box[0], box[3] - box[1])
         notehead = NoteheadWithStem(
             BoundingEllipse(
-                (center, size, 0),
-                notehead.notehead.contours,
-                notehead.notehead.debug_id,
+                (center, size, 0), notehead.notehead.contours, notehead.notehead.debug_id
             ),
             notehead.stem,
             notehead.stem_direction,
@@ -122,7 +118,7 @@ def split_clumps_of_noteheads(
 
 def combine_noteheads_with_stems(
     noteheads: list[BoundingEllipse], stems: list[RotatedBoundingBox]
-) -> tuple[list[NoteheadWithStem], list[RotatedBoundingBox]]:
+) -> list[NoteheadWithStem]:
     """
     Combines noteheads with their stems as this tells us
     what vertical lines are stems and which are bar lines.
@@ -146,54 +142,11 @@ def combine_noteheads_with_stems(
                 break
         if not found_stem:
             result.append(NoteheadWithStem(notehead, None, None))
-
-    unaccounted_stems_or_bars = [stem for stem in stems if stem not in used_stems]
-    return result, unaccounted_stems_or_bars
-
-
-def _are_notes_likely_a_chord(note1: Note, note2: Note, tolerance: float) -> bool:
-    if note1.stem is None or note2.stem is None:
-        return abs(note1.center[0] - note2.center[0]) < tolerance
-    return abs(note1.stem.center[0] - note2.stem.center[0]) < tolerance
-
-
-def _create_note_group(notes: list[Note]) -> Note | NoteGroup:
-    if len(notes) == 1:
-        return notes[0]
-    result = NoteGroup(notes)
     return result
 
 
-def _group_notes_on_staff(staff: Staff) -> None:
-    notes = staff.get_notes()
-    groups: list[list[Note]] = []
-    for note in notes:
-        group_found = False
-        for group in groups:
-            for grouped_note in group:
-                if _are_notes_likely_a_chord(
-                    note,
-                    grouped_note,
-                    constants.tolerance_note_grouping(staff.average_unit_size),
-                ):
-                    group_found = True
-                    group.append(note)
-                    break
-            if group_found:
-                break
-        if not group_found:
-            groups.append([note])
-    note_groups: list[SymbolOnStaff] = [_create_note_group(group) for group in groups]
-    note_groups.extend(staff.get_all_except_notes())
-    sorted_by_x = sorted(note_groups, key=lambda group: group.center[0])
-    staff.symbols = sorted_by_x
-
-
 def add_notes_to_staffs(
-    staffs: list[Staff],
-    noteheads: list[NoteheadWithStem],
-    symbols: NDArray,
-    notehead_pred: NDArray,
+    staffs: list[Staff], noteheads: list[NoteheadWithStem], symbols: NDArray, notehead_pred: NDArray
 ) -> list[Note]:
     result = []
     for staff in staffs:
@@ -209,9 +162,7 @@ def add_notes_to_staffs(
                 or notehead_chunk.notehead.size[1] < 0.5 * point.average_unit_size
             ):
                 continue
-            for notehead in split_clumps_of_noteheads(
-                notehead_chunk, notehead_pred, staff
-            ):
+            for notehead in split_clumps_of_noteheads(notehead_chunk, notehead_pred, staff):
                 point = staff.get_at(center[0])
                 if point is None:
                     continue
@@ -223,22 +174,11 @@ def add_notes_to_staffs(
                 ):
                     continue
                 position = point.find_position_in_unit_sizes(notehead.notehead)
-                note = Note(
-                    notehead.notehead, position, notehead.stem, notehead.stem_direction
-                )
+                note = Note(notehead.notehead, position, notehead.stem, notehead.stem_direction)
                 result.append(note)
                 staff.add_symbol(note)
     number_of_notes = 0
-    number_of_note_groups = 0
     for staff in staffs:
-        _group_notes_on_staff(staff)
         number_of_notes += len(staff.get_notes())
-        number_of_note_groups += len(staff.get_note_groups())
-    eprint(
-        "After grouping there are",
-        number_of_notes,
-        "notes and",
-        number_of_note_groups,
-        "note groups",
-    )
+    eprint("Found", number_of_notes, "notes during segmentation")
     return result

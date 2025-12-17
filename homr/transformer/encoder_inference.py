@@ -11,7 +11,7 @@ class EncoderDual:
         """
         Special dual encoder splitting the CNN and Transformer part of the
         Encoder for better performance on android (LiteRT is faster for CNNs
-        while Onnx is faster for transformers)
+        while Onnx is faster for transformers).
         """
         self.cnn_encoder = TensorFlowModel(cnn_path)
         self.transformer_encoder = OnnxModel(transformer_path)
@@ -24,7 +24,7 @@ class EncoderDual:
         embeddings = np.transpose(out, (0, 3, 1, 2))
 
         input_dict = {"input": embeddings.astype(np.float32)}
-        output_dict = {"output": [1, 641, 312]}
+        output_dict = {"output": [1, 1281, 312]}
         output = self.transformer_encoder.run(input_dict, output_dict)
         print(f"Inference time CNN part of Encoder: {round(t1 - t0, 3)}s")
         print(

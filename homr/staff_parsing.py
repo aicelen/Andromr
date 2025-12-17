@@ -5,21 +5,14 @@ from homr import constants
 from homr.debug import Debug
 from homr.image_utils import crop_image_and_return_new_top
 from homr.model import MultiStaff, Staff
-from homr.results import (
-    ResultChord,
-    ResultClef,
-    ResultMeasure,
-    ResultStaff,
-    ResultTimeSignature,
-    move_pitch_to_clef,
-)
 from homr.simple_logging import eprint
 from homr.staff_parsing_tromr import parse_staff_tromr
 from homr.staff_regions import StaffRegions
 from homr.transformer.configs import default_config
+from homr.transformer.vocabulary import EncodedSymbol, remove_duplicated_symbols
 from homr.type_definitions import NDArray
-from globals import appdata
 
+from globals import appdata
 
 def _have_all_the_same_number_of_staffs(staffs: list[MultiStaff]) -> bool:
     for staff in staffs:
@@ -36,25 +29,19 @@ def _is_close_to_image_top_or_bottom(staff: MultiStaff, image: NDArray) -> bool:
     return min(closest_distance_to_top_or_bottom) < tolerance
 
 
-def _ensure_same_number_of_staffs(
-    staffs: list[MultiStaff], image: NDArray
-) -> list[MultiStaff]:
+def _ensure_same_number_of_staffs(staffs: list[MultiStaff], image: NDArray) -> list[MultiStaff]:
     if _have_all_the_same_number_of_staffs(staffs):
         return staffs
-    if len(staffs) > 2:  # noqa: PLR2004
+    if len(staffs) > 2:
         if _is_close_to_image_top_or_bottom(
             staffs[0], image
         ) and _have_all_the_same_number_of_staffs(staffs[1:]):
-            eprint(
-                "Removing first system from all voices, as it has a different number of staffs"
-            )
+            eprint("Removing first system from all voices, as it has a different number of staffs")
             return staffs[1:]
         if _is_close_to_image_top_or_bottom(
             staffs[-1], image
         ) and _have_all_the_same_number_of_staffs(staffs[:-1]):
-            eprint(
-                "Removing last system from all voices, as it has a different number of staffs"
-            )
+            eprint("Removing last system from all voices, as it has a different number of staffs")
             return staffs[:-1]
     result: list[MultiStaff] = []
     for staff in staffs:
@@ -96,6 +83,7 @@ def get_tr_omr_canvas_size(
 def center_image_on_canvas(
     image: NDArray, canvas_size: NDArray, margin_top: int = 0, margin_bottom: int = 0
 ) -> NDArray:
+
     resized = cv2.resize(image, tuple(canvas_size))
 
     new_image = np.zeros((tr_omr_max_height, tr_omr_max_width, 3), np.uint8)
@@ -105,28 +93,21 @@ def center_image_on_canvas(
     x_offset = 0
     tr_omr_max_height_with_margin = tr_omr_max_height - margin_top - margin_bottom
     y_offset = (tr_omr_max_height_with_margin - resized.shape[0]) // 2 + margin_top
-    new_image[
-        y_offset : y_offset + resized.shape[0], x_offset : x_offset + resized.shape[1]
-    ] = resized
+    new_image[y_offset : y_offset + resized.shape[0], x_offset : x_offset + resized.shape[1]] = (
+        resized
+    )
 
     return new_image
 
 
 def add_image_into_tr_omr_canvas(
-    image: NDArray, margin_top: int = 0, margin_bottom: int = 0
+    image: NDArray, is_grandstaff: bool, margin_top: int = 0, margin_bottom: int = 0
 ) -> NDArray:
+    if not is_grandstaff:
+        # take half of the image height away
+        margin_bottom += tr_omr_max_height // 2
     new_shape = get_tr_omr_canvas_size(image.shape, margin_top, margin_bottom)
     new_image = center_image_on_canvas(image, new_shape, margin_top, margin_bottom)
-    return new_image
-
-
-def copy_image_in_center_of_double_the_height_and_white_background(
-    image: NDArray,
-) -> NDArray:
-    height, width = image.shape[:2]
-    new_image = np.zeros((height * 2, width, 3), np.uint8)
-    new_image[:, :] = (255, 255, 255)
-    new_image[height // 2 : height // 2 + height, :] = image
     return new_image
 
 
@@ -134,17 +115,13 @@ def remove_black_contours_at_edges_of_image(bgr: NDArray, unit_size: float) -> N
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 97, 255, cv2.THRESH_BINARY)
     thresh = 255 - thresh
-    contours, _hierarchy = cv2.findContours(
-        thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-    )
+    contours, _hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     threshold = constants.black_spot_removal_threshold(unit_size)
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
         if w < threshold or h < threshold:
             continue
-        is_at_edge_of_image = (
-            x == 0 or y == 0 or x + w == bgr.shape[1] or y + h == bgr.shape[0]
-        )
+        is_at_edge_of_image = x == 0 or y == 0 or x + w == bgr.shape[1] or y + h == bgr.shape[0]
         if not is_at_edge_of_image:
             continue
         average_gray_intensity = 127
@@ -169,22 +146,54 @@ def _calculate_region(staff: Staff, regions: StaffRegions) -> NDArray:
     return np.array([int(x_min), int(y_min), int(x_max), int(y_max)])
 
 
+def apply_clahe(staff_image: NDArray, clip_limit: float = 1.0, kernel_size: int = 8) -> NDArray:
+    gray_image = cv2.cvtColor(staff_image, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(kernel_size, kernel_size))
+    gray_image = clahe.apply(gray_image)
+
+    return cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
+
+
+def remove_background(gray: NDArray) -> NDArray:
+    # Estimate smooth background illumination
+    background = cv2.medianBlur(gray, 51)
+
+    # Flatten background but preserve detail
+    flat = cv2.divide(gray, background, scale=255)
+
+    # Stretch intensity to full range
+    enhanced = cv2.normalize(flat, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)  # type: ignore
+
+    return enhanced
+
+
+def sharpen(img: NDArray) -> NDArray:
+    blur = cv2.GaussianBlur(img, (0, 0), 3)
+    sharpened = cv2.addWeighted(img, 1.5, blur, -0.5, 0)
+    return sharpened
+
+
+def augment_staff_image(staff_image: NDArray) -> NDArray:
+    denoised1 = cv2.fastNlMeansDenoisingColored(staff_image, None, 10, 10, 7, 21)
+    return sharpen(remove_background(denoised1))
+
+
 def prepare_staff_image(
     debug: Debug, index: int, staff: Staff, staff_image: NDArray, regions: StaffRegions
 ) -> tuple[NDArray, Staff]:
     region = _calculate_region(staff, regions)
+    margin_bottom = 0 if staff.is_grandstaff else default_config.max_height // 2
     image_dimensions = get_tr_omr_canvas_size(
-        (int(region[3] - region[1]), int(region[2] - region[0]))
+        (int(region[3] - region[1]), int(region[2] - region[0])), margin_bottom=margin_bottom
     )
     scaling_factor = image_dimensions[1] / (region[3] - region[1])
     staff_image = cv2.resize(
         staff_image,
-        (
-            int(staff_image.shape[1] * scaling_factor),
-            int(staff_image.shape[0] * scaling_factor),
-        ),
+        (int(staff_image.shape[1] * scaling_factor), int(staff_image.shape[0] * scaling_factor)),
     )
+    staff_image = augment_staff_image(staff_image)
     region = np.round(region * scaling_factor)
+
     region_step1 = np.array(region) + np.array([-10, -50, 10, 50])
     staff_image, top_left = crop_image_and_return_new_top(
         staff_image, region_step1[0], region_step1[1], region_step1[2], region_step1[3]
@@ -194,138 +203,28 @@ def prepare_staff_image(
     staff_image, top_left = crop_image_and_return_new_top(
         staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3]
     )
+
     scaling_factor = 1
 
-    staff_image = remove_black_contours_at_edges_of_image(
-        staff_image, staff.average_unit_size
-    )
-    staff_image = center_image_on_canvas(staff_image, image_dimensions)
+    staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
+    staff_image = center_image_on_canvas(staff_image, image_dimensions, margin_bottom=margin_bottom)
     return staff_image, staff
 
 
 def parse_staff_image(
     debug: Debug, index: int, staff: Staff, image: NDArray, regions: StaffRegions
-) -> ResultStaff | None:
+) -> list[EncodedSymbol]:
     staff_image, transformed_staff = prepare_staff_image(
         debug, index, staff, image, regions=regions
     )
-    attention_debug = debug.build_attention_debug(
-        staff_image, f"_staff-{index}_output.jpg"
-    )
     eprint("Running TrOmr inference on staff image", index)
-    result = parse_staff_tromr(
-        staff_image=staff_image,
-        staff=transformed_staff,
-        debug=attention_debug,
-    )
-    if attention_debug is not None:
-        attention_debug.write()
+    result = parse_staff_tromr(staff_image=staff_image, staff=transformed_staff)
     return result
-
-
-def _pick_dominant_clef(staff: ResultStaff) -> ResultStaff:  # noqa: C901, PLR0912
-    clefs = [clef for clef in staff.get_symbols() if isinstance(clef, ResultClef)]
-    clef_types = [clef.clef_type for clef in clefs]
-    if len(clef_types) == 0:
-        return staff
-    most_frequent_clef_type = max(set(clef_types), key=clef_types.count)
-    if most_frequent_clef_type is None:
-        return staff
-    if clef_types.count(most_frequent_clef_type) == 1:
-        return staff
-    circle_of_fifth = 0  # doesn't matter if we only look at the clef type
-    most_frequent_clef = ResultClef(most_frequent_clef_type, circle_of_fifth)
-    last_clef_was_originally = None
-    for symbol in staff.get_symbols():
-        if isinstance(symbol, ResultClef):
-            last_clef_was_originally = ResultClef(symbol.clef_type, 0)
-            symbol.clef_type = most_frequent_clef_type
-        elif isinstance(symbol, ResultChord):
-            for note in symbol.notes:
-                note.pitch = move_pitch_to_clef(
-                    note.pitch, last_clef_was_originally, most_frequent_clef
-                )
-        elif isinstance(symbol, ResultMeasure):
-            for measure_symbol in symbol.symbols:
-                if isinstance(symbol, ResultClef):
-                    last_clef_was_originally = ResultClef(symbol.clef_type, 0)
-                    symbol.clef_type = most_frequent_clef_type
-                elif isinstance(measure_symbol, ResultChord):
-                    for note in measure_symbol.notes:
-                        note.pitch = move_pitch_to_clef(
-                            note.pitch, last_clef_was_originally, most_frequent_clef
-                        )
-
-    return staff
-
-
-def _pick_dominant_key_signature(staff: ResultStaff) -> ResultStaff:
-    clefs = [clef for clef in staff.get_symbols() if isinstance(clef, ResultClef)]
-    key_signatures = [clef.circle_of_fifth for clef in clefs]
-    if len(key_signatures) == 0:
-        return staff
-    most_frequent_key = max(set(key_signatures), key=key_signatures.count)
-    if most_frequent_key is None:
-        return staff
-    if key_signatures.count(most_frequent_key) == 1:
-        return staff
-    for clef in clefs:
-        clef.circle_of_fifth = most_frequent_key
-    return staff
-
-
-def _remove_redundant_clefs(measures: list[ResultMeasure]) -> None:
-    last_clef = None
-    for measure in measures:
-        for symbol in measure.symbols:
-            if isinstance(symbol, ResultClef):
-                if last_clef is not None and last_clef == symbol:
-                    measure.remove_symbol(symbol)
-                else:
-                    last_clef = symbol
-
-
-def _remove_all_but_first_time_signature(measures: list[ResultMeasure]) -> None:
-    """
-    The transformer tends to hallucinate time signatures. In most cases there is only one
-    time signature at the beginning, so we remove all others.
-    """
-    last_sig = None
-    for measure in measures:
-        for symbol in measure.symbols:
-            if isinstance(symbol, ResultTimeSignature):
-                if last_sig is not None:
-                    measure.remove_symbol(symbol)
-                else:
-                    last_sig = symbol
-
-
-def merge_and_clean(
-    staffs: list[ResultStaff], force_single_clef_type: bool
-) -> ResultStaff:
-    """
-    Merge all staffs of a voice into a single staff.
-    """
-    result = ResultStaff([])
-    for staff in staffs:
-        result = result.merge(staff)
-    if force_single_clef_type:
-        _pick_dominant_clef(result)
-    _pick_dominant_key_signature(result)
-    _remove_redundant_clefs(result.measures)
-    _remove_all_but_first_time_signature(result.measures)
-    result.measures = [measure for measure in result.measures if not measure.is_empty()]
-    return result
-
-
-def remember_new_line(measures: list[ResultMeasure]) -> None:
-    if len(measures) > 0:
-        measures[0].is_new_line = True
 
 
 def parse_staffs(
     debug: Debug, staffs: list[MultiStaff], image: NDArray, selected_staff: int = -1
-) -> list[ResultStaff]:
+) -> list[list[EncodedSymbol]]:
     """
     Dewarps each staff and then runs it through an algorithm which extracts
     the rhythm and pitch information.
@@ -346,25 +245,15 @@ def parse_staffs(
                 eprint("Ignoring staff due to selected_staff argument", i)
                 i += 1
                 continue
-            result_staff = parse_staff_image(
-                debug, i, staff, image, regions
-            )  # tromr call
+            result_staff = parse_staff_image(debug, i, staff, image, regions)
             appdata.homr_progress += progress_increment
-            if result_staff is None:
-                eprint("Staff was filtered out", i)
-                i += 1
-                continue
-            if result_staff.is_empty():
+            if len(result_staff) == 0:
                 eprint("Skipping empty staff", i)
                 i += 1
                 continue
-            remember_new_line(result_staff.measures)
-            result_for_voice.append(result_staff)
+            result_staff.append(EncodedSymbol("newline"))
+            result_for_voice.extend(result_staff)
             i += 1
 
-        # Piano music can have a change of clef, while for other instruments
-        # we assume that the clef is the same for all staffs.
-        # The number of voices is the only way we can distinguish between the two.
-        force_single_clef_type = number_of_voices == 1
-        voices.append(merge_and_clean(result_for_voice, force_single_clef_type))
+        voices.append(remove_duplicated_symbols(result_for_voice))
     return voices

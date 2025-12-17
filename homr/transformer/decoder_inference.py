@@ -3,13 +3,15 @@ from typing import Any
 
 import numpy as np
 
-from homr.results import TransformerChord
 from homr.transformer.configs import Config
-from homr.transformer.split_merge_symbols import SymbolMerger
 from homr.transformer.utils import softmax
+from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
-from homr.inference_engine import OnnxModel
+from homr.inference_engine.onnx_model import OnnxModel
+from homr.transformer.configs import default_config
 
+from globals import appdata
+from kivy import platform
 
 class ScoreDecoder:
     def __init__(
@@ -22,21 +24,23 @@ class ScoreDecoder:
         self.ignore_index = ignore_index
         self.net = transformer
         self.max_seq_len = config.max_seq_len
+        self.eos_token = config.eos_token
 
         self.inv_rhythm_vocab = {v: k for k, v in config.rhythm_vocab.items()}
         self.inv_pitch_vocab = {v: k for k, v in config.pitch_vocab.items()}
         self.inv_lift_vocab = {v: k for k, v in config.lift_vocab.items()}
+        self.inv_articulation_vocab = {v: k for k, v in config.articulation_vocab.items()}
+        self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
+        self.state_vocab = config.state_vocab
 
-    def generate(  # noqa: PLR0915
+    def generate(
         self,
         start_tokens: NDArray,
         nonote_tokens: NDArray,
-        seq_len: int = 256,
-        eos_token: int | None = None,
         temperature: float = 1.0,
         filter_thres: float = 0.7,
         **kwargs: Any,
-    ) -> list[TransformerChord]:
+    ) -> list[EncodedSymbol]:
         num_dims = len(start_tokens.shape)
 
         if num_dims == 1:
@@ -47,101 +51,124 @@ class ScoreDecoder:
         out_rhythm = start_tokens
         out_pitch = nonote_tokens
         out_lift = nonote_tokens
-        merger = SymbolMerger()
+        out_articulations = nonote_tokens
+        key = "keySignature_0"
+        clef_upper = "clef_G2"
+        clef_lower = "clef_F4"
+        states = np.array([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]])
+        cache, kv_input_names, kv_outputs_dicts = self.init_cache()
+        context = kwargs["context"]
+        context_reduced = kwargs["context"][:, :1]
 
-        for _position_in_seq in range(seq_len):
-            x_lift = out_lift[:, -self.max_seq_len :]
-            x_pitch = out_pitch[:, -self.max_seq_len :]
-            x_rhythm = out_rhythm[:, -self.max_seq_len :]
-            context = kwargs["context"].astype(np.float32)
+        outputs_dict = {
+            "out_rhythms": [1, 1, 260],
+            "out_pitchs": [1, 1, 72],
+            "out_lifts": [1, 1, 7],
+            "out_positions": [1, 1, 3],
+            "out_articulations": [1, 1, 171],
+        }
+
+        symbols: list[EncodedSymbol] = []
+
+        for step in range(self.max_seq_len):
+            x_lift = out_lift[:, -1:]  # for all: shape=(1,1)
+            x_pitch = out_pitch[:, -1:]
+            x_rhythm = out_rhythm[:, -1:]
+            x_articulations = out_articulations[:, -1:]
+            x_states = states[:, -1:]
 
             inputs = {
                 "rhythms": x_rhythm,
                 "pitchs": x_pitch,
                 "lifts": x_lift,
+                "articulations": x_articulations,
+                "states": x_states,
                 "context": context,
-            }
-            outputs = {
-                "out_rhythms": [1, _position_in_seq + 1, 93],
-                "out_pitchs": [1, _position_in_seq + 1, 71],
-                "out_lifts": [1, _position_in_seq + 1, 5],
+                "cache_len": np.array([step]),
             }
 
-            rhythmsp, pitchsp, liftsp = self.net.run(inputs=inputs, outputs=outputs)
+            if step == 0:
+                # only in the first step the cache get's passed in (on android)
+                for i in range(32):
+                    inputs[kv_input_names[i]] = cache[i]
+
+            else:
+                # after the first step we don't pass the full context into the decoder
+                # x_transformers uses [:, :0] to split the context
+                # which caused a Reshape error when loading the onnx model
+                context = context_reduced
+                if platform != 'android':
+                    for i in range(32):
+                        inputs[kv_input_names[i]] = cache[i]
+
+            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
+                inputs=inputs,
+                outputs=outputs_dict | kv_outputs_dicts # merges the dicts
+            )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
             filtered_pitch_logits = top_k(pitchsp[:, -1, :], thres=filter_thres)
             filtered_rhythm_logits = top_k(rhythmsp[:, -1, :], thres=filter_thres)
+            filtered_articulations_logits = top_k(articulationsp[:, -1, :], thres=filter_thres)
+            filtered_positions_logits = top_k(positionsp[:, -1, :], thres=filter_thres)
 
-            current_temperature = temperature
-            retry = True
-            attempt = 0
-            max_attempts = 5
-            while retry and attempt < max_attempts:
-                lift_probs = softmax(filtered_lift_logits / current_temperature, dim=-1)
-                pitch_probs = softmax(
-                    filtered_pitch_logits / current_temperature, dim=-1
-                )
-                rhythm_probs = softmax(
-                    filtered_rhythm_logits / current_temperature, dim=-1
-                )
+            lift_probs = softmax(filtered_lift_logits / temperature, dim=-1)
+            pitch_probs = softmax(filtered_pitch_logits / temperature, dim=-1)
+            rhythm_probs = softmax(filtered_rhythm_logits / temperature, dim=-1)
+            articulation_probs = softmax(filtered_articulations_logits / temperature, dim=-1)
+            positions_probs = softmax(filtered_positions_logits / temperature, dim=-1)
 
-                lift_sample = np.array([[lift_probs.argmax()]])
-                pitch_sample = np.array([[pitch_probs.argmax()]])
-                rhythm_sample = np.array([[rhythm_probs.argmax()]])
+            lift_sample = np.array([[lift_probs.argmax()]])
+            pitch_sample = np.array([[pitch_probs.argmax()]])
+            rhythm_sample = np.array([[rhythm_probs.argmax()]])
+            articulation_sample = np.array([[articulation_probs.argmax()]])
+            position_sample = np.array([[positions_probs.argmax()]])
 
-                sorted_indices = np.argsort(rhythm_probs)[:, ::-1]
-                sorted_probs = np.take_along_axis(rhythm_probs, sorted_indices, axis=1)
+            lift_token = detokenize(lift_sample, self.inv_lift_vocab)
+            pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
+            rhythm_token = detokenize(rhythm_sample, self.inv_rhythm_vocab)
+            articulation_token = detokenize(articulation_sample, self.inv_articulation_vocab)
+            position_token = detokenize(position_sample, self.inv_position_vocab)
 
-                rhythm_confidence = sorted_probs[0, 0].item()
-                alternative_confidence = sorted_probs[0, 1].item()
+            if rhythm_sample[0][0] == self.eos_token:
+                break
 
-                top_token_id = np.expand_dims(sorted_indices[0, 0], axis=0)
-                alt_token_id = np.expand_dims(sorted_indices[0, 1], axis=0)
-
-                rhythm_token = detokenize(top_token_id, self.inv_rhythm_vocab)
-                alternative_rhythm_token = detokenize(
-                    alt_token_id, self.inv_rhythm_vocab
-                )
-
-                lift_token = detokenize(lift_sample, self.inv_lift_vocab)
-                pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
-
-                is_eos = len(rhythm_token)
-                if is_eos == 0:
-                    break
-
-                if len(alternative_rhythm_token) == 0:
-                    alternative_rhythm_token = [""]
-                    alternative_confidence = 0
-
-                retry = merger.add_symbol_and_alternative(
-                    rhythm_token[0],
-                    rhythm_confidence,
-                    pitch_token[0],
-                    lift_token[0],
-                    alternative_rhythm_token[0],
-                    alternative_confidence,
-                )
-
-                current_temperature *= 3.5
-                attempt += 1
+            symbol = EncodedSymbol(
+                rhythm=rhythm_token[0],
+                pitch=pitch_token[0],
+                lift=lift_token[0],
+                articulation=articulation_token[0],
+                position=position_token[0],
+            )
+            symbols.append(symbol)
+            if symbol.rhythm.startswith("keySignature"):
+                key = symbol.rhythm
+            elif symbol.rhythm.startswith("clef"):
+                if symbol.position == "upper":
+                    clef_upper = symbol.rhythm
+                else:
+                    clef_lower = symbol.rhythm
+            states = np.concatenate(
+                (states, np.array([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]])),
+                axis=-1,
+            )
 
             out_lift = np.concatenate((out_lift, lift_sample), axis=-1)
             out_pitch = np.concatenate((out_pitch, pitch_sample), axis=-1)
             out_rhythm = np.concatenate((out_rhythm, rhythm_sample), axis=-1)
+            out_articulations = np.concatenate((out_articulations, articulation_sample), axis=-1)
 
-            if (
-                eos_token is not None
-                and (np.cumsum(out_rhythm == eos_token, 1)[:, -1] >= 1).all()
-            ):
-                break
+        return symbols
 
-        out_lift = out_lift[:, t:]
-        out_pitch = out_pitch[:, t:]
-        out_rhythm = out_rhythm[:, t:]
-
-        return merger.complete()
+    def init_cache(self, cache_len: int = 0) -> tuple[list[NDArray], list[str], list[str]]:
+        cache = []
+        input_names = []
+        output_dict = {}
+        for i in range(32):
+            cache.append(np.zeros((1, 8, cache_len, 64), dtype=np.float32))
+            input_names.append(f"cache_in{i}")
+            output_dict[f"cache_out{i}"] = f"cache_in{i}" # this is used to check if this gets converted to python or not
+        return cache, input_names, output_dict
 
 
 def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:
@@ -151,9 +178,7 @@ def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:
     # Get top k elements
     flat_logits = logits.ravel()
     indices = np.argpartition(flat_logits, -k)[-k:]  # Get indices of top k elements
-    indices = indices[
-        np.argsort(-flat_logits[indices])
-    ]  # Sort them in descending order
+    indices = indices[np.argsort(-flat_logits[indices])]  # Sort them in descending order
     values = flat_logits[indices]  # Get the corresponding values
 
     # Create output array with -inf
@@ -170,15 +195,14 @@ def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:
     return output
 
 
-def detokenize(tokens: NDArray, vocab: Any) -> list[str]:
+def detokenize(tokens: NDArray, vocab: dict[int, str]) -> list[str]:
     toks = [vocab[tok.item()] for tok in tokens]
     toks = [t for t in toks if t not in ("[BOS]", "[EOS]", "[PAD]")]
     return toks
 
 
-def get_decoder(config: Config, path: str) -> ScoreDecoder:
+def get_decoder(config: Config, path: str, use_gpu: bool) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    onnx_transformer = OnnxModel(path)
-    return ScoreDecoder(onnx_transformer, config=config)
+    return ScoreDecoder(OnnxModel(default_config.filepaths.decoder_path), config=config)

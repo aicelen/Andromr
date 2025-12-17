@@ -8,9 +8,14 @@ import editdistance
 
 from homr import download_utils
 from homr.simple_logging import eprint
+from homr.staff_parsing import add_image_into_tr_omr_canvas
 from homr.transformer.configs import Config as ConfigTorch
-from training.musescore_svg import get_position_from_multiple_svg_files
-from training.music_xml import group_in_measures, music_xml_to_semantic
+from homr.transformer.vocabulary import EncodedSymbol
+from training.transformer.training_vocabulary import (
+    read_tokens,
+    sort_token_chords,
+    token_lines_to_str,
+)
 
 
 def calc_symbol_error_rate_for_list(
@@ -20,7 +25,7 @@ def calc_symbol_error_rate_for_list(
     if onnx:
         from homr.transformer.staff2score import Staff2Score as Staff2ScoreOnnx
 
-        model = Staff2ScoreOnnx()
+        model = Staff2ScoreOnnx(False)
         result_file = "onnx_ser.txt"
 
     else:
@@ -40,34 +45,44 @@ def calc_symbol_error_rate_for_list(
     total = len(dataset)
     interesting_results: list[tuple[str, str]] = []
     for sample in dataset:
-        img_path, semantic_path = sample.strip().split(",")
-        expected_str = _load_semantic_file(semantic_path)[0].strip()
+        img_path, token_path = sample.strip().split(",")
+        expected = read_tokens(token_path)
         image = cv2.imread(img_path)
         if image is None:
             raise ValueError("Failed to read " + img_path)
-        actual = [str(sym) for sym in model.predict(image)]
+        actual: list[EncodedSymbol] = model.predict(image)
+        # Calculate the SER only based on notes and rests
+        relevant_symbols = ("note", "rest", "keySignature")
         actual = [
-            symbol for symbol in actual if not symbol.startswith("timeSignature")
-        ]  # reference data has no time signature
-        expected = expected_str.split("+")
-        actual = sort_chords(actual)
-        expected = sort_chords(expected)
+            _ignore_articulation(t)
+            for chord in sort_token_chords(actual)
+            for t in chord
+            if t.rhythm.startswith(relevant_symbols)
+        ]
+        expected = [
+            _ignore_articulation(t)
+            for chord in sort_token_chords(expected)
+            for t in chord
+            if t.rhythm.startswith(relevant_symbols)
+        ]
         distance = editdistance.eval(expected, actual)
         ser = distance / len(expected)
+        if ser > 0.5:
+            eprint("Expected:", token_lines_to_str(expected))
+            eprint("Actual  :", token_lines_to_str(actual))
+
         all_sers.append(ser)
         ser = round(100 * ser)
         ser_avg = round(100 * sum(all_sers) / len(all_sers))
         i += 1
-        is_staff_with_accidentals = (
-            "Polyphonic_tude_No" in img_path and "staff-3" in img_path
+        has_usually_high_ser = (
+            "Playing_With_Fire_BlackPink" in img_path and "staff-1.jpg" in img_path
         )
-        if is_staff_with_accidentals:
-            interesting_results.append((str.join(" ", expected), str.join(" ", actual)))
+        if has_usually_high_ser:
+            interesting_results.append((token_lines_to_str(expected), token_lines_to_str(actual)))
         percentage = round(i / total * 100)
         img_path_rel = os.path.relpath(img_path)
-        eprint(
-            f"Progress: {percentage}%, SER: {ser}%, SER avg: {ser_avg}% ({img_path_rel})"
-        )
+        eprint(f"Progress: {percentage}%, SER: {ser}%, SER avg: {ser_avg}% ({img_path_rel})")
 
     for result in interesting_results:
         eprint("Expected:", result[0])
@@ -80,81 +95,31 @@ def calc_symbol_error_rate_for_list(
         f.write(f"SER avg: {ser_avg}%\n")
 
 
-def _load_semantic_file(semantic_path: str) -> list[str]:
-    with open(semantic_path) as f:
-        return f.readlines()
-
-
-def sort_chords(symbols: list[str]) -> list[str]:
-    result = []
-    for symbol in symbols:
-        result.append(str.join("|", sorted(symbol.split("|"))))
-    return result
+def _ignore_articulation(symbol: EncodedSymbol) -> EncodedSymbol:
+    """
+    We ignore articulations for now to get results which are compareable
+    to previous versions of the model without articulations.
+    """
+    return EncodedSymbol(symbol.rhythm, symbol.pitch, symbol.lift)
 
 
 def index_folder(folder: str, index_file: str) -> None:
-    with open(index_file, "w") as index:
-        for subfolder in reversed(os.listdir(folder)):
-            full_name = os.path.abspath(os.path.join(folder, subfolder))
-            if not os.path.isdir(full_name):
-                continue
-            file = os.path.join(full_name, "music.musicxml")
-            semantic = music_xml_to_semantic(file)
-            measures = [group_in_measures(voice) for voice in semantic]
-            svg_files = get_position_from_multiple_svg_files(file)
-            number_of_voices = len(semantic)
-            total_number_of_measures = semantic[0].count("barline")
-            measures_in_svg = [
-                sum(s.number_of_measures for s in file.staffs) for file in svg_files
-            ]
-            sum_of_measures_in_xml = total_number_of_measures * number_of_voices
-            if sum(measures_in_svg) != sum_of_measures_in_xml:
-                eprint(
-                    file,
-                    "INFO: Number of measures in SVG files",
-                    sum(measures_in_svg),
-                    "does not match number of measures in XML",
-                    sum_of_measures_in_xml,
-                )
-                continue
-            voice = 0
-            total_staffs_in_previous_files = 0
-            for svg_file in svg_files:
-                for staff_idx, staff in enumerate(svg_file.staffs):
-                    selected_measures: list[str] = []
-                    staffs_per_voice = len(svg_file.staffs) // number_of_voices
-                    for _ in range(staff.number_of_measures):
-                        selected_measures.append(
-                            str.join("+", measures[voice][1].pop(0))
-                        )
+    result = []
+    with open(os.path.join(folder, "index.txt")) as f:
+        lines = f.readlines()
 
-                    prelude = measures[voice][0]
-                    semantic_content = str.join("+", selected_measures) + "\n"
+    for line in lines:
+        img_file, token_file = line.split(",")
+        staff_image = cv2.imread(img_file)
+        if staff_image is None:
+            raise ValueError("Failed to load " + img_file)
+        prepared = add_image_into_tr_omr_canvas(staff_image, False, 0, 0)
+        processed_path = img_file.replace(".jpg", "-pre.jpg")
+        cv2.imwrite(processed_path, prepared)
+        result.append(str.join(",", [processed_path, token_file]))
 
-                    if not semantic_content.startswith("clef"):
-                        semantic_content = prelude + semantic_content
-
-                    file_number = (
-                        total_staffs_in_previous_files
-                        + voice * staffs_per_voice
-                        + staff_idx // number_of_voices
-                    )
-
-                    file_name = f"staff-{file_number}.jpg"
-                    staff_image = os.path.join(full_name, file_name)
-                    with open(
-                        os.path.join(full_name, f"staff-{file_number}.semantic"), "w"
-                    ) as f:
-                        f.write(semantic_content)
-                    voice = (voice + 1) % number_of_voices
-                    if os.path.exists(staff_image):
-                        index.write(
-                            staff_image
-                            + ","
-                            + os.path.join(full_name, f"staff-{file_number}.semantic")
-                            + "\n"
-                        )
-                total_staffs_in_previous_files += len(svg_file.staffs)
+    with open(index_file, "w") as f:
+        f.writelines(result)
 
 
 def main() -> None:
@@ -166,27 +131,27 @@ def main() -> None:
     # optional: if no path is given it uses the onnx backend with
     # the model located in homr/transformer
     parser.add_argument(
-        "--checkpoint_file", type=str, default=None, help="Path to the checkpoint file."
+        "checkpoint_file", type=str, default=None, nargs="?", help="Path to the checkpoint file."
     )
     args = parser.parse_args()
 
     script_location = os.path.dirname(os.path.realpath(__file__))
-    data_set_location = os.path.join(script_location, "..", "datasets")
+    data_set_location = os.path.abspath(os.path.join(script_location, "..", "datasets"))
     validation_data_set_location = os.path.join(data_set_location, "validation")
     download_path = os.path.join(data_set_location, "validation.zip")
     download_url = (
-        "https://github.com/liebharc/homr/releases/download/datasets/validation.zip"
+        "https://github.com/liebharc/homr/releases/download/datasets/validation_tokens.zip"
     )
     if not os.path.exists(validation_data_set_location):
         try:
             eprint("Downloading validation data set")
             download_utils.download_file(download_url, download_path)
-            download_utils.unzip_file(download_path, data_set_location)
+            download_utils.unzip_file(download_path, validation_data_set_location)
         finally:
             if os.path.exists(download_path):
                 os.remove(download_path)
 
-    index_file = os.path.join(validation_data_set_location, "index.txt")
+    index_file = os.path.join(validation_data_set_location, "index_tokens.txt")
     if not os.path.exists(index_file):
         index_folder(validation_data_set_location, index_file)
 
@@ -204,8 +169,10 @@ def main() -> None:
         is_dir = os.path.isdir(args.checkpoint_file)
         if is_dir:
             # glob recursive for all model.safetensors file in the directory
-            checkpoint_files = list(
-                Path(args.checkpoint_file).rglob("model.safetensors")
+            checkpoint_files = sorted(
+                Path(args.checkpoint_file).rglob("model.safetensors"),
+                key=lambda f: f.stat().st_mtime,
+                reverse=True,
             )
         else:
             checkpoint_files = [Path(args.checkpoint_file)]

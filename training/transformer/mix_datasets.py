@@ -12,20 +12,14 @@ def _calc_number_of_files_to_take(
         number_of_files_per_source = [
             int(number_of_files * s["weight"] / total_weight) for s in data_sources
         ]
-        number_of_files_per_source[-1] = number_of_files - sum(
-            number_of_files_per_source[:-1]
-        )
+        number_of_files_per_source[-1] = number_of_files - sum(number_of_files_per_source[:-1])
 
         max_available_ratios = []
         for i, source in enumerate(data_sources):
-            max_available_ratios.append(
-                min(source["len"] / number_of_files_per_source[i], 1)
-            )
+            max_available_ratios.append(min(source["len"] / number_of_files_per_source[i], 1))
 
         limiting_ratio = min(max_available_ratios)
-        number_of_files_per_source = [
-            int(limiting_ratio * n) for n in number_of_files_per_source
-        ]
+        number_of_files_per_source = [int(limiting_ratio * n) for n in number_of_files_per_source]
 
         for i, n in enumerate(number_of_files_per_source):
             number_of_files -= n

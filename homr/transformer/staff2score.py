@@ -4,11 +4,11 @@ from time import perf_counter
 import cv2
 import numpy as np
 
-from homr.results import TransformerChord
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
 from homr.transformer.decoder_inference import get_decoder
 from homr.transformer.encoder_inference import EncoderDual
+from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
 
@@ -17,21 +17,17 @@ class Staff2Score:
     Inference class for Tromr. Use predict() for prediction
     """
 
-    def __init__(self) -> None:
+    def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = EncoderDual(
-            self.config.filepaths.encoder_cnn_path_tflite,
-            self.config.filepaths.encoder_transformer_path,
-        )
-        self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path)
+        self.encoder = EncoderDual(self.config.filepaths.encoder_cnn_path_tflite, self.config.filepaths.encoder_transformer_path)
+        self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path, use_gpu)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
             raise RuntimeError(
-                "Failed to find tokenizer config"
-                + self.config.filepaths.rhythmtokenizer
+                "Failed to find tokenizer config" + self.config.filepaths.rhythmtokenizer
             )  # noqa: E501
 
-    def predict(self, image: NDArray) -> list[TransformerChord]:
+    def predict(self, image: NDArray) -> list[EncodedSymbol]:
         """
         Inference an image (NDArray) using Tromr.
         """
@@ -41,8 +37,8 @@ class Staff2Score:
         t0 = perf_counter()
 
         # Create special tokens
-        start_token = np.full((len(x), 1), self.config.bos_token, dtype=np.int64)
-        nonote_token = np.full((len(x), 1), self.config.nonote_token, dtype=np.int64)
+        start_token = np.array([[1]], dtype=np.int64)
+        nonote_token = np.array([[0]], dtype=np.int64)
 
         # Generate context with encoder
         context = self.encoder.generate(x)
@@ -56,7 +52,7 @@ class Staff2Score:
             context=context,
         )
 
-        eprint(f"Inference Time Tromr: {perf_counter() - t0}")
+        eprint(f"Inference Time Tromr: {perf_counter()-t0}")
 
         return out
 
@@ -86,7 +82,7 @@ def test_transformer_on_image(path_to_img: str) -> None:
     """
     from PIL import Image
 
-    model = Staff2Score()
+    model = Staff2Score(False)
     image = Image.open(path_to_img)
     out = model.predict(np.array(image))
     eprint(out)

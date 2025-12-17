@@ -48,6 +48,7 @@ if platform == "android":
                 so.setIntraOpNumThreads(num_threads)
 
             self.session = self.env.createSession(model_path, so)
+            self.cached_tensors = {}
 
         def run(self, inputs: dict, outputs: dict) -> dict:
             """
@@ -65,7 +66,12 @@ if platform == "android":
             dict
                 Outputs of the model
             """
+
             jmap = HashMap()
+
+            for input_name, tensor in self.cached_tensors.items():
+                jmap.put(input_name, tensor)
+
             for name, value in inputs.items():
                 arr = np.ascontiguousarray(value)
                 shape = list(arr.shape)
@@ -97,14 +103,22 @@ if platform == "android":
             output_list = []
             for out_name, shape in outputs.items():
                 tensor_obj = results.get(out_name).get()
-                bytebuffer = bytes(tensor_obj.getByteBuffer().array())
-                numpy_array = np.frombuffer(bytebuffer, dtype=np.float32)
 
-                # Reshape and add the output data to the dict.
-                output_list.append(numpy_array.reshape(*shape))
-                tensor_obj.close()
+                # Convert to python
+                if isinstance(shape, list):
+                    bytebuffer = bytes(tensor_obj.getByteBuffer().array())
+                    numpy_array = np.frombuffer(bytebuffer, dtype=np.float32)
 
-            results.close()
+                    # Reshape and add the output data to the dict.
+                    output_list.append(numpy_array.reshape(*shape))
+                    tensor_obj.close()
+
+                # Leave as java tensor to input next inference step
+                elif isinstance(shape, str):
+                    if shape in self.cached_tensors:
+                        self.cached_tensors[shape].close()
+                    self.cached_tensors[shape] = tensor_obj
+
             return output_list
 
         def close_session(self):
@@ -122,9 +136,9 @@ else:
             session_options.intra_op_num_threads = num_threads
             self.model = ort.InferenceSession(model_path, session_options)
 
-        def run(self, inputs: dict, outputs: dict = None) -> dict:
+        def run(self, inputs: dict, outputs: dict) -> dict:
             result = self.model.run(
-                output_names=list(outputs.keys()), input_feed=inputs
+                output_names=list(outputs), input_feed=inputs
             )
             return result
 

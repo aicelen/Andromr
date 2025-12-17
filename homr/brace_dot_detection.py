@@ -8,9 +8,7 @@ from homr.model import MultiStaff, Staff
 from homr.type_definitions import NDArray
 
 
-def prepare_brace_dot_image(
-    symbols: NDArray, staff: NDArray, all_other: NDArray, unit_size: float
-) -> NDArray:
+def prepare_brace_dot_image(symbols: NDArray, staff: NDArray) -> NDArray:
     brace_dot = cv2.subtract(symbols, staff)
     """
     Remove horizontal lines and Make elements larger.
@@ -38,9 +36,7 @@ def _filter_for_tall_elements(
     ]
     result = []
     for symbol in symbols_larger_than_rough_estimate:
-        closest_staff = min(
-            staffs, key=lambda staff: staff.y_distance_to(symbol.center)
-        )
+        closest_staff = min(staffs, key=lambda staff: staff.y_distance_to(symbol.center))
         unit_size = closest_staff.average_unit_size
         if symbol.size[1] > constants.min_height_for_brace(unit_size):
             result.append(symbol)
@@ -111,17 +107,13 @@ def _get_connections_between_staffs(
     staff1: Staff, staff2: Staff, brace_dot: list[RotatedBoundingBox]
 ) -> list[RotatedBoundingBox]:
     result = []
-    result.extend(
-        _get_connections_between_staffs_at_bar_lines(staff1, staff2, brace_dot)
-    )
+    result.extend(_get_connections_between_staffs_at_bar_lines(staff1, staff2, brace_dot))
     result.extend(_get_connections_between_staffs_at_clefs(staff1, staff2, brace_dot))
     result.extend(_get_connections_between_staffs_at_lines(staff1, staff2, brace_dot))
     return result
 
 
-def _merge_multi_staff_if_they_share_a_staff(
-    staffs: list[MultiStaff],
-) -> list[MultiStaff]:
+def _merge_multi_staff_if_they_share_a_staff(staffs: list[MultiStaff]) -> list[MultiStaff]:
     """
     If two MultiStaff objects share a staff, merge them into one MultiStaff object.
     """
@@ -137,6 +129,14 @@ def _merge_multi_staff_if_they_share_a_staff(
         if not any_merged:
             result.append(staff)
     return result
+
+
+def _create_grandstaffs(staffs: list[MultiStaff]) -> list[MultiStaff]:
+    if len(staffs) == 0:
+        return staffs
+    if len(staffs[0].staffs) != 2:
+        return staffs
+    return [s.create_grandstaffs() for s in staffs]
 
 
 def find_braces_brackets_and_grand_staff_lines(
@@ -162,30 +162,4 @@ def find_braces_brackets_and_grand_staff_lines(
         if not any_connected_neighbor:
             result.append(MultiStaff([staff], []))
 
-    return _merge_multi_staff_if_they_share_a_staff(result)
-
-
-def _is_tiny_square(symbol: RotatedBoundingBox, unit_size: float) -> bool:
-    return symbol.size[0] < 0.5 * unit_size and symbol.size[1] < 0.5 * unit_size
-
-
-def find_dots(
-    staffs: list[Staff], brace_dot: list[RotatedBoundingBox], unit_size: float
-) -> list[RotatedBoundingBox]:
-    brace_dot = [symbol for symbol in brace_dot if _is_tiny_square(symbol, unit_size)]
-    result = []
-    for staff in staffs:
-        for symbol in brace_dot:
-            if not staff.is_on_staff_zone(symbol):
-                continue
-            point = staff.get_at(symbol.center[0])
-            if point is None:
-                continue
-            position = point.find_position_in_unit_sizes(symbol)
-            is_even_position = position % 2 == 0
-            # Dots are never on staff lines which would be indicated by an odd position
-            if not is_even_position:
-                continue
-            result.append(symbol)
-
-    return result
+    return _create_grandstaffs(_merge_multi_staff_if_they_share_a_staff(result))
