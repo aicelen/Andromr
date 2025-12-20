@@ -82,7 +82,6 @@ class ScoreDecoder:
                 "pitchs": x_pitch,
                 "lifts": x_lift,
                 "articulations": x_articulations,
-                "states": x_states,
                 "context": context,
                 "cache_len": np.array([step]),
             }
