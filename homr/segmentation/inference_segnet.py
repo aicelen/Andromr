@@ -100,7 +100,9 @@ def inference(
             hop = image[y : y + win_size, x : x + win_size, :]
 
             hop = np.expand_dims(hop, axis=0)
+            t1 = perf_counter()
             out = model.run(hop)
+            print(f"Complete run took {perf_counter() - t1}")
             out_filtered = np.argmax(out, axis=-1)
             out_filtered = np.squeeze(out_filtered, axis=0)
             data.append(out_filtered)

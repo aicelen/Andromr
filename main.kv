@@ -50,6 +50,14 @@ ScreenManager:
 
                 MDFloatingActionButton:
                     id: gen_xml
+                    text: "Test GPU"
+                    on_release: app.test_gpu()
+
+
+                Widget:
+
+                MDFloatingActionButton:
+                    id: gen_xml
                     icon: "upload"
                     on_release: app.check_download_assets(camera_page=True)
 
@@ -61,7 +69,7 @@ ScreenManager:
     KvCam:
         id: camera_pre
         fit_mode: 'contain'
-        play: True
+        play: False
 
     MDIconButton: 
         id: img_taker

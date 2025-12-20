@@ -42,7 +42,7 @@ from homr.benchmark import Benchmark
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
-
+from homr.inference_engine.tflite_model import TensorFlowModel
 
 if platform == "android":
     from android_camera_api import take_picture
@@ -88,6 +88,7 @@ if platform == "android":
                 return np.rot90(frame_bgr, 3)
 
         def frame_to_screen(self, frame):
+            print('to screen')
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             flipped = np.flip(frame_rgb, 0)
             buf = flipped.tobytes()
@@ -116,7 +117,8 @@ class LandingPage(Screen):
 
 
 class CameraPage(Screen):
-    pass
+    def on_leave(self):
+        self.ids.camera_pre._camera._release_camera()
 
 
 class ProgressPage(Screen):
@@ -388,7 +390,7 @@ class Andromr(MDApp):
             self.update_scrollview()
         
         if screen_name == "camera":
-            self.root.get_screen("camera").ids.camera_pre.play = True
+            self._restore_camera()
         else:
             self.root.get_screen("camera").ids.camera_pre.play = False
 
@@ -769,12 +771,7 @@ class Andromr(MDApp):
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(
-            target=self.homr_call, args=(path_to_image,), daemon=True
-        )
-        self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
-        self.ml_thread.start()
-        self.progress_thread.start()
+        self.ml_thread = self.homr_call(path_to_image)
 
     def homr_call(self, path: str):
         """
@@ -859,6 +856,9 @@ class Andromr(MDApp):
         else:
             self.show_toast("You already downloaded all assets")
 
+    def test_gpu(self):
+        pass
+
     def find_optimial_settings(self):
         print(Benchmark().run())
 
@@ -867,7 +867,7 @@ class Andromr(MDApp):
         # Schedule camera re-init a bit later, when GL is alive again
         Clock.schedule_once(self._restore_camera, 1)  # wait 1 second
 
-    def _restore_camera(self, dt):
+    def _restore_camera(self, dt=None):
         camera_screen = self.root.get_screen("camera")
         parent = camera_screen.ids.camera_pre.parent
         parent.remove_widget(camera_screen.ids.camera_pre)

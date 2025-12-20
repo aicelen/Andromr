@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from time import perf_counter
 
 from homr import constants
 from homr.debug import Debug
@@ -154,28 +155,25 @@ def apply_clahe(staff_image: NDArray, clip_limit: float = 1.0, kernel_size: int 
     return cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
 
 
-def remove_background(gray: NDArray) -> NDArray:
-    # Estimate smooth background illumination
-    background = cv2.medianBlur(gray, 51)
+def apply_clahe(staff_image: NDArray, clip_limit: float = 1.0, kernel_size: int = 8) -> NDArray:
+    gray_image = cv2.cvtColor(staff_image, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(kernel_size, kernel_size))
+    gray_image = clahe.apply(gray_image)
 
-    # Flatten background but preserve detail
-    flat = cv2.divide(gray, background, scale=255)
-
-    # Stretch intensity to full range
-    enhanced = cv2.normalize(flat, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)  # type: ignore
-
-    return enhanced
-
-
-def sharpen(img: NDArray) -> NDArray:
-    blur = cv2.GaussianBlur(img, (0, 0), 3)
-    sharpened = cv2.addWeighted(img, 1.5, blur, -0.5, 0)
-    return sharpened
+    return cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
 
 
 def augment_staff_image(staff_image: NDArray) -> NDArray:
-    denoised1 = cv2.fastNlMeansDenoisingColored(staff_image, None, 10, 10, 7, 21)
-    return sharpen(remove_background(denoised1))
+    t0 = perf_counter()
+    denoised1 = cv2.edgePreservingFilter(
+        staff_image,
+        flags=1,
+        sigma_s=60,
+        sigma_r=0.4
+    )
+    print(f"Filtering took {perf_counter() - t0}")
+    return apply_clahe(denoised1)
+
 
 
 def prepare_staff_image(
