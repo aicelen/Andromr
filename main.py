@@ -116,7 +116,10 @@ class LandingPage(Screen):
 
 
 class CameraPage(Screen):
-    pass
+    # Unload the camera to stop recording
+    # to improve gpu performance
+    def on_leave(self):
+        self.ids.camera_pre._camera._release_camera()
 
 
 class ProgressPage(Screen):
@@ -388,9 +391,7 @@ class Andromr(MDApp):
             self.update_scrollview()
         
         if screen_name == "camera":
-            self.root.get_screen("camera").ids.camera_pre.play = True
-        else:
-            self.root.get_screen("camera").ids.camera_pre.play = False
+            self._restore_camera()
 
     def previous_screen(self, btn=None):
         """Switch to the previous screen"""
@@ -863,11 +864,18 @@ class Andromr(MDApp):
         print(Benchmark().run())
 
     def on_resume(self):
+        """
+        Function that runs in reopening the app.
+        
+        """
         print("Resuming app — scheduling camera restart")
         # Schedule camera re-init a bit later, when GL is alive again
         Clock.schedule_once(self._restore_camera, 1)  # wait 1 second
 
-    def _restore_camera(self, dt):
+    def _restore_camera(self, dt=None):
+        """
+        Restores the camerawidget
+        """
         camera_screen = self.root.get_screen("camera")
         parent = camera_screen.ids.camera_pre.parent
         parent.remove_widget(camera_screen.ids.camera_pre)
