@@ -46,7 +46,7 @@ from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
 if platform == "android":
     from android_camera_api import take_picture
-    from androidstorage4kivy import SharedStorage, ShareSheet
+    from androidstorage4kivy import SharedStorage, ShareSheet # type: ignore
     from jnius import autoclass  # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # type: ignore
 
@@ -119,7 +119,8 @@ class CameraPage(Screen):
     # Unload the camera to stop recording
     # to improve gpu performance
     def on_leave(self):
-        self.ids.camera_pre._camera._release_camera()
+        if platform == 'android':
+            self.ids.camera_pre._camera._release_camera()
 
 
 class ProgressPage(Screen):

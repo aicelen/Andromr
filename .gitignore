@@ -21,6 +21,7 @@ build/
 
 # test file
 test.py
+commands.txt
 
 # file extensions
 *.pth
