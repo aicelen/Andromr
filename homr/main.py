@@ -168,7 +168,7 @@ def process_image(
         )
 
         eprint("Writing XML", result_staffs)
-        xml = generate_xml(xml_generator_args, result_staffs, "") # "" for the empty title
+        xml = generate_xml(xml_generator_args, result_staffs, "")  # "" for the empty title
         xml.write(xml_file)
 
         eprint("Finished parsing " + str(len(result_staffs)) + " staves")
@@ -193,7 +193,6 @@ def process_image(
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
 ) -> tuple[list[MultiStaff], NDArray, Debug]:
-
     appdata.homr_state = "Segementing"
     appdata.homr_progress = 1
 
@@ -215,7 +214,7 @@ def detect_staffs_in_image(
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
-    
+
     appdata.homr_progress = 7
 
     average_note_head_height = float(
@@ -246,7 +245,7 @@ def detect_staffs_in_image(
     )
 
     appdata.homr_progress = 90
-    
+
     if len(staffs) == 0:
         raise Exception("No staffs found")
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
@@ -335,6 +334,7 @@ def homr(path, cache=False):
     out_path = process_image(path, config, xml_generator_args)
     eprint(f"Homr took {perf_counter() - t0} seconds.")
     return out_path
+
 
 if __name__ == "__main__":
     homr("taken_img.jpg", cache=False)

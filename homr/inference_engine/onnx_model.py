@@ -137,9 +137,7 @@ else:
             self.model = ort.InferenceSession(model_path, session_options)
 
         def run(self, inputs: dict, outputs: dict) -> dict:
-            result = self.model.run(
-                output_names=list(outputs), input_feed=inputs
-            )
+            result = self.model.run(output_names=list(outputs), input_feed=inputs)
             return result
 
         def close_session(self):

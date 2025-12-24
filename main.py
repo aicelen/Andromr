@@ -47,11 +47,12 @@ from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
 if platform == "android":
     from android_camera_api import take_picture
-    from androidstorage4kivy import SharedStorage, ShareSheet # type: ignore
+    from androidstorage4kivy import SharedStorage, ShareSheet  # type: ignore
     from jnius import autoclass  # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # type: ignore
 
     required_permissions = [Permission.CAMERA]
+
     def has_all_permissions():
         return all(check_permission(perm) for perm in required_permissions)
 
@@ -61,7 +62,7 @@ if platform == "android":
         while not has_all_permissions():
             sleep(0.1)
             print("waiting for permissions...")
-            
+
     # Custom camera widget for android
     class KvCam(Camera):
         CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
@@ -79,9 +80,7 @@ if platform == "android":
 
         def frame_from_buf(self):
             w, h = self.resolution
-            frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape(
-                (h + h // 2, w)
-            )
+            frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape((h + h // 2, w))
             frame_bgr = cv2.cvtColor(frame, 93)
             if self.index:
                 return np.flip(np.rot90(frame_bgr, 1), 1)
@@ -98,18 +97,20 @@ else:
     # Custom placeholder widget for Desktop
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
+
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
             # Add a label to indicate that the camera is not available
             self.add_widget(
                 MDLabel(
                     text="Camera not available on Desktop.\nPress capture to select a file.",
-                    halign="center"
+                    halign="center",
                 )
             )
 
     def take_picture(widget, function, filename):
         function(filename)
+
 
 # Classes of Screens used by kivy
 class LandingPage(Screen):
@@ -120,7 +121,7 @@ class CameraPage(Screen):
     # Unload the camera to stop recording
     # to improve gpu performance
     def on_leave(self):
-        if platform == 'android':
+        if platform == "android":
             self.ids.camera_pre._camera._release_camera()
 
 
@@ -244,12 +245,14 @@ class License(RecycleView):
             lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
-            {                
-                "text": line, 
-                "size": (None, estimate_height(line)), 
-                "color": (1,1,1,1) if self.dark_mode else (0,0,0,1)
-            } for line in lines
+            {
+                "text": line,
+                "size": (None, estimate_height(line)),
+                "color": (1, 1, 1, 1) if self.dark_mode else (0, 0, 0, 1),
+            }
+            for line in lines
         ]
+
 
 class OSS_Licenses(RecycleView):
     # shows the open source licenses using a recycling view widget for better performance
@@ -269,11 +272,12 @@ class OSS_Licenses(RecycleView):
             lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
-            {                
-                "text": line, 
-                "size": (None, estimate_height(line)), 
-                "color": (1,1,1,1) if self.dark_mode else (0,0,0,1)
-            } for line in lines
+            {
+                "text": line,
+                "size": (None, estimate_height(line)),
+                "color": (1, 1, 1, 1) if self.dark_mode else (0, 0, 0, 1),
+            }
+            for line in lines
         ]
 
 
@@ -283,7 +287,7 @@ class Andromr(MDApp):
     def build(self):
         self.setup()
         # set the app size to a phone size if on windows
-        if platform == "win" or platform == 'linux':
+        if platform == "win" or platform == "linux":
             Window.size = (350, 680)
 
         # load the file
@@ -302,7 +306,7 @@ class Andromr(MDApp):
                     "text": "About",
                     "height": dp(48),
                     "on_release": lambda x="osslicensepage": self.change_screen(x),
-                }
+                },
             ]
         )
 
@@ -310,7 +314,7 @@ class Andromr(MDApp):
         if not appdata.agreed:
             # show him the screen
             self.sm.current = "licensepagebutton"
-        
+
         Window.bind(on_keyboard=self.on_custom_back)
 
         return self.sm
@@ -334,15 +338,22 @@ class Andromr(MDApp):
         # widgets
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
         self.last_screen = deque(maxlen=10)
-        self.returnables = ["landing", "camera", "settings", "osslicensepage", "licensepage", "image_page"]
+        self.returnables = [
+            "landing",
+            "camera",
+            "settings",
+            "osslicensepage",
+            "licensepage",
+            "image_page",
+        ]
 
         # themes
         self.theme_cls.primary_palette = "LightGreen"
         self.theme_cls.theme_style = get_sys_theme()
         self.theme_cls.material_style = "M3"
-        if platform == 'android':
+        if platform == "android":
             self.bottom_pad = self.nav_bar_height_dp()
-        
+
         else:
             self.bottom_pad = 0
 
@@ -350,12 +361,12 @@ class Andromr(MDApp):
         # Update Scrollview on start
         self.update_scrollview()
 
-    def nav_bar_height_dp(self, offset=0, default = 32) -> float:
+    def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
         Return navigation-bar height in *dp*.
         Otherwise the navigation bar might be overlapping with the buttons on the bottom
         """
-        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
         activity = PythonActivity.mActivity
         resources = activity.getResources()
         res_id = resources.getIdentifier("navigation_bar_height", "dimen", "android")
@@ -366,11 +377,10 @@ class Andromr(MDApp):
         return dp(default)
 
     def on_custom_back(self, window, key, scancode, codepoint, modifiers):
-        if key == 27: # back gesture on android
+        if key == 27:  # back gesture on android
             self.previous_screen()
             return True
         return False
-
 
     # UI methods
     def change_screen(self, screen_name, btn=None):
@@ -391,7 +401,7 @@ class Andromr(MDApp):
         # update the scrollview on the landing page
         if screen_name == "landing":
             self.update_scrollview()
-        
+
         if screen_name == "camera":
             self._restore_camera()
 
@@ -462,9 +472,7 @@ class Andromr(MDApp):
             title=title,
             text="",
             buttons=[
-                MDFlatButton(
-                    text="OK", on_release=lambda dt: self.dialog_information.dismiss()
-                )
+                MDFlatButton(text="OK", on_release=lambda dt: self.dialog_information.dismiss())
             ],
         )
 
@@ -485,12 +493,8 @@ class Andromr(MDApp):
         Update the progress bar used while running homr
         """
         while appdata.homr_running:
-            self.root.get_screen(
-                "progress"
-            ).ids.progress_bar.value = appdata.homr_progress
-            self.root.get_screen(
-                "progress"
-            ).ids.progress_label.text = appdata.homr_state
+            self.root.get_screen("progress").ids.progress_bar.value = appdata.homr_progress
+            self.root.get_screen("progress").ids.progress_label.text = appdata.homr_state
             sleep(0.1)
 
     def update_download_bar(self, camera_page):
@@ -510,7 +514,6 @@ class Andromr(MDApp):
         else:
             Clock.schedule_once(lambda dt: self.change_screen("settings"))
 
-
     # Button click methods
     def export_file(self, idx, btn=None):
         """
@@ -523,9 +526,7 @@ class Andromr(MDApp):
                 None
         """
         # export (.musicxml)
-        self.share_file(
-                f"{APP_PATH}/data/generated_xmls/{self.files[idx]}"
-        )
+        self.share_file(f"{APP_PATH}/data/generated_xmls/{self.files[idx]}")
 
     def share_file(self, path: str):
         """
@@ -546,12 +547,8 @@ class Andromr(MDApp):
         self.dialog_delete = MDDialog(
             text="Are you sure you want to delete this scan? This cannot be undone.",
             buttons=[
-                MDFlatButton(
-                    text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()
-                ),
-                MDFlatButton(
-                    text="CONFIRM", on_release=lambda func: self.delete_element(idx)
-                ),
+                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
+                MDFlatButton(text="CONFIRM", on_release=lambda func: self.delete_element(idx)),
             ],
         )
         self.dialog_delete.open()
@@ -578,7 +575,7 @@ class Andromr(MDApp):
         appdata.agreed = True
         appdata.save_settings()
         self.change_screen("landing")
-    
+
     def open_menu(self, button):
         self.menu.caller = button
         self.menu.open()
@@ -655,9 +652,7 @@ class Andromr(MDApp):
             dist_x = win_x
 
             # calculate how much space is left
-            self.space_left = (
-                win_y - dist_y
-            ) / 2  # half beause we only need one distance
+            self.space_left = (win_y - dist_y) / 2  # half beause we only need one distance
 
             offset = 50  # buttons should be easily touchable. that's why there's an offset to the edge of the screen
 
@@ -687,9 +682,7 @@ class Andromr(MDApp):
             dist_y = win_y
 
             # calculate how much space is left
-            self.space_left = (
-                win_x - dist_x
-            ) / 2  # half because we need only one distance
+            self.space_left = (win_x - dist_x) / 2  # half because we need only one distance
 
             offset = 50
             self.root.get_screen("image_page").ids.btn0.center = (
@@ -713,7 +706,6 @@ class Andromr(MDApp):
         line_drawer = self.root.get_screen("image_page").ids.line_drawer
         line_drawer.update_lines()
 
-
     # Camera methods
     def display_img(self):
         """
@@ -736,7 +728,7 @@ class Andromr(MDApp):
         img_widget = Image(fit_mode="contain")
         self.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
 
-        # and set texture 
+        # and set texture
         img_widget.texture = texture
 
         # move the buttons to the correct location
@@ -753,10 +745,7 @@ class Andromr(MDApp):
 
     def capture(self, filename="test_long.jpg"):
         """Take an image"""
-        take_picture(
-            self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
-        )
-
+        take_picture(self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename)
 
     # Homr methods
     def start_inference(self, path_to_image: str):
@@ -776,9 +765,7 @@ class Andromr(MDApp):
         load_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(
-            target=self.homr_call, args=(path_to_image,), daemon=True
-        )
+        self.ml_thread = Thread(target=self.homr_call, args=(path_to_image,), daemon=True)
         self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
         self.ml_thread.start()
         self.progress_thread.start()
@@ -796,9 +783,7 @@ class Andromr(MDApp):
 
         if self.root.get_screen("progress").ids.title.text == "":
             # if there's no user given title we give it a unique id based on time
-            music_title = (
-                f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-            )
+            music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         else:
             # otherwise we set it to the users title
             music_title = str(self.root.get_screen("progress").ids.title.text)
@@ -815,15 +800,12 @@ class Andromr(MDApp):
         # rename the file
         os.rename(
             return_path,
-            os.path.join(
-                APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"
-            ),
+            os.path.join(APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"),
         )
 
         # and update self.files (needed for the scorllview)
         self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
-
 
         # switch to landing screen
         Clock.schedule_once(lambda dt: self.change_screen("landing"))
@@ -831,9 +813,7 @@ class Andromr(MDApp):
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
         download = Thread(target=download_weights, daemon=True)
-        update = Thread(
-            target=self.update_download_bar, args=(camera_page,), daemon=True
-        )
+        update = Thread(target=self.update_download_bar, args=(camera_page,), daemon=True)
         download.start()
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
@@ -872,7 +852,7 @@ class Andromr(MDApp):
     def on_resume(self):
         """
         Function that runs in reopening the app.
-        
+
         """
         print("Resuming app — scheduling camera restart")
         # Schedule camera re-init a bit later, when GL is alive again
@@ -885,9 +865,10 @@ class Andromr(MDApp):
         camera_screen = self.root.get_screen("camera")
         parent = camera_screen.ids.camera_pre.parent
         parent.remove_widget(camera_screen.ids.camera_pre)
-        new_cam = KvCam(fit_mode='contain', play=True)
+        new_cam = KvCam(fit_mode="contain", play=True)
         camera_screen.ids.camera_pre = new_cam
         parent.add_widget(new_cam, index=0)
+
 
 if __name__ == "__main__":
     Andromr().run()

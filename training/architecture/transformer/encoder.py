@@ -86,10 +86,10 @@ class TransformerEncoderOnly(nn.Module):
     def forward(self, x):
         # x should already be patch embeddings from your backbone
         # cls_token = self.encoder.cls_token.expand(x.shape[0], -1, -1)
-        x = torch.reshape(x, (1, 312, 1280)) # input: [1, 312, 16, 80]
-        x = torch.transpose(x, 1, 2) # output: [1, 1280, 312]
-        x = torch.cat([self.encoder.cls_token, x], dim=1) # output: [1, 1281, 312]
-        x += self.encoder.pos_embed # last custom: adding pos_embed
+        x = torch.reshape(x, (1, 312, 1280))  # input: [1, 312, 16, 80]
+        x = torch.transpose(x, 1, 2)  # output: [1, 1280, 312]
+        x = torch.cat([self.encoder.cls_token, x], dim=1)  # output: [1, 1281, 312]
+        x += self.encoder.pos_embed  # last custom: adding pos_embed
         x = self.encoder.blocks(x)
         x = self.encoder.norm(x)
         return x

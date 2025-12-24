@@ -252,9 +252,7 @@ class HumdrumKernConverter:
                 in_control_group = control_line
         return result
 
-    def convert_humdrum_kern(
-        self, staff_no: int, lines: list[str]
-    ) -> list[EncodedSymbolWithPos]:  # noqa: C901
+    def convert_humdrum_kern(self, staff_no: int, lines: list[str]) -> list[EncodedSymbolWithPos]:  # noqa: C901
         result: list[EncodedSymbolWithPos] = []
 
         clef = EncodedSymbolWithPos(-10, self._get_default_clef(staff_no))

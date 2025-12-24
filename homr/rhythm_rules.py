@@ -125,9 +125,7 @@ def sum_up_duration(symbols: list[ResultSymbol]) -> tuple[int, float]:
 def create_all_alternatives_limited(
     symbols: list[ResultSymbol], max_mutations: int = 2
 ) -> list[list[ResultSymbol]]:
-    result: list[tuple[list[ResultSymbol | None], int]] = [
-        ([], 0)
-    ]  # (sequence, mutation_count)
+    result: list[tuple[list[ResultSymbol | None], int]] = [([], 0)]  # (sequence, mutation_count)
 
     for symbol in symbols:
         alternatives: list[ResultSymbol | None] = []
@@ -169,10 +167,7 @@ def create_all_alternatives(symbols: list[ResultSymbol]) -> list[list[ResultSymb
 def create_alternatives(chord: ResultChord) -> list[ResultChord | None]:
     # Adding "None" to the alternatives would check if removing the item fixes the rhythm
     alternatives: list[ResultChord | None] = [chord]
-    if (
-        len(chord.notes) == 1
-        and chord.notes[0].duration.modifier == DurationModifier.TRIPLET
-    ):
+    if len(chord.notes) == 1 and chord.notes[0].duration.modifier == DurationModifier.TRIPLET:
         note = chord.notes[0]
         if note.alternative_duration:
             alternatives.append(

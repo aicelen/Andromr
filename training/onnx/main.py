@@ -6,8 +6,7 @@ from training.onnx.convert import (
     convert_decoder,
     convert_segnet,
     convert_cnn_encoder,
-    convert_transformer_encoder
-
+    convert_transformer_encoder,
 )
 from training.onnx.quantization import quantization_int8
 from training.onnx.simplify import main as simplify_onnx_model

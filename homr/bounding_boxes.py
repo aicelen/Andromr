@@ -102,9 +102,7 @@ class BoundingBox(AnyPolygon):
 
 
 class AngledBoundingBox(AnyPolygon):
-    def __init__(
-        self, box, contours, polygon: Any, debug_id: int = 0
-    ):
+    def __init__(self, box, contours, polygon: Any, debug_id: int = 0):
         super().__init__(polygon)
         self.debug_id = debug_id
         self.contours = contours

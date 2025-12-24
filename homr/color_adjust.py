@@ -29,9 +29,11 @@ def apply_clahe(channel: NDArray) -> NDArray:
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     return clahe.apply(channel)
 
+
 def center_of_mass_np(arr: NDArray):
     positions = np.arange(len(arr))
     return np.sum(positions * arr) / np.sum(arr)
+
 
 def remove_background_from_channel(channel: NDArray, block_size: int) -> tuple[NDArray, NDArray]:
     """

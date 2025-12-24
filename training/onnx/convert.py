@@ -75,7 +75,7 @@ def convert_encoder() -> str:
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
-        dynamo=False
+        dynamo=False,
     )
 
     return path_out
@@ -144,7 +144,7 @@ def convert_decoder() -> str:
         opset_version=18,
         do_constant_folding=True,
         export_params=True,
-        dynamo=False
+        dynamo=False,
     )
     return path_out
 
@@ -179,7 +179,7 @@ def convert_segnet() -> str:
         output_names=["output"],
         # dyamic axes are required for dynamic batch_size
         dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-        dynamo=False
+        dynamo=False,
     )
     return f"{os.path.splitext(segnet_path_torch)[0]}.onnx"
 
@@ -199,9 +199,7 @@ def convert_cnn_encoder():
 
     # Load weights
     model.load_state_dict(
-        torch.load(
-            r"cnn_encoder.pt", weights_only=True, map_location=torch.device("cpu")
-        ),
+        torch.load(r"cnn_encoder.pt", weights_only=True, map_location=torch.device("cpu")),
         strict=True,
     )
 
@@ -221,7 +219,7 @@ def convert_cnn_encoder():
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
-        dynamo=False
+        dynamo=False,
     )
 
     return path_out
@@ -266,7 +264,7 @@ def convert_transformer_encoder():
         do_constant_folding=True,
         input_names=["input"],
         output_names=["output"],
-        dynamo=False
+        dynamo=False,
     )
 
     return path_out

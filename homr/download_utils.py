@@ -7,6 +7,7 @@ import requests
 from homr.simple_logging import eprint
 from globals import appdata
 
+
 def download_file(url: str, filename: str) -> None:
     response = requests.get(url, stream=True, timeout=5)
     total = int(response.headers.get("content-length", 0))

@@ -138,10 +138,7 @@ class ResultTimeSignature(ResultSymbol):
 
     def __eq__(self, __value: object) -> bool:
         if isinstance(__value, ResultTimeSignature):
-            return (
-                self.numerator == __value.numerator
-                and self.denominator == __value.denominator
-            )
+            return self.numerator == __value.numerator and self.denominator == __value.denominator
         else:
             return False
 
@@ -215,9 +212,9 @@ def get_pitch_from_relative_position(
     step_index = (note_names.index(reference_pitch.step) + relative_position) % 7
     step = note_names[step_index]
     # abs & sign give us integer division with rounding towards 0
-    octave = reference_pitch.octave + abs(
-        relative_position - step_index
-    ) // 6 * np.sign(relative_position)
+    octave = reference_pitch.octave + abs(relative_position - step_index) // 6 * np.sign(
+        relative_position
+    )
     return ResultPitch(step, int(octave), alter)
 
 
@@ -325,9 +322,7 @@ class ResultDuration:
 
     def __eq__(self, __value: object) -> bool:
         if isinstance(__value, ResultDuration):
-            return (
-                self.duration == __value.duration and self.modifier == __value.modifier
-            )
+            return self.duration == __value.duration and self.modifier == __value.modifier
         else:
             return False
 
@@ -480,13 +475,9 @@ class ResultStaff:
     def number_of_new_lines(self) -> int:
         return sum(1 for measure in self.measures if measure.is_new_line)
 
-    def replace_symbol(
-        self, old_symbol: ResultSymbol, new_symbol: ResultSymbol
-    ) -> None:
+    def replace_symbol(self, old_symbol: ResultSymbol, new_symbol: ResultSymbol) -> None:
         for measure in self.measures:
-            measure.symbols = [
-                new_symbol if s is old_symbol else s for s in measure.symbols
-            ]
+            measure.symbols = [new_symbol if s is old_symbol else s for s in measure.symbols]
 
     def __eq__(self, __value: object) -> bool:
         if isinstance(__value, ResultStaff):

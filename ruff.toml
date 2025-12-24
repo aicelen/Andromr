@@ -1,15 +1,15 @@
+line-length = 100
+target-version = "py310"
+
 [lint]
-exclude = [
-    ".buildozer/",
-    ".gradle/",
-    ".venv/",
-    "__pycache__/",
-    "build/",
-    "dist/",
-    "bin/",
-    "build/",
-    "cnn_encoder_188/",
-    "datasets/",
-    "opencv/",
-    "segnet_155"
+select = [
+    "E", "W", "F", "I", "UP", "C", "B", "S", "A", "INP", "PIE", "PL",
+    "TID252", "T201",
 ]
+ignore = [
+    "UP015", "PLC1901", "PLR0913", "S311", "S105", "UP035",
+    "PLR0912", "PLR0915", "C901", "PLR2004",
+]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"

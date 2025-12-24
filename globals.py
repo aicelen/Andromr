@@ -49,7 +49,7 @@ class AppData:
             "threads": self.threads,
             "xnnpack": self.xnnpack,
             "agreed": self.agreed,
-            "gpu": self.gpu
+            "gpu": self.gpu,
         }
 
         with open(self.settings_file, "w") as f:

@@ -11,6 +11,7 @@ from globals import appdata
 cnn_encoder = None
 transformer_encoder = None
 
+
 class EncoderDual:
     def __init__(self) -> None:
         """
@@ -37,15 +38,14 @@ class EncoderDual:
         output_dict = {"output": [1, 1281, 312]}
         output = self.transformer_encoder.run(input_dict, output_dict)
         print(f"Inference time CNN part of Encoder: {round(t1 - t0, 3)}s")
-        print(
-            f"Inference time Transformer part of Encoder: {round(perf_counter() - t1, 3)}s"
-        )
+        print(f"Inference time Transformer part of Encoder: {round(perf_counter() - t1, 3)}s")
         return output[0]
+
 
 def load_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = False) -> TensorFlowModel:
     """
     Load the CNN part of the encoder
-    
+
     :param num_threads: Number of threads
     :type num_threads: int
     :param use_gpu: Use GPU for inference
@@ -55,12 +55,15 @@ def load_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = False) 
     """
     global cnn_encoder
     if cnn_encoder is None:
-        cnn_encoder = TensorFlowModel(default_config.filepaths.encoder_cnn_path_tflite, num_threads, use_gpu, False)
+        cnn_encoder = TensorFlowModel(
+            default_config.filepaths.encoder_cnn_path_tflite, num_threads, use_gpu, False
+        )
+
 
 def load_transformer_encoder(num_threads: int = appdata.threads) -> OnnxModel:
     """
     Load the transformer part of the encoder.
-    
+
     :param num_threads: Nuber of threads the model uses
     :type num_threads: int
     :return: The loaded OnnxModel
@@ -68,4 +71,6 @@ def load_transformer_encoder(num_threads: int = appdata.threads) -> OnnxModel:
     """
     global transformer_encoder
     if transformer_encoder is None:
-        transformer_encoder = OnnxModel(default_config.filepaths.encoder_transformer_path, num_threads=num_threads)
+        transformer_encoder = OnnxModel(
+            default_config.filepaths.encoder_transformer_path, num_threads=num_threads
+        )

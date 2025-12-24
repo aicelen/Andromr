@@ -308,9 +308,7 @@ def are_lines_parallel(lines: list[StaffLineSegment], unit_size: float) -> bool:
             fragment.angle - average_angle
         ) > constants.max_angle_for_lines_to_be_parallel and fragment.size[
             0
-        ] > constants.is_short_connected_line(
-            unit_size
-        ):
+        ] > constants.is_short_connected_line(unit_size):
             return False
     return True
 

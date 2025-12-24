@@ -14,6 +14,7 @@ from homr.type_definitions import NDArray
 
 from globals import appdata
 
+
 def _have_all_the_same_number_of_staffs(staffs: list[MultiStaff]) -> bool:
     for staff in staffs:
         if len(staff.staffs) != len(staffs[0].staffs):
@@ -83,7 +84,6 @@ def get_tr_omr_canvas_size(
 def center_image_on_canvas(
     image: NDArray, canvas_size: NDArray, margin_top: int = 0, margin_bottom: int = 0
 ) -> NDArray:
-
     resized = cv2.resize(image, tuple(canvas_size))
 
     new_image = np.zeros((tr_omr_max_height, tr_omr_max_width, 3), np.uint8)
@@ -144,9 +144,6 @@ def _calculate_region(staff: Staff, regions: StaffRegions) -> NDArray:
         regions.get_start_of_closest_staff_below(staff.max_y),
     )
     return np.array([int(x_min), int(y_min), int(x_max), int(y_max)])
-
-
-
 
 
 def prepare_staff_image(

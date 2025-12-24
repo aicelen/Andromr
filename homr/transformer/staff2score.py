@@ -52,7 +52,7 @@ class Staff2Score:
             context=context,
         )
 
-        eprint(f"Inference Time Tromr: {perf_counter()-t0}")
+        eprint(f"Inference Time Tromr: {perf_counter() - t0}")
 
         return out
 
@@ -91,6 +91,7 @@ def test_transformer_on_image(path_to_img: str) -> None:
 if __name__ == "__main__":
     from homr.transformer.decoder_inference import load_model as lmd
     from homr.transformer.encoder_inference import load_model as lme
+
     lmd()
     lme()
 

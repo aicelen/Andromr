@@ -4,11 +4,7 @@ from collections import defaultdict
 import torch
 
 from homr.transformer.configs import default_config
-from homr.transformer.vocabulary import (
-    EncodedSymbol,
-    Vocabulary,
-    sort_token_chords
-)
+from homr.transformer.vocabulary import EncodedSymbol, Vocabulary, sort_token_chords
 
 vocab = Vocabulary()
 
@@ -73,7 +69,6 @@ def _chord_to_str(chord: list[EncodedSymbol]) -> str:
                 list(lower_slurs_ties)
             )
     return str.join("&", [str(c) for c in annotation_resorted])
-
 
 
 def calc_ratio_of_tuplets(symbols: list[EncodedSymbol]) -> float:

@@ -90,9 +90,7 @@ def inference(
     load_segnet()
 
     t0 = perf_counter()
-    num_steps = ceil(image_org.shape[0] / step_size) * ceil(
-        image_org.shape[1] / step_size
-    )
+    num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
     progress_increment = 100 / num_steps
 
     data = []

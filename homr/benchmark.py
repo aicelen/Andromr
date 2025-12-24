@@ -7,7 +7,8 @@ from homr.inference_engine import OnnxModel, TensorFlowModel
 from homr.transformer.configs import default_config
 from homr.segmentation.config import segnet_path_tflite
 
-class Benchmark():
+
+class Benchmark:
     def __init__(self):
         self.check_threads = [1, 2, 4, 6, cpu_count()]
         self.cycles = 10
@@ -25,7 +26,9 @@ class Benchmark():
         input_encoder = np.random.random((1, 128, 1280, 1)).astype(np.float32)
         for threads in self.check_threads:
             segnet = TensorFlowModel(segnet_path_tflite, num_threads=threads)
-            encoder = TensorFlowModel(default_config.filepaths.encoder_cnn_path_tflite, num_threads=threads)
+            encoder = TensorFlowModel(
+                default_config.filepaths.encoder_cnn_path_tflite, num_threads=threads
+            )
             cur_time = 0
 
             for i in range(self.cycles):
@@ -43,13 +46,9 @@ class Benchmark():
 
     def benchmark_onnx(self, threshold=0):
         best_result = (0, np.inf)
-        input_encoder = {
-            "input": np.random.random((1, 312, 8, 80)).astype(np.float32)
-        }
+        input_encoder = {"input": np.random.random((1, 312, 8, 80)).astype(np.float32)}
 
-        output_encoder = {
-            "output": [1, 641, 312]
-        }
+        output_encoder = {"output": [1, 641, 312]}
 
         input_decoder = {
             "rhythms": np.random.randint(0, 4, (1, 20)).astype(np.int64),
@@ -58,13 +57,15 @@ class Benchmark():
             "context": np.random.rand(1, 641, 312).astype(np.float32),
         }
         outputs_decoder = {
-                "out_rhythms": [1, 20, 93],
-                "out_pitchs": [1, 20, 71],
-                "out_lifts": [1, 20, 5],
+            "out_rhythms": [1, 20, 93],
+            "out_pitchs": [1, 20, 71],
+            "out_lifts": [1, 20, 5],
         }
 
         for threads in self.check_threads:
-            encoder = OnnxModel(default_config.filepaths.encoder_transformer_path, num_threads=threads)
+            encoder = OnnxModel(
+                default_config.filepaths.encoder_transformer_path, num_threads=threads
+            )
             decoder = OnnxModel(default_config.filepaths.decoder_path, num_threads=threads)
             cur_time = 0
 
@@ -83,13 +84,13 @@ class Benchmark():
 
         return best_result[0]
 
-
     def run(self):
         self.warmup()
         tflite = self.benchmark_tflite(threshold=0.1)
         onnx = self.benchmark_onnx(threshold=0.05)
         print(tflite, onnx)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test = Benchmark()
     test.run()

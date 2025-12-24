@@ -138,7 +138,6 @@ class SegmentationBaseDataset(BaseDataset[tuple[NDArray, NDArray]]):
 
 
 class D2DenseDataset(SegmentationBaseDataset):
-
     def _get_mask(self, image_name: str) -> str:
         return image_name.replace(".png", "_seg.png").replace("/images/", "/segmentation/")
 
@@ -164,7 +163,6 @@ class D2DenseDataset(SegmentationBaseDataset):
 
 
 class CvcMuscimaDataset(SegmentationBaseDataset):
-
     def _get_staff_mask(self, image_name: str) -> str:
         return image_name.replace("/image/", "/gt/")
 
@@ -278,7 +276,6 @@ def visualize_dataset(dataset: SegmentationBaseDataset) -> None:
 
 
 def train_segnet(visualize: bool = False) -> None:
-
     script_location = os.path.dirname(os.path.realpath(__file__))
     git_root = Path(script_location).parent.parent.absolute()
     dataset_root = os.path.join(git_root, "datasets")

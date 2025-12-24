@@ -43,9 +43,7 @@ def _apply_key_signature(staff: ResultStaff) -> None:
                 circle_of_fifth_notes = get_circle_of_fifth_notes(circle_of_fifth)
             elif isinstance(symbol, ResultChord):
                 for note in symbol.notes:
-                    _apply_key_to_pitch(
-                        note.pitch, circle_of_fifth, circle_of_fifth_notes
-                    )
+                    _apply_key_to_pitch(note.pitch, circle_of_fifth, circle_of_fifth_notes)
 
 
 def _apply_key_to_pitch(

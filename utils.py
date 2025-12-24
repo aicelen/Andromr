@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from kivy.utils import platform
 
+
 def rotate_image(input_path, output_path):
     """
     Rotates an image 90 degrees clockwise and saves it.
@@ -40,8 +41,7 @@ def get_sys_theme():
         activity = autoclass("org.kivy.android.PythonActivity").mActivity
 
         night_mode_flags = (
-            activity.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK
+            activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK
         )
 
         if night_mode_flags == Configuration.UI_MODE_NIGHT_YES:
@@ -100,6 +100,7 @@ def crop_image_by_corners(path, points, output_path):
 
     # Save the cropped image
     img.save(output_path)
+
 
 def downscale_cv2(input_path: str, scale: float):
     """

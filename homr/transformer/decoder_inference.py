@@ -15,10 +15,12 @@ from kivy import platform
 
 model = None
 
+
 def load_decoder(num_threads=appdata.threads):
     global model
     if model is None:
         model = OnnxModel(default_config.filepaths.decoder_path, num_threads=num_threads)
+
 
 class ScoreDecoder:
     def __init__(
@@ -98,13 +100,13 @@ class ScoreDecoder:
                 # x_transformers uses [:, :0] to split the context
                 # which caused a Reshape error when loading the onnx model
                 context = context_reduced
-                if platform != 'android':
+                if platform != "android":
                     for i in range(32):
                         inputs[kv_input_names[i]] = cache[i]
 
             rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
                 inputs=inputs,
-                outputs=outputs_dict | kv_outputs_dicts # merges the dicts
+                outputs=outputs_dict | kv_outputs_dicts,  # merges the dicts
             )
 
             filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
@@ -164,7 +166,9 @@ class ScoreDecoder:
         for i in range(32):
             cache.append(np.zeros((1, 8, cache_len, 64), dtype=np.float32))
             input_names.append(f"cache_in{i}")
-            output_dict[f"cache_out{i}"] = f"cache_in{i}" # this is used to check if this gets converted to python or not
+            output_dict[f"cache_out{i}"] = (
+                f"cache_in{i}"  # this is used to check if this gets converted to python or not
+            )
         return cache, input_names, output_dict
 
 

@@ -5,9 +5,7 @@ from homr.bounding_boxes import RotatedBoundingBox
 from homr.model import Rest, Staff
 
 
-def add_rests_to_staffs(
-    staffs: list[Staff], rests: list[RotatedBoundingBox]
-) -> list[Rest]:
+def add_rests_to_staffs(staffs: list[Staff], rests: list[RotatedBoundingBox]) -> list[Rest]:
     result = []
     central_staff_line_indexes = [1, 2]
     for staff in staffs:
@@ -19,9 +17,7 @@ def add_rests_to_staffs(
                 continue
 
             center = rest.center
-            idx_of_closest_y = np.argmin(
-                np.abs([y_value - center[1] for y_value in point.y])
-            )
+            idx_of_closest_y = np.argmin(np.abs([y_value - center[1] for y_value in point.y]))
             is_in_center = idx_of_closest_y in central_staff_line_indexes
             if not is_in_center:
                 continue
@@ -33,16 +29,10 @@ def add_rests_to_staffs(
                 point.average_unit_size
             )
 
-            if (
-                rest.size[0] < minimum_width_or_height
-                or rest.size[1] < minimum_width_or_height
-            ):
+            if rest.size[0] < minimum_width_or_height or rest.size[1] < minimum_width_or_height:
                 continue
 
-            if (
-                rest.size[0] > maximum_width_or_height
-                or rest.size[1] > maximum_width_or_height
-            ):
+            if rest.size[0] > maximum_width_or_height or rest.size[1] > maximum_width_or_height:
                 continue
 
             bbox = rest.to_bounding_box()

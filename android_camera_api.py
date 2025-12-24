@@ -1,6 +1,6 @@
 from kivy.logger import Logger
 
-from jnius import JavaException, PythonJavaClass, autoclass, java_method # pylint: disable=import-error # type: ignore
+from jnius import JavaException, PythonJavaClass, autoclass, java_method  # pylint: disable=import-error # type: ignore
 
 Camera = autoclass("android.hardware.Camera")
 AndroidActivityInfo = autoclass("android.content.pm.ActivityInfo")

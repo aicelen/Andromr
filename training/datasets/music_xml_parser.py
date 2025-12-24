@@ -156,7 +156,6 @@ class TokensMeasure:
 
 
 class TupletState:
-
     def __init__(self) -> None:
         self.started = False
         self.last_stop_position = -1

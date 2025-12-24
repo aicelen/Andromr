@@ -63,9 +63,7 @@ def find_peaks(
     if threshold is not None:
         # Evaluate threshold condition
         tmin, tmax = _unpack_condition_args(threshold, x, peaks)
-        keep, left_thresholds, right_thresholds = _select_by_peak_threshold(
-            x, peaks, tmin, tmax
-        )
+        keep, left_thresholds, right_thresholds = _select_by_peak_threshold(x, peaks, tmin, tmax)
         peaks = peaks[keep]
         properties["left_thresholds"] = left_thresholds
         properties["right_thresholds"] = right_thresholds

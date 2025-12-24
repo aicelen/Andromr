@@ -131,9 +131,7 @@ class TrOMRParser:
         elif is_triplet:
             duration = duration[:-1]
             modifier = DurationModifier.TRIPLET
-        return ResultDuration(
-            self.parse_duration_name(duration), modifier, confidence=confidence
-        )
+        return ResultDuration(self.parse_duration_name(duration), modifier, confidence=confidence)
 
     def parse_note(self, note: TransformerSymbol) -> ResultNote:
         try:
@@ -162,18 +160,12 @@ class TrOMRParser:
             )
         except Exception:
             eprint("Failed to parse note: " + str(note))
-            return ResultNote(
-                ResultPitch("C", 4, 0), ResultDuration(constants.duration_of_quarter)
-            )
+            return ResultNote(ResultPitch("C", 4, 0), ResultDuration(constants.duration_of_quarter))
 
     def parse_notes(self, notes: TransformerChord) -> ResultChord | None:
         note_parts = notes.symbols
-        rest_parts = [
-            rest_part for rest_part in note_parts if rest_part.symbol.startswith("rest")
-        ]
-        note_parts = [
-            note_part for note_part in note_parts if note_part.symbol.startswith("note")
-        ]
+        rest_parts = [rest_part for rest_part in note_parts if rest_part.symbol.startswith("rest")]
+        note_parts = [note_part for note_part in note_parts if note_part.symbol.startswith("note")]
         if len(note_parts) == 0:
             if len(rest_parts) == 0:
                 return None
@@ -183,9 +175,7 @@ class TrOMRParser:
         chord_duration = self._get_chord_duration(rest_parts)
         return ResultChord(chord_duration, result_notes)
 
-    def _get_chord_duration(
-        self, rest_parts: list[TransformerSymbol]
-    ) -> ResultDuration | None:
+    def _get_chord_duration(self, rest_parts: list[TransformerSymbol]) -> ResultDuration | None:
         """
         This definition was put together based on some examples:
         If there is a rest in a chord then we assume that this was done by intention to reduce
@@ -194,10 +184,7 @@ class TrOMRParser:
         chord_duration: ResultDuration | None = None
         for rest_part in rest_parts:
             rest = self.parse_rest(rest_part)
-            if (
-                chord_duration is None
-                or rest.duration.duration < chord_duration.duration
-            ):
+            if chord_duration is None or rest.duration.duration < chord_duration.duration:
                 chord_duration = rest.duration
         return chord_duration
 

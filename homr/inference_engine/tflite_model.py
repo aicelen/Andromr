@@ -17,8 +17,8 @@ if platform == "android":
     DataType = autoclass("org.tensorflow.lite.DataType")
     TensorBuffer = autoclass("org.tensorflow.lite.support.tensorbuffer.TensorBuffer")
     ByteBuffer = autoclass("java.nio.ByteBuffer")
-    GpuDelegate = autoclass('org.tensorflow.lite.gpu.GpuDelegate')
-    GpuDelegateOptions = autoclass('org.tensorflow.lite.gpu.GpuDelegate$Options')
+    GpuDelegate = autoclass("org.tensorflow.lite.gpu.GpuDelegate")
+    GpuDelegateOptions = autoclass("org.tensorflow.lite.gpu.GpuDelegate$Options")
     CompatibilityList = autoclass("org.tensorflow.lite.gpu.CompatibilityList")
 
     InterpreterApiOptions = autoclass("org.tensorflow.lite.InterpreterApi$Options")
@@ -30,10 +30,14 @@ if platform == "android":
             options = InterpreterOptions()
 
             if use_gpu:
-                gpu_options = GpuDelegateOptions().setQuantizedModelsAllowed(True).setPrecisionLossAllowed(precisionLoss)
+                gpu_options = (
+                    GpuDelegateOptions()
+                    .setQuantizedModelsAllowed(True)
+                    .setPrecisionLossAllowed(precisionLoss)
+                )
                 gpu_delegate = GpuDelegate(gpu_options)
                 options.addDelegate(gpu_delegate)
-                print('set gpu')
+                print("set gpu")
             else:
                 options.setNumThreads(num_threads)
                 options.setUseXNNPACK(True)
@@ -62,19 +66,18 @@ if platform == "android":
             return np.reshape(np.array(output.getFloatArray()), self.output_shape)
 
 else:
-    if platform == 'win':
+    if platform == "win":
         import tensorflow as tf
+
         Interpreter = tf.lite.Interpreter
 
     else:
-        # ai-edege-litert is only available on Linux/WSL and MacOS 
+        # ai-edege-litert is only available on Linux/WSL and MacOS
         from ai_edge_litert.interpreter import Interpreter
 
     class TensorFlowModel:
         def __init__(self, model_filename, num_threads=8, use_gpu=None, precisionLoss=None):
-            self.interpreter = Interpreter(
-                model_filename, num_threads=num_threads
-            )
+            self.interpreter = Interpreter(model_filename, num_threads=num_threads)
             self.interpreter.allocate_tensors()
 
         def resize_input(self, shape):
@@ -87,10 +90,6 @@ else:
 
         def run(self, x):
             # assumes one input and one output for now
-            self.interpreter.set_tensor(
-                self.interpreter.get_input_details()[0]["index"], x
-            )
+            self.interpreter.set_tensor(self.interpreter.get_input_details()[0]["index"], x)
             self.interpreter.invoke()
-            return self.interpreter.get_tensor(
-                self.interpreter.get_output_details()[0]["index"]
-            )
+            return self.interpreter.get_tensor(self.interpreter.get_output_details()[0]["index"])
