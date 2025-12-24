@@ -13,6 +13,13 @@ from homr.transformer.configs import default_config
 from globals import appdata
 from kivy import platform
 
+model = None
+
+def load_decoder(num_threads=appdata.threads):
+    global model
+    if model is None:
+        model = OnnxModel(default_config.filepaths.decoder_path, num_threads=num_threads)
+
 class ScoreDecoder:
     def __init__(
         self,
@@ -52,10 +59,6 @@ class ScoreDecoder:
         out_pitch = nonote_tokens
         out_lift = nonote_tokens
         out_articulations = nonote_tokens
-        key = "keySignature_0"
-        clef_upper = "clef_G2"
-        clef_lower = "clef_F4"
-        states = np.array([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]])
         cache, kv_input_names, kv_outputs_dicts = self.init_cache()
         context = kwargs["context"]
         context_reduced = kwargs["context"][:, :1]
@@ -75,7 +78,6 @@ class ScoreDecoder:
             x_pitch = out_pitch[:, -1:]
             x_rhythm = out_rhythm[:, -1:]
             x_articulations = out_articulations[:, -1:]
-            x_states = states[:, -1:]
 
             inputs = {
                 "rhythms": x_rhythm,
@@ -147,10 +149,6 @@ class ScoreDecoder:
                     clef_upper = symbol.rhythm
                 else:
                     clef_lower = symbol.rhythm
-            states = np.concatenate(
-                (states, np.array([[self.state_vocab[f"{key}+{clef_upper}+{clef_lower}"]]])),
-                axis=-1,
-            )
 
             out_lift = np.concatenate((out_lift, lift_sample), axis=-1)
             out_pitch = np.concatenate((out_pitch, pitch_sample), axis=-1)
@@ -200,8 +198,11 @@ def detokenize(tokens: NDArray, vocab: dict[int, str]) -> list[str]:
     return toks
 
 
-def get_decoder(config: Config, path: str, use_gpu: bool) -> ScoreDecoder:
+def get_decoder(config: Config) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    return ScoreDecoder(OnnxModel(default_config.filepaths.decoder_path), config=config)
+    global model
+    if model == None:
+        load_decoder()
+    return ScoreDecoder(model, config=config)

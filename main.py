@@ -39,10 +39,11 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.benchmark import Benchmark
+from homr.segmentation.inference_segnet import load_segnet
+from homr.transformer.encoder_inference import load_cnn_encoder
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
-
 
 if platform == "android":
     from android_camera_api import take_picture
@@ -565,9 +566,10 @@ class Andromr(MDApp):
         self.dialog_delete.dismiss()
         self.update_scrollview()
 
-    def save_settings(self, num_threads, use_xnnpack, btn=None):
+    def save_settings(self, num_threads, use_xnnpack, gpu, btn=None):
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack
+        appdata.gpu = gpu
         appdata.save_settings()
         self.change_screen("landing")
 
@@ -749,7 +751,7 @@ class Andromr(MDApp):
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
-    def capture(self, filename="taken_img.jpg"):
+    def capture(self, filename="test_long.jpg"):
         """Take an image"""
         take_picture(
             self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename
@@ -769,6 +771,9 @@ class Andromr(MDApp):
         self.root.get_screen("progress").ids.division.text = ""
         self.root.get_screen("progress").ids.beat.text = ""
         appdata.homr_running = True
+
+        load_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
+        load_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
         # start the ml thread and the progress thread seperatly from each other
         self.ml_thread = Thread(

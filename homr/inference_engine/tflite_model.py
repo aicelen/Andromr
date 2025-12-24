@@ -17,19 +17,26 @@ if platform == "android":
     DataType = autoclass("org.tensorflow.lite.DataType")
     TensorBuffer = autoclass("org.tensorflow.lite.support.tensorbuffer.TensorBuffer")
     ByteBuffer = autoclass("java.nio.ByteBuffer")
+    GpuDelegate = autoclass('org.tensorflow.lite.gpu.GpuDelegate')
+    GpuDelegateOptions = autoclass('org.tensorflow.lite.gpu.GpuDelegate$Options')
+    CompatibilityList = autoclass("org.tensorflow.lite.gpu.CompatibilityList")
 
-    # dummy import so buildozer isn't cutting it away since it's used by options.setNumThreads
     InterpreterApiOptions = autoclass("org.tensorflow.lite.InterpreterApi$Options")
+    Delegate = autoclass("org.tensorflow.lite.Delegate")
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads=None):
-            if num_threads is None:
-                num_threads = appdata.threads
-
+        def __init__(self, model_filename, num_threads=None, use_gpu=False, precisionLoss=True):
             model = File(model_filename)
             options = InterpreterOptions()
-            options.setNumThreads(num_threads)
-            options.setUseXNNPACK(True)
+
+            if use_gpu:
+                gpu_options = GpuDelegateOptions().setQuantizedModelsAllowed(True).setPrecisionLossAllowed(precisionLoss)
+                gpu_delegate = GpuDelegate(gpu_options)
+                options.addDelegate(gpu_delegate)
+                print('set gpu')
+            else:
+                options.setNumThreads(num_threads)
+                options.setUseXNNPACK(True)
             self.interpreter = Interpreter(model, options)
             self.allocate_tensors()
 
@@ -64,7 +71,7 @@ else:
         from ai_edge_litert.interpreter import Interpreter
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads=8):
+        def __init__(self, model_filename, num_threads=8, use_gpu=None, precisionLoss=None):
             self.interpreter = Interpreter(
                 model_filename, num_threads=num_threads
             )

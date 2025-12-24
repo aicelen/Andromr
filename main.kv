@@ -220,7 +220,7 @@ ScreenManager:
             title: "Settings"
             elevation: 0
             type_height: 'small'
-            left_action_items: [['arrow-left', lambda x: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active, x)]]
+            left_action_items: [['arrow-left', lambda x: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active, root.ids.checkbox_gpu.active,x)]]
             right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
             md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
             specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
@@ -241,6 +241,20 @@ ScreenManager:
                     pos_hint: {'center_y': 0.5}
                     size_hint: None, None
                     size: "48dp", "48dp"
+            
+            MDBoxLayout:
+                MDLabel:
+                    id: label_gpu
+                    text: "Use GPU"
+
+                MDCheckbox:
+                    id: checkbox_gpu
+                    active: app.appdata.gpu
+                    ripple_scale: 0
+                    pos_hint: {'center_y': 0.5}
+                    size_hint: None, None
+                    size: "48dp", "48dp"
+
 
             MDBoxLayout:
                 MDLabel:

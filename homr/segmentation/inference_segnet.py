@@ -11,6 +11,14 @@ from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 from globals import appdata
 
+model = None
+
+
+def load_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu):
+    global model
+    if model is None:
+        model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu)
+
 
 class ExtractResult:
     def __init__(
@@ -78,13 +86,15 @@ def inference(
         ExtractResult class.
     """
     eprint("Starting Inference.")
+    global model
+    load_segnet()
+
     t0 = perf_counter()
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(
         image_org.shape[1] / step_size
     )
     progress_increment = 100 / num_steps
 
-    model = TensorFlowModel(segnet_path_tflite)
     data = []
     image = image_org.astype(np.float32)
     for y_loop in range(0, image.shape[0], step_size):

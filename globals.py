@@ -9,7 +9,7 @@ class AppData:
     def __init__(self):
         self.settings_file = Path(APP_PATH + "/data/saved_settings.json")
         # Default settings
-        self.default_settings = {"threads": 2, "xnnpack": False, "agreed": False}
+        self.default_settings = {"threads": 2, "xnnpack": False, "agreed": False, "gpu": False}
 
         # Load data
         self._load_settings()
@@ -33,6 +33,7 @@ class AppData:
             self.threads = settings.get("threads", self.default_settings["threads"])
             self.xnnpack = settings.get("xnnpack", self.default_settings["xnnpack"])
             self.agreed = settings.get("agreed", self.default_settings["agreed"])
+            self.gpu = settings.get("gpu", self.default_settings["gpu"])
 
         else:
             # Create new file using defaults
@@ -40,6 +41,7 @@ class AppData:
             self.threads = self.default_settings["threads"]
             self.xnnpack = self.default_settings["xnnpack"]
             self.agreed = self.default_settings["agreed"]
+            self.gpu = self.default_settings["gpu"]
             self.save_settings()
 
     def save_settings(self):
@@ -47,6 +49,7 @@ class AppData:
             "threads": self.threads,
             "xnnpack": self.xnnpack,
             "agreed": self.agreed,
+            "gpu": self.gpu
         }
 
         with open(self.settings_file, "w") as f:

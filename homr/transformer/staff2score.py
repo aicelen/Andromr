@@ -19,8 +19,8 @@ class Staff2Score:
 
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = EncoderDual(self.config.filepaths.encoder_cnn_path_tflite, self.config.filepaths.encoder_transformer_path)
-        self.decoder = get_decoder(self.config, self.config.filepaths.decoder_path, use_gpu)
+        self.encoder = EncoderDual()
+        self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
             raise RuntimeError(
@@ -89,6 +89,9 @@ def test_transformer_on_image(path_to_img: str) -> None:
 
 
 if __name__ == "__main__":
-    import sys
+    from homr.transformer.decoder_inference import load_model as lmd
+    from homr.transformer.encoder_inference import load_model as lme
+    lmd()
+    lme()
 
-    test_transformer_on_image(sys.argv[1])
+    test_transformer_on_image("staff.png")
