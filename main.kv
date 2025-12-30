@@ -8,7 +8,7 @@ ScreenManager:
     OSSLicensePage:
     LicensePageButton:
     LicensePage:
-    
+
 <LandingPage>:
     name: "landing"
     BoxLayout:
@@ -120,18 +120,18 @@ ScreenManager:
         icon: "circle-medium"
         size_hint: None, None
         pos: 30, 30
-        disabled: True 
+        disabled: True
         opacity: 0
         ripple_scale: 0
         theme_text_color: "Custom"
         text_color: 1, 0, 0, 1  # Red
 
     UnmovableMDIconButton:
-        id: btn2 
+        id: btn2
         icon: "circle-medium"
         size_hint: None, None
         pos: 30, 30
-        disabled: True 
+        disabled: True
         opacity: 0
         ripple_scale: 0
         theme_text_color: "Custom"
@@ -173,27 +173,6 @@ ScreenManager:
                 id: title
                 hint_text: "Title"
                 mode: "round"
-
-            MDBoxLayout:
-                orientation: "horizontal"
-                spacing: dp(20)
-                padding: dp(10)
-
-                MDTextField:
-                    id: beat
-                    hint_text: "Beat"
-                    mode: "round"
-                    helper_text: "Only natural numbers (1,2,3...)"
-                    helper_text_mode: "on_focus"
-
-
-                MDTextField:
-                    id: division
-                    hint_text: "Beat Type"
-                    mode: "round"
-                    helper_text: "Only natural numbers"
-                    helper_text_mode: "on_focus"
-
 
             Widget:
 

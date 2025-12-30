@@ -757,8 +757,6 @@ class Andromr(MDApp):
 
         # reset text-field contents
         self.root.get_screen("progress").ids.title.text = ""
-        self.root.get_screen("progress").ids.division.text = ""
-        self.root.get_screen("progress").ids.beat.text = ""
         appdata.homr_running = True
 
         load_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
@@ -787,15 +785,6 @@ class Andromr(MDApp):
         else:
             # otherwise we set it to the users title
             music_title = str(self.root.get_screen("progress").ids.title.text)
-
-        # get user inputs of the beat and the division
-        beat = self.root.get_screen("progress").ids.beat.text
-        division = self.root.get_screen("progress").ids.division.text
-
-        # if we got valid integers
-        if beat.isdigit() and division.isdigit():
-            # we can add them
-            add_measure_type(return_path, beat, division)
 
         # rename the file
         os.rename(

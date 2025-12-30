@@ -1,20 +1,13 @@
 # run
-numpy==2.2.6
-opencv-python-headless==4.12.0.88
-Pillow==11.3.0
+numpy==1.26.4
+opencv-python-headless==4.7.0.72
 typing_extensions==4.14.1
 musicxml==1.4
 onnxruntime==1.22.1
 requests==2.32.5
 ai-edge-litert==2.0.2 # Linux/WSL; else: tensorflow==2.19.0
-
-# dev
-onnx==1.18.0
-scipy==1.15.3
-onnx2tf==1.28.2
-tf_keras==2.19.0
-onnx_graphsurgeon==0.5.8
-psutil==7.0.0
-ai_edge_litert==1.4.0
-sng4onnx==1.0.4
-editdistance==0.8.1
+kivy==2.3.1
+kivymd==1.2.0
+pillow==12.0.0
+cython==3.2.3
+wheel==0.45.1
