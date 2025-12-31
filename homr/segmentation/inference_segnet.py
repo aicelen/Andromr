@@ -28,7 +28,7 @@ def preload_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.g
     :type use_gpu: bool
     """
     global model
-    if model is None:
+    if model is None or appdata.settings_changed:
         model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu)
 
 

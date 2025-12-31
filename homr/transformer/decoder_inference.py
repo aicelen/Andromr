@@ -18,7 +18,7 @@ model = None
 
 def load_decoder(num_threads=appdata.threads):
     global model
-    if model is None:
+    if model is None or appdata.settings_changed:
         model = OnnxModel(default_config.filepaths.decoder_path, num_threads=num_threads)
 
 

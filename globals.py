@@ -22,6 +22,7 @@ class AppData:
         self.download_running = True
         self.download_progress = 0
         self.downloaded_assets = "0/4"
+        self.settings_changed = False
 
     def _load_settings(self):
         if self.settings_file.exists():

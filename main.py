@@ -31,14 +31,12 @@ from datetime import datetime
 from time import sleep
 from collections import deque
 
-
 # Package imports
 import numpy as np
 import cv2
 
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
-from homr.benchmark import Benchmark
 from homr.segmentation.inference_segnet import preload_segnet
 from homr.transformer.encoder_inference import preload_cnn_encoder
 from globals import APP_PATH, appdata
@@ -564,6 +562,11 @@ class Andromr(MDApp):
         self.update_scrollview()
 
     def save_settings(self, num_threads, use_xnnpack, gpu, btn=None):
+        if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
+            appdata.settings_changed = True
+        else:
+            appdata.settings_changed = False
+
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack
         appdata.gpu = gpu
@@ -834,9 +837,6 @@ class Andromr(MDApp):
             self.change_screen("camera")
         else:
             self.show_toast("You already downloaded all assets")
-
-    def find_optimial_settings(self):
-        print(Benchmark().run())
 
     def _restore_camera(self, dt=None):
         """

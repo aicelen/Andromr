@@ -55,7 +55,7 @@ def preload_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = appd
     :rtype: TensorFlowModel
     """
     global cnn_encoder
-    if cnn_encoder is None:
+    if cnn_encoder is None or appdata.settings_changed:
         cnn_encoder = TensorFlowModel(
             default_config.filepaths.encoder_cnn_path_tflite, num_threads, use_gpu, False
         )
@@ -71,7 +71,7 @@ def load_transformer_encoder(num_threads: int = appdata.threads) -> OnnxModel:
     :rtype: OnnxModel
     """
     global transformer_encoder
-    if transformer_encoder is None:
+    if transformer_encoder is None or appdata.settings_changed:
         transformer_encoder = OnnxModel(
             default_config.filepaths.encoder_transformer_path, num_threads=num_threads
         )
