@@ -25,10 +25,23 @@ if platform == "android":
     Delegate = autoclass("org.tensorflow.lite.Delegate")
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads=None, use_gpu=False, precisionLoss=True):
-            model = File(model_filename)
-            options = InterpreterOptions()
+        """
+        Cross platform inference of .tflite models
 
+        :param model_path: Path to the .tflite model
+        :type model_path: str
+        :param num_threads: Number of threads to use (CPU only)
+        :type num_threads: int
+        :param use_gpu: Use GPU acceleration
+        :type use_gpu: bool
+        :param precisionLoss: Use fp16 calculations to speed up 
+                              inference (only works with use_gpu=True)
+        :type precisionLoss: bool
+        """
+
+        def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
+            self.model_path = model_path
+            self.options = InterpreterOptions()
             if use_gpu:
                 gpu_options = (
                     GpuDelegateOptions()
@@ -36,12 +49,18 @@ if platform == "android":
                     .setPrecisionLossAllowed(precisionLoss)
                 )
                 gpu_delegate = GpuDelegate(gpu_options)
-                options.addDelegate(gpu_delegate)
+                self.options.addDelegate(gpu_delegate)
                 print("set gpu")
             else:
-                options.setNumThreads(num_threads)
-                options.setUseXNNPACK(True)
-            self.interpreter = Interpreter(model, options)
+                self.options.setNumThreads(num_threads)
+                self.options.setUseXNNPACK(True)
+
+        def load(self):
+            """
+            Loads the model from the path given in the constructor
+            """
+            model = File(self.model_path)
+            self.interpreter = Interpreter(model, self.options)
             self.allocate_tensors()
 
         def allocate_tensors(self):
@@ -58,7 +77,12 @@ if platform == "android":
                 self.interpreter.resizeInput(0, shape)
                 self.allocate_tensors()
 
-        def run(self, x):
+        def run(self, x: np.ndarray):
+            """
+            Docstring for run
+            
+            :param x: Input array
+            """
             # assumes one input and one output for now
             input = ByteBuffer.wrap(x.tobytes())
             output = TensorBuffer.createFixedSize(self.output_shape, self.output_type)
@@ -76,8 +100,21 @@ else:
         from ai_edge_litert.interpreter import Interpreter
 
     class TensorFlowModel:
-        def __init__(self, model_filename, num_threads=8, use_gpu=None, precisionLoss=None):
-            self.interpreter = Interpreter(model_filename, num_threads=num_threads)
+        """
+        Cross platform inference of .tflite models
+
+        :param model_path: Path to the .tflite model 
+        :param num_threads: Number of threads to use (CPU only)
+        :param use_gpu: Use GPU acceleration
+        :param precisionLoss: Use fp16 calculations to speed up 
+                              inference (only works with use_gpu=True)
+        """
+        def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
+            self.model_path = model_path
+            self.num_threads = num_threads
+
+        def load(self):
+            self.interpreter = Interpreter(self.model_path, num_threads=self.num_threads)
             self.interpreter.allocate_tensors()
 
         def resize_input(self, shape):

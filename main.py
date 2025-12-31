@@ -39,8 +39,8 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.benchmark import Benchmark
-from homr.segmentation.inference_segnet import load_segnet
-from homr.transformer.encoder_inference import load_cnn_encoder
+from homr.segmentation.inference_segnet import preload_segnet
+from homr.transformer.encoder_inference import preload_cnn_encoder
 from globals import APP_PATH, appdata
 from add_measure_type import add_measure_type
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
@@ -759,8 +759,8 @@ class Andromr(MDApp):
         self.root.get_screen("progress").ids.title.text = ""
         appdata.homr_running = True
 
-        load_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
-        load_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
+        preload_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
+        preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
         # start the ml thread and the progress thread seperatly from each other
         self.ml_thread = Thread(target=self.homr_call, args=(path_to_image,), daemon=True)

@@ -14,7 +14,19 @@ from globals import appdata
 model = None
 
 
-def load_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu):
+def preload_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu):
+    """
+    Preloading does not load the model into RAM. Instead it loads all
+    the configs for inference. This solves a problem with pyjnius which does 
+    not work reliable when using it within a Thread (pyjnius raises a
+    java.lang.ClassNotFoundException). More details can be found in this issue:
+    https://github.com/kivy/pyjnius/issues/758
+
+    :param num_threads: Description
+    :type num_threads: int
+    :param use_gpu: Description
+    :type use_gpu: bool
+    """
     global model
     if model is None:
         model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu)
@@ -87,7 +99,8 @@ def inference(
     """
     eprint("Starting Inference.")
     global model
-    load_segnet()
+    preload_segnet()
+    model.load()
 
     t0 = perf_counter()
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)

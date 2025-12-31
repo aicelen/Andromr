@@ -21,8 +21,9 @@ class EncoderDual:
         """
         global cnn_encoder, transformer_encoder
 
-        load_cnn_encoder()
+        preload_cnn_encoder()
         load_transformer_encoder()
+        cnn_encoder.load()
 
         self.cnn_encoder = cnn_encoder
         self.transformer_encoder = transformer_encoder
@@ -42,7 +43,7 @@ class EncoderDual:
         return output[0]
 
 
-def load_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = False) -> TensorFlowModel:
+def preload_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu) -> TensorFlowModel:
     """
     Load the CNN part of the encoder
 
