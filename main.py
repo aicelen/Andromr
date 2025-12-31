@@ -838,15 +838,6 @@ class Andromr(MDApp):
     def find_optimial_settings(self):
         print(Benchmark().run())
 
-    def on_resume(self):
-        """
-        Function that runs in reopening the app.
-
-        """
-        print("Resuming app — scheduling camera restart")
-        # Schedule camera re-init a bit later, when GL is alive again
-        Clock.schedule_once(self._restore_camera, 1)  # wait 1 second
-
     def _restore_camera(self, dt=None):
         """
         Restores the camerawidget
