@@ -107,6 +107,7 @@ def inference(
     progress_increment = 100 / num_steps
 
     data = []
+    image_org = cv2.cvtColor(image_org, cv2.COLOR_GRAY2BGR)
     image = image_org.astype(np.float32)
     for y_loop in range(0, image.shape[0], step_size):
         if y_loop + win_size > image.shape[0]:
