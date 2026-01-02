@@ -62,7 +62,7 @@ def preload_cnn_encoder(num_threads: int, use_gpu: bool) -> TensorFlowModel:
     global cnn_encoder
     if cnn_encoder is None or appdata.settings_changed:
         cnn_encoder = TensorFlowModel(
-            default_config.filepaths.encoder_cnn_path_tflite, num_threads, use_gpu, False
+            default_config.filepaths.encoder_cnn_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=False
         )
 
 

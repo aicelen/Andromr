@@ -748,7 +748,7 @@ class Andromr(MDApp):
         self.img_path = img_path
         Clock.schedule_once(lambda dt: self.display_img())
 
-    def capture(self, filename="test_long.jpg"):
+    def capture(self, filename="test_cropped.jpg"):
         """Take an image"""
         take_picture(self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename)
 

@@ -39,17 +39,18 @@ if platform == "android":
         :type precisionLoss: bool
         """
 
-        def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
-            self.model_path = model_path
+        def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
+            self.model_filename = model_filename
             self.options = InterpreterOptions()
-            self.interpreter = None
-            if use_gpu:
-                gpu_options = (
-                    GpuDelegateOptions()
-                    .setQuantizedModelsAllowed(True)
-                    .setPrecisionLossAllowed(precisionLoss)
+            self.compatList = CompatibilityList()
+            if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():
+                delegate_options = self.compatList.getBestOptionsForThisDevice()
+                delegate_options = (
+                    delegate_options
+                    .setPrecisionLossAllowed(precision_loss)
+                    .setInferencePreference(1 if sustained_speed else 0)
                 )
-                gpu_delegate = GpuDelegate(gpu_options)
+                gpu_delegate = GpuDelegate(delegate_options)
                 self.options.addDelegate(gpu_delegate)
                 print("set gpu")
             else:
@@ -110,8 +111,8 @@ else:
         :param precisionLoss: Use fp16 calculations to speed up 
                               inference (only works with use_gpu=True)
         """
-        def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
-            self.model_path = model_path
+        def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
+            self.model_path = model_filename
             self.num_threads = num_threads
             self.interpreter = None
 
