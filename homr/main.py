@@ -287,31 +287,38 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
 
 
 def download_weights() -> None:
-    base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
-    missing_models = check_for_missing_models()
-    if len(missing_models) == 0:
-        return
+    try:
+        base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
+        missing_models = check_for_missing_models()
+        if len(missing_models) == 0:
+            return
 
-    eprint("Downloading", len(missing_models), "models - this is only required once")
-    for idx, model in enumerate(missing_models):
-        base_name = os.path.basename(model).split(".")[0]
-        eprint(f"Downloading {base_name}")
-        try:
-            zip_name = base_name + ".zip"
-            download_url = base_url + zip_name
-            downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
-            download_utils.download_file(download_url, downloaded_zip)
+        appdata.downloaded_assets = f"Downloaded 0 of {len(missing_models)}"
 
-            destination_dir = os.path.dirname(model)
-            download_utils.unzip_file(downloaded_zip, destination_dir)
-        finally:
-            if os.path.exists(downloaded_zip):
-                os.remove(downloaded_zip)
+        eprint("Downloading", len(missing_models), "models - this is only required once")
+        for idx, model in enumerate(missing_models):
+            base_name = os.path.basename(model).split(".")[0]
+            eprint(f"Downloading {base_name}")
+            try:
+                zip_name = base_name + ".zip"
+                download_url = base_url + zip_name
+                downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
+                download_utils.download_file(download_url, downloaded_zip)
 
-        appdata.downloaded_assets = f"{idx + 1}/{len(missing_models)}"
+                destination_dir = os.path.dirname(model)
+                download_utils.unzip_file(downloaded_zip, destination_dir)
+            finally:
+                if os.path.exists(downloaded_zip):
+                    os.remove(downloaded_zip)
+
+            appdata.downloaded_assets = f"Download {idx + 1} of {len(missing_models)}"
+
+    except Exception as e:
+        print(e)
+        appdata.downloaded_assets = "failure"
 
     appdata.download_running = False
-
+    return
 
 def check_for_missing_models() -> list:
     """

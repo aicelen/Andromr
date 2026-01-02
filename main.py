@@ -507,7 +507,9 @@ class Andromr(MDApp):
                 appdata.downloaded_assets
             )
             sleep(0.02)
-        if camera_page:
+        if appdata.downloaded_assets == 'failure':
+            Clock.schedule_once(lambda dt: self.change_screen("landing"))
+        elif camera_page:
             Clock.schedule_once(lambda dt: self.change_screen("camera"))
         else:
             Clock.schedule_once(lambda dt: self.change_screen("settings"))
@@ -813,6 +815,9 @@ class Andromr(MDApp):
         download.start()
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
+    
+    def download_weights_call(self):
+        pass
 
     def check_download_assets(self, camera_page=False):
         """

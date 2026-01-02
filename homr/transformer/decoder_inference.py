@@ -13,7 +13,7 @@ from homr.transformer.configs import default_config
 from globals import appdata
 from kivy import platform
 
-model = OnnxModel | None = None
+model: OnnxModel | None = None
 
 
 def preload_decoder(num_threads):

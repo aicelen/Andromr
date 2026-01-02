@@ -8,8 +8,8 @@ from homr.transformer.configs import default_config
 
 from globals import appdata
 
-cnn_encoder = TensorFlowModel | None = None
-transformer_encoder = OnnxModel | None = None
+cnn_encoder: TensorFlowModel | None = None
+transformer_encoder: OnnxModel | None = None
 
 
 class EncoderDual:

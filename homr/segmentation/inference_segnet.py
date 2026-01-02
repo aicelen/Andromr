@@ -11,7 +11,7 @@ from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 from globals import appdata
 
-model = TensorFlowModel | None = None
+model: TensorFlowModel | None = None
 
 
 def preload_segnet(num_threads: int, use_gpu: bool):
