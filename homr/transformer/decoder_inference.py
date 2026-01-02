@@ -13,10 +13,10 @@ from homr.transformer.configs import default_config
 from globals import appdata
 from kivy import platform
 
-model = None
+model = OnnxModel | None = None
 
 
-def load_decoder(num_threads=appdata.threads):
+def preload_decoder(num_threads):
     global model
     if model is None or appdata.settings_changed:
         model = OnnxModel(default_config.filepaths.decoder_path, num_threads=num_threads)
@@ -207,6 +207,8 @@ def get_decoder(config: Config) -> ScoreDecoder:
     Returns Tromr's Decoder
     """
     global model
-    if model == None:
-        load_decoder()
+    preload_decoder(appdata.threads)
+    if appdata.settings_changed or model.session is None:
+        model.load()
+
     return ScoreDecoder(model, config=config)

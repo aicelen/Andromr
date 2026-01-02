@@ -11,10 +11,10 @@ from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 from globals import appdata
 
-model = None
+model = TensorFlowModel | None = None
 
 
-def preload_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu):
+def preload_segnet(num_threads: int, use_gpu: bool):
     """
     Preloading does not load the model into RAM. Instead it loads all
     the configs for inference. This solves a problem with pyjnius which does 
@@ -30,7 +30,8 @@ def preload_segnet(num_threads: int = appdata.threads, use_gpu: bool = appdata.g
     global model
     if model is None or appdata.settings_changed:
         model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu)
-
+        print(f"use_gpu: {use_gpu, appdata.gpu}")
+    print(f"settings changed: {appdata.settings_changed}")
 
 class ExtractResult:
     def __init__(
@@ -99,7 +100,7 @@ def inference(
     """
     eprint("Starting Inference.")
     global model
-    preload_segnet()
+    preload_segnet(appdata.threads, appdata.gpu)
     model.load()
 
     t0 = perf_counter()

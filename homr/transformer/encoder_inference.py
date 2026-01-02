@@ -8,8 +8,8 @@ from homr.transformer.configs import default_config
 
 from globals import appdata
 
-cnn_encoder = None
-transformer_encoder = None
+cnn_encoder = TensorFlowModel | None = None
+transformer_encoder = OnnxModel | None = None
 
 
 class EncoderDual:
@@ -21,9 +21,14 @@ class EncoderDual:
         """
         global cnn_encoder, transformer_encoder
 
-        preload_cnn_encoder()
-        load_transformer_encoder()
-        cnn_encoder.load()
+        preload_cnn_encoder(appdata.threads, appdata.gpu)
+        preload_transformer_encoder(appdata.threads)
+
+        if appdata.settings_changed or cnn_encoder.interpreter is None:
+            cnn_encoder.load()
+        
+        if appdata.settings_changed or transformer_encoder.session is None:
+            transformer_encoder.load()
 
         self.cnn_encoder = cnn_encoder
         self.transformer_encoder = transformer_encoder
@@ -43,7 +48,7 @@ class EncoderDual:
         return output[0]
 
 
-def preload_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = appdata.gpu) -> TensorFlowModel:
+def preload_cnn_encoder(num_threads: int, use_gpu: bool) -> TensorFlowModel:
     """
     Load the CNN part of the encoder
 
@@ -61,7 +66,7 @@ def preload_cnn_encoder(num_threads: int = appdata.threads, use_gpu: bool = appd
         )
 
 
-def load_transformer_encoder(num_threads: int = appdata.threads) -> OnnxModel:
+def preload_transformer_encoder(num_threads: int) -> OnnxModel:
     """
     Load the transformer part of the encoder.
 

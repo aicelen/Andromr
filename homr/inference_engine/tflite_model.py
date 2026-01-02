@@ -42,6 +42,7 @@ if platform == "android":
         def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
             self.model_path = model_path
             self.options = InterpreterOptions()
+            self.interpreter = None
             if use_gpu:
                 gpu_options = (
                     GpuDelegateOptions()
@@ -112,6 +113,7 @@ else:
         def __init__(self, model_path: str, num_threads: int = 1, use_gpu: bool = False, precisionLoss: bool = True):
             self.model_path = model_path
             self.num_threads = num_threads
+            self.interpreter = None
 
         def load(self):
             self.interpreter = Interpreter(self.model_path, num_threads=self.num_threads)

@@ -34,20 +34,23 @@ if platform == "android":
             model_path: str
                 Path to the .onnx model you want to run inference on.
             """
+            self.model_path = model_path
+            self.session = None
             if num_threads is None:
                 num_threads = appdata.threads
             self.env = OrtEnvironment.getEnvironment()
-            so = OrtSessionOptions()
+            self.so = OrtSessionOptions()
 
             if appdata.xnnpack:
                 xnnpack_map = HashMap()
                 xnnpack_map.put("intra_op_num_threads", str(appdata.threads or 2))
-                so.addXnnpack(xnnpack_map)
+                self.so.addXnnpack(xnnpack_map)
 
             else:
-                so.setIntraOpNumThreads(num_threads)
+                self.so.setIntraOpNumThreads(num_threads)
 
-            self.session = self.env.createSession(model_path, so)
+        def load(self):
+            self.session = self.env.createSession(self.model_path, self.so)
             self.cached_tensors = {}
 
         def run(self, inputs: dict, outputs: dict) -> dict:
@@ -132,12 +135,16 @@ else:
 
     class OnnxModel:
         def __init__(self, model_path: str, num_threads=0):
-            session_options = ort.SessionOptions()
-            session_options.intra_op_num_threads = num_threads
-            self.model = ort.InferenceSession(model_path, session_options)
+            self.model_path = model_path
+            self.session = None
+            self.session_options = ort.SessionOptions()
+            self.session_options.intra_op_num_threads = num_threads
+        
+        def load(self):
+            self.session = ort.InferenceSession(self.model_path, self.session_options)
 
         def run(self, inputs: dict, outputs: dict) -> dict:
-            result = self.model.run(output_names=list(outputs), input_feed=inputs)
+            result = self.session.run(output_names=list(outputs), input_feed=inputs)
             return result
 
         def close_session(self):
