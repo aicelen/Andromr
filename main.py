@@ -91,6 +91,10 @@ if platform == "android":
             buf = flipped.tobytes()
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
+        # Preloading during inferene cuased a black screen; this works well
+        preload_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
+        preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
+
 else:
     # Custom placeholder widget for Desktop
     class KvCam(MDBoxLayout):
@@ -763,9 +767,6 @@ class Andromr(MDApp):
         # reset text-field contents
         self.root.get_screen("progress").ids.title.text = ""
         appdata.homr_running = True
-
-        preload_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
-        preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
         # start the ml thread and the progress thread seperatly from each other
         self.ml_thread = Thread(target=self.homr_call, args=(path_to_image,), daemon=True)
