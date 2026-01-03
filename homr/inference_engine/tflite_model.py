@@ -61,7 +61,7 @@ if platform == "android":
             """
             Loads the model from the path given in the constructor
             """
-            model = File(self.model_path)
+            model = File(self.model_filename)
             self.interpreter = Interpreter(model, self.options)
             self.allocate_tensors()
 

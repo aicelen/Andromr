@@ -1,13 +1,11 @@
-import argparse
 import glob
 import os
-import sys
-from concurrent.futures import Future
 from dataclasses import dataclass
 from time import perf_counter
 
 import cv2
 import numpy as np
+from kivy.utils import platform
 
 from homr import color_adjust, download_utils
 from homr.autocrop import autocrop
@@ -304,14 +302,14 @@ def download_weights() -> None:
                 download_url = base_url + zip_name
                 downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
                 download_utils.download_file(download_url, downloaded_zip)
-
-                destination_dir = os.path.dirname(model)
+                if platform == 'android':
+                    destination_dir = os.path.dirname(model)
                 download_utils.unzip_file(downloaded_zip, destination_dir)
             finally:
                 if os.path.exists(downloaded_zip):
                     os.remove(downloaded_zip)
 
-            appdata.downloaded_assets = f"Download {idx + 1} of {len(missing_models)}"
+            appdata.downloaded_assets = f"Downloaded {idx + 1} of {len(missing_models)}"
 
     except Exception as e:
         print(e)

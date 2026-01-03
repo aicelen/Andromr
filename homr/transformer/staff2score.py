@@ -2,6 +2,7 @@ import os
 from time import perf_counter
 
 import numpy as np
+from PIL import Image
 
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config

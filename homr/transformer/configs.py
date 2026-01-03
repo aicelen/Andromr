@@ -2,9 +2,16 @@ import json
 import os
 from typing import Any
 
+from kivy.utils import platform
+
 from homr.transformer.vocabulary import Vocabulary
 
-workspace = os.path.join(os.path.dirname(__file__))
+if platform == "android":
+    from android.storage import app_storage_path
+    workspace = os.path.join(app_storage_path(), "models")
+else:
+    workspace = os.path.dirname(os.path.realpath(__file__))
+
 root_dir = os.getcwd()
 
 

@@ -84,26 +84,29 @@ ScreenManager:
         padding: [dp(10), dp(20), dp(10), dp(app.bottom_pad)]
         spacing: dp(10)
 
-        MDRaisedButton:
-            text: "Crop!"
+        MDIconButton:
+            icon: "crop"
+            pos_hint: {"center_x": 0.5}
             size_hint: None, None
-            pos_hint: {'center_x': 0.5}
+            user_font_size: "32sp"
             on_release: app.crop()
 
         Widget:
 
-        MDRaisedButton:
-            text: "Start without cropping"
+        MDIconButton:
+            icon: "play-circle-outline"
+            pos_hint: {"center_x": 0.5}
             size_hint: None, None
-            pos_hint: {'center_x': 0.5}
+            user_font_size: "32sp"
             on_release: app.start_inference(app.img_path)
 
         Widget:
 
-        MDRaisedButton:
-            text: "Retry"
+        MDIconButton:
+            icon: "camera-retake"
+            pos_hint: {"center_x": 0.5}
             size_hint: None, None
-            pos_hint: {'center_x': 0.5}
+            user_font_size: "32sp"
             on_release: app.change_screen("camera")
 
     MovableMDIconButton:
