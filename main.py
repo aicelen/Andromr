@@ -24,7 +24,6 @@ from kivy.uix.image import Image
 from kivy.uix.camera import Camera
 
 # Built-in imports
-from pathlib import Path
 from threading import Thread
 import os
 from datetime import datetime
@@ -39,8 +38,7 @@ import cv2
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.segmentation.inference_segnet import preload_segnet
 from homr.transformer.encoder_inference import preload_cnn_encoder
-from globals import APP_PATH, APP_STORAGE, XML_PATH, appdata
-from add_measure_type import add_measure_type
+from globals import APP_PATH, XML_PATH, appdata
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
 if platform == "android":
@@ -311,7 +309,6 @@ class Andromr(MDApp):
                 },
             ]
         )
-
         # if the user hasn't agreed to the license
         if not appdata.agreed:
             # show him the screen
@@ -349,7 +346,6 @@ class Andromr(MDApp):
         self.theme_cls.material_style = "M3"
         if platform == "android":
             self.bottom_pad = self.nav_bar_height_dp()
-
         else:
             self.bottom_pad = 0
 

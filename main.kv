@@ -38,10 +38,10 @@ ScreenManager:
                     height: self.minimum_height
                     padding: dp(10)
                     spacing: dp(10)
-                    
+
             BoxLayout:
                 orientation: "horizontal"
-                size_hint_y: 0.1  
+                size_hint_y: 0.1
                 MDFloatingActionButton:
                     icon: "cog"
                     on_release: app.change_screen("settings")
@@ -63,7 +63,7 @@ ScreenManager:
         fit_mode: 'contain'
         play: False
 
-    MDIconButton: 
+    MDIconButton:
         id: img_taker
         icon: "circle-slice-8"
         size_hint_x: None
@@ -148,7 +148,7 @@ ScreenManager:
         ripple_scale: 0
         theme_text_color: "Custom"
         text_color: 1, 0, 0, 1  # Red
-        
+
     LineDrawer:
         id: line_drawer
 
@@ -169,7 +169,7 @@ ScreenManager:
             orientation: "vertical"
             spacing: dp(20)
             padding: dp(10)
-            
+
             Widget:
 
             MDTextField:
@@ -223,7 +223,7 @@ ScreenManager:
                     pos_hint: {'center_y': 0.5}
                     size_hint: None, None
                     size: "48dp", "48dp"
-            
+
             MDBoxLayout:
                 MDLabel:
                     id: label_gpu
@@ -257,12 +257,11 @@ ScreenManager:
                 value: app.appdata.threads
                 step: 1
                 show_off: False
-                
 
             MDBoxLayout:
                 orientation: "horizontal"
                 MDRaisedButton:
-                    text: "Download assets (60MB)"
+                    text: "Download Assets (60MB)"
                     on_release: app.check_download_assets()
                     size_hint_x: 1
 
@@ -340,25 +339,37 @@ ScreenManager:
         BoxLayout:
             orientation: 'vertical'
             padding: dp(10)
-            spacing: dp(10)        
+            spacing: dp(10)
             License:
                 id: rv_tp
 
 <LicensePageButton>:
     name: 'licensepagebutton'
     BoxLayout:
-        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
         orientation: 'vertical'
-        spacing: dp(10)        
-        License:
-            id: rv_tpb
-        MDRaisedButton:
-            text: 'I read and agree to the License'
-            size_hint_y: None
-            height: '40dp'
-            on_release: app.agree_license()
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
+        MDTopAppBar:
+            id: toolbar_licensepage
+            title: "License"
+            elevation: 0
+            type_height: 'small'
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+        BoxLayout:
+            orientation: 'vertical'
             padding: dp(10)
             spacing: dp(10)
+            License:
+                id: rv_tp
+            MDRectangleFlatButton:
+                text: "I have read and agree to the License"
+                size_hint_x: 0.9
+                size_hint_y: None
+                height: "48dp"
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: app.theme_cls.primary_color
+                text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+                on_release: app.agree_license()
 <OSS_Licenses>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
@@ -371,7 +382,7 @@ ScreenManager:
 <License>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
-        key_size: 'size'   
+        key_size: 'size'
         default_size: None, None
         default_size_hint: 1, None
         size_hint_y: None

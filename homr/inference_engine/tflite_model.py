@@ -95,7 +95,7 @@ if platform == "android":
 
 else:
     if platform == "win":
-        import tensorflow as tf
+        import tensorflow as tf # type: ignore
 
         Interpreter = tf.lite.Interpreter
 
