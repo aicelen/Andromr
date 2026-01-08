@@ -500,7 +500,7 @@ class Andromr(MDApp):
                 appdata.downloaded_assets
             )
             sleep(0.02)
-        if appdata.downloaded_assets == 'failure':
+        if appdata.downloaded_assets == "failure":
             Clock.schedule_once(lambda dt: self.change_screen("landing"))
         elif camera_page:
             Clock.schedule_once(lambda dt: self.change_screen("camera"))
@@ -791,7 +791,7 @@ class Andromr(MDApp):
             # and update self.files (needed for the scorllview)
             self.files = os.listdir(XML_PATH)
             self.text_lables = [os.path.splitext(file)[0] for file in self.files]
-        
+
         except Exception as e:
             print(e)
 

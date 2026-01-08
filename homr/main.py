@@ -317,6 +317,7 @@ def download_weights() -> None:
     appdata.download_running = False
     return
 
+
 def check_for_missing_models() -> list:
     """
     Checks for missing models and returns a list with all the links to the missing models.

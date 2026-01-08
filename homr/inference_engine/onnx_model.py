@@ -139,7 +139,7 @@ else:
             self.session = None
             self.session_options = ort.SessionOptions()
             self.session_options.intra_op_num_threads = num_threads
-        
+
         def load(self):
             self.session = ort.InferenceSession(self.model_path, self.session_options)
 

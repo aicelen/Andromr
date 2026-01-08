@@ -17,7 +17,7 @@ model: TensorFlowModel | None = None
 def preload_segnet(num_threads: int, use_gpu: bool):
     """
     Preloading does not load the model into RAM. Instead it loads all
-    the configs for inference. This solves a problem with pyjnius which does 
+    the configs for inference. This solves a problem with pyjnius which does
     not work reliable when using it within a Thread (pyjnius raises a
     java.lang.ClassNotFoundException). More details can be found in this issue:
     https://github.com/kivy/pyjnius/issues/758
@@ -29,8 +29,11 @@ def preload_segnet(num_threads: int, use_gpu: bool):
     """
     global model
     if model is None or appdata.settings_changed:
-        model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=True)
+        model = TensorFlowModel(
+            segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=True
+        )
         print(f"use_gpu: {use_gpu, appdata.gpu}")
+
 
 class ExtractResult:
     def __init__(

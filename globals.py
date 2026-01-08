@@ -7,7 +7,8 @@ from kivy import platform
 APP_PATH = os.getcwd()
 
 if platform == "android":
-    from android.storage import app_storage_path # type: ignore
+    from android.storage import app_storage_path  # type: ignore
+
     APP_STORAGE = os.path.join(app_storage_path())
 else:
     APP_STORAGE = os.path.join(APP_PATH, "data")

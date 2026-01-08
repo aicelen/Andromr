@@ -34,7 +34,9 @@ class FilePaths:
             f"{model_name}.pth",
         )
 
-        self.rhythmtokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_rhythm.json")
+        self.rhythmtokenizer = os.path.join(
+            APP_PATH, "homr", "transformer", "tokenizer_rhythm.json"
+        )
         self.lifttokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_lift.json")
         self.pitchtokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_pitch.json")
         self.notetokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_note.json")

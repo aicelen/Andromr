@@ -3,6 +3,7 @@ from kivy.utils import platform
 
 if platform == "android":
     from android.storage import app_storage_path
+
     workspace = os.path.join(app_storage_path(), "models")
 else:
     workspace = os.path.dirname(os.path.realpath(__file__))

@@ -34,23 +34,28 @@ if platform == "android":
         :type num_threads: int
         :param use_gpu: Use GPU acceleration
         :type use_gpu: bool
-        :param precisionLoss: Use fp16 calculations to speed up 
+        :param precisionLoss: Use fp16 calculations to speed up
                               inference (only works with use_gpu=True)
         :type precisionLoss: bool
         """
 
-        def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
+        def __init__(
+            self,
+            model_filename: str,
+            num_threads: int = 1,
+            use_gpu: bool = True,
+            precision_loss: bool = True,
+            sustained_speed: bool = False,
+        ):
             self.loaded = False
             self.model_filename = model_filename
             self.options = InterpreterOptions()
             self.compatList = CompatibilityList()
             if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():
                 delegate_options = self.compatList.getBestOptionsForThisDevice()
-                delegate_options = (
-                    delegate_options
-                    .setPrecisionLossAllowed(precision_loss)
-                    .setInferencePreference(1 if sustained_speed else 0)
-                )
+                delegate_options = delegate_options.setPrecisionLossAllowed(
+                    precision_loss
+                ).setInferencePreference(1 if sustained_speed else 0)
                 gpu_delegate = GpuDelegate(delegate_options)
                 self.options.addDelegate(gpu_delegate)
                 print("set gpu")
@@ -84,7 +89,7 @@ if platform == "android":
         def run(self, x: np.ndarray):
             """
             Docstring for run
-            
+
             :param x: Input array
             """
             # assumes one input and one output for now
@@ -95,7 +100,7 @@ if platform == "android":
 
 else:
     if platform == "win":
-        import tensorflow as tf # type: ignore
+        import tensorflow as tf  # type: ignore
 
         Interpreter = tf.lite.Interpreter
 
@@ -107,13 +112,21 @@ else:
         """
         Cross platform inference of .tflite models
 
-        :param model_path: Path to the .tflite model 
+        :param model_path: Path to the .tflite model
         :param num_threads: Number of threads to use (CPU only)
         :param use_gpu: Use GPU acceleration
-        :param precisionLoss: Use fp16 calculations to speed up 
+        :param precisionLoss: Use fp16 calculations to speed up
                               inference (only works with use_gpu=True)
         """
-        def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
+
+        def __init__(
+            self,
+            model_filename: str,
+            num_threads: int = 1,
+            use_gpu: bool = True,
+            precision_loss: bool = True,
+            sustained_speed: bool = False,
+        ):
             self.model_path = model_filename
             self.num_threads = num_threads
             self.loaded = False
