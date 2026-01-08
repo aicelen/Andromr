@@ -1,6 +1,0 @@
-{
-  "threads": 2,
-  "xnnpack": false,
-  "agreed": true,
-  "gpu": true
-}

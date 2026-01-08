@@ -5,12 +5,7 @@ from typing import Any
 from kivy.utils import platform
 
 from homr.transformer.vocabulary import Vocabulary
-
-if platform == "android":
-    from android.storage import app_storage_path
-    workspace = os.path.join(app_storage_path(), "models")
-else:
-    workspace = os.path.dirname(os.path.realpath(__file__))
+from globals import APP_STORAGE, APP_PATH
 
 root_dir = os.getcwd()
 
@@ -19,15 +14,15 @@ class FilePaths:
     def __init__(self) -> None:
         model_name = "pytorch_model_242-a00be6debbedf617acdf39558c89ba6113c06af3"
 
-        self.encoder_cnn_path_tflite = os.path.join(workspace, f"cnn_encoder_{model_name}.tflite")  # noqa: E501
+        self.encoder_cnn_path_tflite = os.path.join(APP_STORAGE, f"cnn_encoder_{model_name}.tflite")  # noqa: E501
 
         self.encoder_transformer_path = os.path.join(
-            workspace,
+            APP_STORAGE,
             f"transformer_encoder_{model_name}.onnx",
         )  # noqa: E501
 
         self.decoder_path = os.path.join(
-            workspace,
+            APP_STORAGE,
             f"decoder_{model_name}.onnx",
         )  # noqa: E501
 
@@ -39,10 +34,10 @@ class FilePaths:
             f"{model_name}.pth",
         )
 
-        self.rhythmtokenizer = os.path.join(workspace, "tokenizer_rhythm.json")
-        self.lifttokenizer = os.path.join(workspace, "tokenizer_lift.json")
-        self.pitchtokenizer = os.path.join(workspace, "tokenizer_pitch.json")
-        self.notetokenizer = os.path.join(workspace, "tokenizer_note.json")
+        self.rhythmtokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_rhythm.json")
+        self.lifttokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_lift.json")
+        self.pitchtokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_pitch.json")
+        self.notetokenizer = os.path.join(APP_PATH, "homr", "transformer", "tokenizer_note.json")
 
     def to_dict(self) -> dict[str, Any]:
         return {

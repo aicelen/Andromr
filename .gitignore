@@ -7,6 +7,7 @@
 /opencv/
 build/
 /datasets/
+/data/
 
 #tflite model folders
 /segnet_155/

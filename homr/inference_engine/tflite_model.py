@@ -40,6 +40,7 @@ if platform == "android":
         """
 
         def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
+            self.loaded = False
             self.model_filename = model_filename
             self.options = InterpreterOptions()
             self.compatList = CompatibilityList()
@@ -64,6 +65,7 @@ if platform == "android":
             model = File(self.model_filename)
             self.interpreter = Interpreter(model, self.options)
             self.allocate_tensors()
+            self.loaded = True
 
         def allocate_tensors(self):
             self.interpreter.allocateTensors()
@@ -114,11 +116,12 @@ else:
         def __init__(self, model_filename: str, num_threads: int = 1, use_gpu: bool = True, precision_loss: bool = True, sustained_speed: bool = False):
             self.model_path = model_filename
             self.num_threads = num_threads
-            self.interpreter = None
+            self.loaded = False
 
         def load(self):
             self.interpreter = Interpreter(self.model_path, num_threads=self.num_threads)
             self.interpreter.allocate_tensors()
+            self.loaded = True
 
         def resize_input(self, shape):
             if list(self.get_input_shape()) != shape:

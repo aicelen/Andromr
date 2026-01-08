@@ -31,7 +31,6 @@ def preload_segnet(num_threads: int, use_gpu: bool):
     if model is None or appdata.settings_changed:
         model = TensorFlowModel(segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=True)
         print(f"use_gpu: {use_gpu, appdata.gpu}")
-    print(f"settings changed: {appdata.settings_changed}")
 
 class ExtractResult:
     def __init__(
@@ -101,7 +100,8 @@ def inference(
     eprint("Starting Inference.")
     global model
     preload_segnet(appdata.threads, appdata.gpu)
-    model.load()
+    if not model.loaded or appdata.settings_changed:
+        model.load()
 
     t0 = perf_counter()
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)

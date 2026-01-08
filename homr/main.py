@@ -302,8 +302,7 @@ def download_weights() -> None:
                 download_url = base_url + zip_name
                 downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
                 download_utils.download_file(download_url, downloaded_zip)
-                if platform == 'android':
-                    destination_dir = os.path.dirname(model)
+                destination_dir = os.path.dirname(model)
                 download_utils.unzip_file(downloaded_zip, destination_dir)
             finally:
                 if os.path.exists(downloaded_zip):

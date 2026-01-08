@@ -31,7 +31,7 @@ source.include_exts = py, png, kv, atlas, json, pkl, txt
 source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, datasets, training, validation, segnet_155, cnn_encoder_188, decoder_188, cnn_encoder_236
+source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, datasets, training, validation, segnet_155, cnn_encoder_188, decoder_188, cnn_encoder_236, data 
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -53,10 +53,10 @@ requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typin
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-presplash.filename = %(source.dir)s/data/icon.png
+presplash.filename = %(source.dir)s/icon.png
 
 # (str) Icon of the application
-icon.filename = %(source.dir)s/data/icon.png
+icon.filename = %(source.dir)s/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse or landscape-reverse

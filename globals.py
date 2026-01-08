@@ -1,13 +1,25 @@
-from os import path
+import os
 import json
 from pathlib import Path
+from kivy import platform
 
-APP_PATH = path.dirname(path.realpath(__file__))  # get path of my app
+
+APP_PATH = os.getcwd()
+
+if platform == "android":
+    from android.storage import app_storage_path # type: ignore
+    APP_STORAGE = os.path.join(app_storage_path())
+else:
+    APP_STORAGE = os.path.join(APP_PATH, "data")
+
+XML_PATH = os.path.join(APP_STORAGE, "musicxml")
+os.makedirs(XML_PATH, exist_ok=True)
 
 
 class AppData:
     def __init__(self):
-        self.settings_file = Path(APP_PATH + "/data/saved_settings.json")
+        self.settings_file_path = os.path.join(APP_STORAGE, "saved_settings.json")
+
         # Default settings
         self.default_settings = {"threads": 2, "xnnpack": False, "agreed": False, "gpu": False}
 
@@ -25,9 +37,9 @@ class AppData:
         self.settings_changed = False
 
     def _load_settings(self):
-        if self.settings_file.exists():
+        if os.path.exists(self.settings_file_path):
             # Load file normally
-            with open(self.settings_file, "r") as f:
+            with open(self.settings_file_path, "r") as f:
                 settings = json.load(f)
 
             # Validate and use loaded settings
@@ -38,7 +50,7 @@ class AppData:
 
         else:
             # Create new file using defaults
-            self.settings_file.parent.mkdir(parents=True, exist_ok=True)
+            Path(self.settings_file_path).parent.mkdir(parents=True, exist_ok=True)
             self.threads = self.default_settings["threads"]
             self.xnnpack = self.default_settings["xnnpack"]
             self.agreed = self.default_settings["agreed"]
@@ -53,7 +65,7 @@ class AppData:
             "gpu": self.gpu,
         }
 
-        with open(self.settings_file, "w") as f:
+        with open(self.settings_file_path, "w") as f:
             json.dump(settings_data, f, indent=2)
 
 

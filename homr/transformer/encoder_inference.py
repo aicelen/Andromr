@@ -24,7 +24,7 @@ class EncoderDual:
         preload_cnn_encoder(appdata.threads, appdata.gpu)
         preload_transformer_encoder(appdata.threads)
 
-        if appdata.settings_changed or cnn_encoder.interpreter is None:
+        if not cnn_encoder.loaded or appdata.settings_changed:
             cnn_encoder.load()
         
         if appdata.settings_changed or transformer_encoder.session is None:

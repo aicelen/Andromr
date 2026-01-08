@@ -39,7 +39,7 @@ import cv2
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.segmentation.inference_segnet import preload_segnet
 from homr.transformer.encoder_inference import preload_cnn_encoder
-from globals import APP_PATH, appdata
+from globals import APP_PATH, APP_STORAGE, XML_PATH, appdata
 from add_measure_type import add_measure_type
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
@@ -91,9 +91,9 @@ if platform == "android":
             buf = flipped.tobytes()
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
-        # Preloading during inferene cuased a black screen; this works well
-        preload_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
-        preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
+    # Preloading during inferene cuased a black screen; this works well
+    preload_cnn_encoder(num_threads=appdata.threads, use_gpu=appdata.gpu)
+    preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
     # Custom placeholder widget for Desktop
@@ -243,7 +243,7 @@ class License(RecycleView):
             line_height = sp(font_size) * 0.9
             return int(lines * line_height)
 
-        with open(Path(f"{APP_PATH}/data/license.txt"), "r", encoding="utf-8") as file:
+        with open(os.path.join(APP_PATH, "LICENSE"), "r", encoding="utf-8") as file:
             lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
@@ -270,7 +270,7 @@ class OSS_Licenses(RecycleView):
             line_height = sp(font_size) * 0.9
             return int(lines * line_height)
 
-        with open(Path(f"{APP_PATH}/data/oss_licenses.txt"), "r", encoding="utf-8") as file:
+        with open(os.path.join(APP_PATH, "oss_licenses.txt"), "r", encoding="utf-8") as file:
             lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
@@ -328,14 +328,8 @@ class Andromr(MDApp):
         self.title = "Andromr"
         self.appdata = appdata
 
-        # generate folders
-        os.makedirs(Path(f"{APP_PATH}/data/generated_xmls"), exist_ok=True)
-        os.makedirs(Path(f"{APP_PATH}/data/generated_midi"), exist_ok=True)
-
         # create files list (used by the scorllview)
-        self.files = os.listdir(
-            Path(f"{APP_PATH}/data/generated_xmls")
-        )  # list of paths to generated .musicxml
+        self.files = os.listdir(XML_PATH)
 
         # widgets
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
@@ -414,8 +408,7 @@ class Andromr(MDApp):
 
     def update_scrollview(self):
         """Function that updates the scrollview on the landing page"""
-
-        self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
+        self.files = os.listdir(XML_PATH)
         self.text_lables = [os.path.splitext(file)[0] for file in self.files]
         scroll_box = self.sm.get_screen("landing").ids.scroll_box
         scroll_box.clear_widgets()
@@ -530,7 +523,7 @@ class Andromr(MDApp):
                 None
         """
         # export (.musicxml)
-        self.share_file(f"{APP_PATH}/data/generated_xmls/{self.files[idx]}")
+        self.share_file(os.path.join(XML_PATH, self.files[idx]))
 
     def share_file(self, path: str):
         """
@@ -563,7 +556,7 @@ class Andromr(MDApp):
         Args:
             index(int): index of the element in the scrollview that should be deleted
         """
-        os.remove(Path(f"{APP_PATH}/data/generated_xmls/{self.files[index]}"))
+        os.remove(os.path.join(XML_PATH, self.files[index]))
         self.dialog_delete.dismiss()
         self.update_scrollview()
 
@@ -796,11 +789,11 @@ class Andromr(MDApp):
             # rename the file
             os.rename(
                 return_path,
-                os.path.join(APP_PATH, "data", "generated_xmls", f"{music_title}.musicxml"),
+                os.path.join(XML_PATH, f"{music_title}.musicxml"),
             )
 
             # and update self.files (needed for the scorllview)
-            self.files = os.listdir(Path(f"{APP_PATH}/data/generated_xmls"))
+            self.files = os.listdir(XML_PATH)
             self.text_lables = [os.path.splitext(file)[0] for file in self.files]
         
         except Exception as e:
@@ -816,9 +809,6 @@ class Andromr(MDApp):
         download.start()
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
-    
-    def download_weights_call(self):
-        pass
 
     def check_download_assets(self, camera_page=False):
         """
