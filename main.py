@@ -241,7 +241,7 @@ class License(RecycleView):
             line_height = sp(font_size) * 0.9
             return int(lines * line_height)
 
-        with open(os.path.join(APP_PATH, "LICENSE"), "r", encoding="utf-8") as file:
+        with open(os.path.join(APP_PATH, "license.txt"), "r", encoding="utf-8") as file:
             lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
 
         self.data = [
