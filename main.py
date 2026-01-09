@@ -458,7 +458,6 @@ class Andromr(MDApp):
             text(str): Text to display
             title(str): Defaults to empty; if used displays a title in the pop-up
         """
-
         self.dialog_information = MDDialog(
             title=title,
             text="",
@@ -483,29 +482,43 @@ class Andromr(MDApp):
         """
         Update the progress bar used while running homr
         """
-        while appdata.homr_running:
-            self.root.get_screen("progress").ids.progress_bar.value = appdata.homr_progress
-            self.root.get_screen("progress").ids.progress_label.text = appdata.homr_state
-            sleep(0.1)
+        self.update_progress_event = Clock.schedule_interval(lambda dt: self._update_progress_bar_status(), 0.1)
+    
+    def _update_progress_bar_status(self):
+        # Update the UI
+        self.root.get_screen("progress").ids.progress_bar.value = int(appdata.homr_progress)
+        self.root.get_screen("progress").ids.progress_label.text = str(appdata.homr_state)
+        # Check if the thread is finished
+        if not self.ml_thread.is_alive():
+            # Stop the scheduled updates
+            Clock.unschedule(self.update_progress_event)
+
 
     def update_download_bar(self, camera_page):
         """
-        Update the progress bar used while downloading models
+        Start the periodic update of the progress bar.
         """
-        while appdata.download_running:
-            self.root.get_screen("downloadpage").ids.download_bar.value = int(
-                appdata.download_progress
-            )
-            self.root.get_screen("downloadpage").ids.download_label.text = str(
-                appdata.downloaded_assets
-            )
-            sleep(0.02)
-        if appdata.downloaded_assets == "failure":
-            Clock.schedule_once(lambda dt: self.change_screen("landing"))
-        elif camera_page:
-            Clock.schedule_once(lambda dt: self.change_screen("camera"))
-        else:
-            Clock.schedule_once(lambda dt: self.change_screen("settings"))
+        # Schedule the update function to run 10 times per second
+        self.update_download_event = Clock.schedule_interval(lambda dt: self._update_download_bar_status(camera_page), 0.1)
+
+
+    def _update_download_bar_status(self, camera_page):
+        # Update the UI
+        self.root.get_screen("downloadpage").ids.download_bar.value = int(appdata.download_progress)
+        self.root.get_screen("downloadpage").ids.download_label.text = str(appdata.downloaded_assets)
+
+        # Check if the thread is finished
+        if not self.download_thread.is_alive():
+            # Stop the scheduled updates
+            Clock.unschedule(self.update_download_event)
+
+            if appdata.downloaded_assets.startswith("A"): # Error occurd
+                self.change_screen("landing")
+                self.show_info(appdata.downloaded_assets)
+            elif camera_page:
+                self.change_screen("camera")
+            else:
+                self.change_screen("settings")
 
     # Button click methods
     def export_file(self, idx, btn=None):
@@ -793,6 +806,8 @@ class Andromr(MDApp):
             self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
         except Exception as e:
+            error_msg = f"An error occured during inference: {e}"
+            Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
             print(e)
 
         # switch to landing screen
@@ -800,9 +815,9 @@ class Andromr(MDApp):
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
-        download = Thread(target=download_weights, daemon=True)
+        self.download_thread = Thread(target=download_weights, daemon=True)
         update = Thread(target=self.update_download_bar, args=(camera_page,), daemon=True)
-        download.start()
+        self.download_thread.start()
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
 

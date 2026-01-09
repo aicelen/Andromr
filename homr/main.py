@@ -284,7 +284,7 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
     return sorted(without_teasers)
 
 
-def download_weights() -> None:
+def download_weights() -> str | None:
     try:
         base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
         missing_models = check_for_missing_models()
@@ -311,10 +311,9 @@ def download_weights() -> None:
             appdata.downloaded_assets = f"Downloaded {idx + 1} of {len(missing_models)}"
 
     except Exception as e:
-        print(e)
-        appdata.downloaded_assets = "failure"
-
-    appdata.download_running = False
+        error_msg = f"An error occured while trying to download the models: {e}"
+        eprint(error_msg)
+        appdata.downloaded_assets = error_msg
     return
 
 
