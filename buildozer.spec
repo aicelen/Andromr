@@ -16,7 +16,7 @@ title = Andromr
 package.name = andromr
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = com.aicelen.andromr
+package.domain = com.aicelen
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -38,7 +38,7 @@ source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build,
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.2
+version = 1.3
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -107,19 +107,19 @@ fullscreen = 0
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
-android.permissions = WRITE_EXTERNAL_STORAGE, CAMERA, INTERNET
+android.permissions = CAMERA, INTERNET
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = camera2
 
 # (int) Target Android API, should be as high as possible.
-android.api = 35
+android.api = 36
 
 # (int) Minimum API your APK / AAB will support.
 android.minapi = 24
 
 # (int) Android SDK version to use
-android.sdk = 24
+# android.sdk = 24
 
 # (str) Android NDK version to use
 android.ndk = 25b
