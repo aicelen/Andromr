@@ -5,9 +5,12 @@ author: aicelen
 contact: andromr.official@gmail.com
 
 [b]COLLECTION OF USER DATA[/b]
-No data is being collected by the app itself. 
+No data is being collected by the app itself. Images taken stay on your device.
 Models are downloaded from github.com. Therefore Github could collect data like the time of download.
 
+[b]COPYRIGHT OF GENERATED DATA[/b]
+You need to make sure to hold the copyright of the scanned sheet music. The generated data (for example .musicxml files) are still copyrighted. 
+See the license below for more details.
 
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007

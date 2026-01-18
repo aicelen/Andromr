@@ -1,5 +1,9 @@
 # main file of the app
 # Andromr class is the main class of the app
+from kivy.config import Config
+
+# 0 = No, 1 = Yes. We set it to 0 to handle it manually.
+Config.set('kivy', 'exit_on_escape', '0') 
 
 # Kivy imports
 from kivy.lang import Builder
@@ -314,8 +318,8 @@ class Andromr(MDApp):
             # show him the screen
             self.sm.current = "licensepagebutton"
 
-        Window.bind(on_keyboard=self.on_custom_back)
-
+        #Window.bind(on_keyboard=self.on_custom_back)
+        #Window.bind(on_request_close=self.on_request_close)
         return self.sm
 
     def setup(self):
@@ -352,7 +356,9 @@ class Andromr(MDApp):
     def on_start(self):
         # Update Scrollview on start
         self.update_scrollview()
-
+        print('aaaa')
+        Window.bind(on_keyboard=self.on_custom_back)
+    
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
         Return navigation-bar height in *dp*.
@@ -369,10 +375,16 @@ class Andromr(MDApp):
         return dp(default)
 
     def on_custom_back(self, window, key, scancode, codepoint, modifiers):
-        if key == 27:  # back gesture on android
+        print(f"Key pressed: {key}")  # Should print 27 for back button
+        if key == 27:
             self.previous_screen()
             return True
         return False
+
+    def on_request_close(self, *args):
+        print("on_request_close triggered")
+        self.previous_screen()
+        return True  # CRITICAL: prevents the app from closing
 
     # UI methods
     def change_screen(self, screen_name, btn=None):

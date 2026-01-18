@@ -6,6 +6,8 @@
 # to modify templates go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\common\build\templates
 # to reduce apk size put:
 # ndk {abiFilters 'arm64-v8a'} 
+# to make gestures work go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\sdl2\build\templates
+# and set in the AndroidManifest.tmpl android:enableOnBackInvokedCallback="false" under application
 
 [app]
 
