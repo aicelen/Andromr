@@ -134,7 +134,23 @@ class ProgressPage(Screen):
 
 
 class SettingsPage(Screen):
-    pass
+    def on_leave(self):
+        app = MDApp.get_running_app()
+        gpu = self.ids.checkbox_gpu.active
+        use_xnnpack = self.ids.checkbox_xnnpack.active
+        num_threads = self.ids.slider_threads.value
+        if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
+            appdata.settings_changed = True
+        else:
+            appdata.settings_changed = False
+
+        if gpu and not appdata.gpu:
+            app.show_info("Please restart the app to use GPU acceleration")
+
+        appdata.threads = int(num_threads)
+        appdata.xnnpack = use_xnnpack
+        appdata.gpu = gpu
+        appdata.save_settings()
 
 
 class OSSLicensePage(Screen):
@@ -574,22 +590,6 @@ class Andromr(MDApp):
         os.remove(os.path.join(XML_PATH, self.files[index]))
         self.dialog_delete.dismiss()
         self.update_scrollview()
-
-    def save_settings(self, num_threads, use_xnnpack, gpu, btn=None):
-        if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
-            appdata.settings_changed = True
-        else:
-            appdata.settings_changed = False
-        
-        if not appdata.gpu and gpu: # Enable GPU acceleration
-            preload_cnn_encoder(num_threads, gpu)
-            preload_segnet(num_threads, gpu)
-
-        appdata.threads = int(num_threads)
-        appdata.xnnpack = use_xnnpack
-        appdata.gpu = gpu
-        appdata.save_settings()
-        self.change_screen("landing")
 
     def agree_license(self):
         """Function that is triggered when the user agreed to the license"""

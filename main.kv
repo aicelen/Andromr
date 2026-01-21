@@ -202,7 +202,7 @@ ScreenManager:
             title: "Settings"
             elevation: 0
             type_height: 'small'
-            left_action_items: [['arrow-left', lambda x: app.save_settings(root.ids.slider_threads.value, root.ids.checkbox_xnnpack.active, root.ids.checkbox_gpu.active,x)]]
+            left_action_items: [['arrow-left', lambda x: app.change_screen("landing")]]
             right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
             md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
             specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)

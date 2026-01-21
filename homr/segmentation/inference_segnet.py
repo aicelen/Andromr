@@ -32,7 +32,6 @@ def preload_segnet(num_threads: int, use_gpu: bool):
         model = TensorFlowModel(
             segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=True
         )
-        print(f"use_gpu: {use_gpu, appdata.gpu}")
 
 
 class ExtractResult:
