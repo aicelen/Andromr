@@ -14,12 +14,7 @@ class FilePaths:
     def __init__(self) -> None:
         model_name = "pytorch_model_242-a00be6debbedf617acdf39558c89ba6113c06af3"
 
-        self.encoder_cnn_path_tflite = os.path.join(APP_STORAGE, f"cnn_encoder_{model_name}.tflite")  # noqa: E501
-
-        self.encoder_transformer_path = os.path.join(
-            APP_STORAGE,
-            f"transformer_encoder_{model_name}.onnx",
-        )  # noqa: E501
+        self.encoder = os.path.join(APP_STORAGE, f"encoder_{model_name}.tflite")  # noqa: E501
 
         self.decoder_path = os.path.join(
             APP_STORAGE,

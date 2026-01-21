@@ -323,8 +323,7 @@ def check_for_missing_models() -> list:
     """
     models = [
         segnet_path_tflite,
-        default_config.filepaths.encoder_cnn_path_tflite,
-        default_config.filepaths.encoder_transformer_path,
+        default_config.filepaths.encoder,
         default_config.filepaths.decoder_path,
     ]
     missing_models = [model for model in models if not os.path.exists(model)]

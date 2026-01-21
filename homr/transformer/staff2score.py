@@ -7,7 +7,7 @@ from PIL import Image
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
 from homr.transformer.decoder_inference import get_decoder
-from homr.transformer.encoder_inference import EncoderDual
+from homr.transformer.encoder_inference import EncoderSimple
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
@@ -19,7 +19,7 @@ class Staff2Score:
 
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = EncoderDual()
+        self.encoder = EncoderSimple()
         self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
@@ -31,7 +31,7 @@ class Staff2Score:
         """
         Inference an image (NDArray) using Tromr.
         """
-        x = _transform(image=image)
+        x = _transform(image=image).transpose(0, 3, 1, 2)
 
         t0 = perf_counter()
 

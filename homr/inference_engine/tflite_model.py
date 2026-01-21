@@ -61,7 +61,7 @@ if platform == "android":
                 print("set gpu")
             else:
                 self.options.setNumThreads(num_threads)
-                self.options.setUseXNNPACK(True)
+                # self.options.setUseXNNPACK(True)
 
         def load(self):
             """
