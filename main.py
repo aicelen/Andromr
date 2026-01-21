@@ -318,8 +318,6 @@ class Andromr(MDApp):
             # show him the screen
             self.sm.current = "licensepagebutton"
 
-        #Window.bind(on_keyboard=self.on_custom_back)
-        #Window.bind(on_request_close=self.on_request_close)
         return self.sm
 
     def setup(self):
@@ -381,10 +379,6 @@ class Andromr(MDApp):
             return True
         return False
 
-    def on_request_close(self, *args):
-        print("on_request_close triggered")
-        self.previous_screen()
-        return True  # CRITICAL: prevents the app from closing
 
     # UI methods
     def change_screen(self, screen_name, btn=None):
@@ -586,6 +580,10 @@ class Andromr(MDApp):
             appdata.settings_changed = True
         else:
             appdata.settings_changed = False
+        
+        if not appdata.gpu and gpu: # Enable GPU acceleration
+            preload_cnn_encoder(num_threads, gpu)
+            preload_segnet(num_threads, gpu)
 
         appdata.threads = int(num_threads)
         appdata.xnnpack = use_xnnpack

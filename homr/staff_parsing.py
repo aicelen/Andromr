@@ -4,6 +4,7 @@ import numpy as np
 from homr import constants
 from homr.debug import Debug
 from homr.image_utils import crop_image_and_return_new_top
+from homr.staff_dewarping import StaffDewarping, dewarp_staff_image
 from homr.model import MultiStaff, Staff
 from homr.simple_logging import eprint
 from homr.staff_parsing_tromr import parse_staff_tromr
@@ -11,6 +12,7 @@ from homr.staff_regions import StaffRegions
 from homr.transformer.configs import default_config
 from homr.transformer.vocabulary import EncodedSymbol, remove_duplicated_symbols
 from homr.type_definitions import NDArray
+from time import perf_counter
 
 from globals import appdata
 
@@ -155,6 +157,26 @@ def _calculate_region(staff: Staff, regions: StaffRegions) -> NDArray:
     return np.array([int(x_min), int(y_min), int(x_max), int(y_max)])
 
 
+def _dewarp_staff(
+    staff: Staff, dewarp: StaffDewarping | None, region: NDArray, scaling: float
+) -> Staff:
+    """
+    Applies the same transformation on the staff coordinates as we did on the image.
+    """
+
+    def transform_coordinates(point: tuple[float, float]) -> tuple[float, float]:
+        x, y = point
+        x -= region[0]
+        y -= region[1]
+        if dewarp is not None:
+            x, y = dewarp.dewarp_point((x, y))
+        x = x * scaling
+        y = y * scaling
+        return x, y
+
+    return staff.transform_coordinates(transform_coordinates)
+
+
 def prepare_staff_image(
     debug: Debug, index: int, staff: Staff, staff_image: NDArray, regions: StaffRegions
 ) -> tuple[NDArray, Staff]:
@@ -176,6 +198,13 @@ def prepare_staff_image(
     )
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
+
+    t0 = perf_counter()
+    staff = _dewarp_staff(staff, None, top_left, scaling_factor)
+    dewarp = dewarp_staff_image(staff_image, staff, index, debug)
+    staff_image = dewarp.dewarp(staff_image)
+    print(perf_counter()- t0)
+
     staff_image, top_left = crop_image_and_return_new_top(
         staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3]
     )
