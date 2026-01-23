@@ -10,7 +10,7 @@ from globals import appdata
 encoder: TensorFlowModel | None = None
 
 
-class EncoderSimple:
+class Encoder:
     def __init__(self) -> None:
         """
         Enocder using only one .tflite file.

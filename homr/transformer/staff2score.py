@@ -7,7 +7,7 @@ from PIL import Image
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
 from homr.transformer.decoder_inference import get_decoder
-from homr.transformer.encoder_inference import EncoderSimple
+from homr.transformer.encoder_inference import Encoder
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
@@ -19,7 +19,7 @@ class Staff2Score:
 
     def __init__(self, use_gpu: bool = True) -> None:
         self.config = Config()
-        self.encoder = EncoderSimple()
+        self.encoder = Encoder()
         self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
@@ -88,10 +88,4 @@ def test_transformer_on_image(path_to_img: str) -> None:
 
 
 if __name__ == "__main__":
-    from homr.transformer.decoder_inference import load_model as lmd
-    from homr.transformer.encoder_inference import load_model as lme
-
-    lmd()
-    lme()
-
     test_transformer_on_image("staff.png")
