@@ -48,6 +48,7 @@ def calc_symbol_error_rate_for_list(
         img_path, token_path = sample.strip().split(",")
         expected = read_tokens(token_path)
         image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         if image is None:
             raise ValueError("Failed to read " + img_path)
         actual: list[EncodedSymbol] = model.predict(image)
