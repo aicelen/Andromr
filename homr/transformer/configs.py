@@ -5,7 +5,7 @@ from typing import Any
 from kivy.utils import platform
 
 from homr.transformer.vocabulary import Vocabulary
-from globals import APP_STORAGE, APP_PATH
+from globals import APP_PATH, MODEL_STORAGE
 
 root_dir = os.getcwd()
 
@@ -14,10 +14,10 @@ class FilePaths:
     def __init__(self) -> None:
         model_name = "pytorch_model_242-a00be6debbedf617acdf39558c89ba6113c06af3"
 
-        self.encoder = os.path.join(APP_STORAGE, f"encoder_{model_name}.tflite")  # noqa: E501
+        self.encoder = os.path.join(MODEL_STORAGE, f"encoder_{model_name}.tflite")  # noqa: E501
 
         self.decoder_path = os.path.join(
-            APP_STORAGE,
+            MODEL_STORAGE,
             f"decoder_{model_name}.onnx",
         )  # noqa: E501
 

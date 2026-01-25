@@ -13,6 +13,8 @@ if platform == "android":
 else:
     APP_STORAGE = os.path.join(APP_PATH, "data")
 
+MODEL_STORAGE = os.path.join(APP_STORAGE, "models")
+
 XML_PATH = os.path.join(APP_STORAGE, "musicxml")
 os.makedirs(XML_PATH, exist_ok=True)
 

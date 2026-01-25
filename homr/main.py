@@ -5,7 +5,6 @@ from time import perf_counter
 
 import cv2
 import numpy as np
-from kivy.utils import platform
 
 from homr import color_adjust, download_utils
 from homr.autocrop import autocrop
@@ -38,7 +37,7 @@ from homr.staff_position_save_load import load_staff_positions, save_staff_posit
 from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 
-from globals import appdata
+from globals import appdata, MODEL_STORAGE
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -326,8 +325,18 @@ def check_for_missing_models() -> list:
         default_config.filepaths.encoder,
         default_config.filepaths.decoder_path,
     ]
+    delete_unused_models(models)
     missing_models = [model for model in models if not os.path.exists(model)]
     return missing_models
+
+
+def delete_unused_models(models_used):
+    models = os.listdir(MODEL_STORAGE)
+    unused_models = [os.path.join(MODEL_STORAGE, x) for x in models if os.path.join(MODEL_STORAGE, x) not in models_used]
+    print(models, models_used)
+    print(unused_models)
+    for path in unused_models:
+        os.remove(path)
 
 
 def homr(path, cache=False):
