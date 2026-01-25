@@ -41,7 +41,6 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.segmentation.inference_segnet import preload_segnet
-from homr.transformer.encoder_inference import preload_encoder
 from globals import APP_PATH, XML_PATH, appdata
 from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
 
@@ -94,7 +93,6 @@ if platform == "android":
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
     # Preloading during inferene cuased a black screen; this works well
-    preload_encoder(num_threads=appdata.threads, use_gpu=False)
     preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
@@ -370,7 +368,6 @@ class Andromr(MDApp):
     def on_start(self):
         # Update Scrollview on start
         self.update_scrollview()
-        print('aaaa')
         Window.bind(on_keyboard=self.on_custom_back)
     
     def nav_bar_height_dp(self, offset=0, default=32) -> float:

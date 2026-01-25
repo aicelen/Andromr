@@ -17,7 +17,7 @@ MODEL_STORAGE = os.path.join(APP_STORAGE, "models")
 
 XML_PATH = os.path.join(APP_STORAGE, "musicxml")
 os.makedirs(XML_PATH, exist_ok=True)
-
+os.makedirs(MODEL_STORAGE, exist_ok=True)
 
 class AppData:
     def __init__(self):

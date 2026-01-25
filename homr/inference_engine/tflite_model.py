@@ -5,10 +5,13 @@ https://github.com/teticio/kivy-tensorflow-helloworld/blob/main/model.py
 
 import numpy as np
 from kivy.utils import platform
-from globals import appdata
+import hashlib
 
 if platform == "android":
     from jnius import autoclass  # type: ignore
+
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    Context = autoclass("android.content.Context")
 
     File = autoclass("java.io.File")
     Interpreter = autoclass("org.tensorflow.lite.Interpreter")
@@ -52,16 +55,27 @@ if platform == "android":
             self.options = InterpreterOptions()
             self.compatList = CompatibilityList()
             if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():
+                serialization_dir = self._get_serialization_dir()
+                model_token = self._compute_model_token(self.model_filename)
+                
+                # Delegate Options
                 delegate_options = self.compatList.getBestOptionsForThisDevice()
                 delegate_options = delegate_options.setPrecisionLossAllowed(
                     precision_loss
-                ).setInferencePreference(1 if sustained_speed else 0)
+                )
+                delegate_options = delegate_options.setInferencePreference(1 if sustained_speed else 0)
+                delegate_options = delegate_options.setSerializationParams(
+                    serialization_dir,
+                    model_token,
+                )
+
                 gpu_delegate = GpuDelegate(delegate_options)
                 self.options.addDelegate(gpu_delegate)
-                print("set gpu")
+                print("Set GPU")
             else:
                 self.options.setNumThreads(num_threads)
-                # self.options.setUseXNNPACK(True)
+                self.options.setUseXNNPACK(True)
+                print("Set CPU")
 
         def load(self):
             """
@@ -71,6 +85,27 @@ if platform == "android":
             self.interpreter = Interpreter(model, self.options)
             self.allocate_tensors()
             self.loaded = True
+
+        def _compute_model_token(self, model_path: str) -> str:
+            """
+            Computes the token of the model
+            """
+            sha = hashlib.sha256()
+            with open(model_path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    sha.update(chunk)
+            return sha.hexdigest()
+
+        def _get_serialization_dir(self) -> str:
+            """
+            Find a directory for GPU delegate serialization
+            """
+            activity = PythonActivity.mActivity
+            code_cache_dir = activity.getCodeCacheDir()
+            ser_dir = File(code_cache_dir, "tflite_gpu_serialization")
+            if not ser_dir.exists():
+                ser_dir.mkdirs()
+            return ser_dir.getAbsolutePath()
 
         def allocate_tensors(self):
             self.interpreter.allocateTensors()

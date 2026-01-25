@@ -333,8 +333,7 @@ def check_for_missing_models() -> list:
 def delete_unused_models(models_used):
     models = os.listdir(MODEL_STORAGE)
     unused_models = [os.path.join(MODEL_STORAGE, x) for x in models if os.path.join(MODEL_STORAGE, x) not in models_used]
-    print(models, models_used)
-    print(unused_models)
+    print(f"Deleting: {unused_models}")
     for path in unused_models:
         os.remove(path)
 
