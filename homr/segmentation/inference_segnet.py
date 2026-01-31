@@ -124,10 +124,12 @@ def inference(
                 x = x_loop
             hop = image[y : y + win_size, x : x + win_size, :]
 
-            hop = np.expand_dims(hop, axis=0)
+            hop = np.expand_dims(hop, axis=0).transpose(0, 3, 1, 2)
             out = model.run(hop)
-            out_filtered = np.argmax(out, axis=-1)
+            print(out.shape)
+            out_filtered = np.argmax(out, axis=1)
             out_filtered = np.squeeze(out_filtered, axis=0)
+            print(out_filtered.shape)
             data.append(out_filtered)
 
             # Update progress bar value

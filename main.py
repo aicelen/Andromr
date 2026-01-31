@@ -790,35 +790,41 @@ class Andromr(MDApp):
             path(str): path to the image
             output_path(str): path where the musicxml is stored
         """
-        # run homr
-        try:
-            return_path = homr(path)
-            appdata.homr_running = False
-
-            if self.root.get_screen("progress").ids.title.text == "":
-                # if there's no user given title we give it a unique id based on time
-                music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-            else:
-                # otherwise we set it to the users title
-                music_title = str(self.root.get_screen("progress").ids.title.text)
-
-            # rename the file
-            os.rename(
-                return_path,
-                os.path.join(XML_PATH, f"{music_title}.musicxml"),
-            )
-
-            # and update self.files (needed for the scorllview)
-            self.files = os.listdir(XML_PATH)
-            self.text_lables = [os.path.splitext(file)[0] for file in self.files]
-
-        except Exception as e:
-            error_msg = f"An error occured during inference: {e}"
-            Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
-            print(e)
+        # run homr with try-except on android
+        # else we run it without for easier debugging
+        if platform == 'android':
+            try:
+                self.homr_call2(path)
+            except Exception as e:
+                error_msg = f"An error occured during inference: {e}"
+                Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
+                print(e)
+        else:
+            self.homr_call2(path)
 
         # switch to landing screen
         Clock.schedule_once(lambda dt: self.change_screen("landing"))
+
+    def homr_call2(self, path):
+        return_path = homr(path)
+        appdata.homr_running = False
+
+        if self.root.get_screen("progress").ids.title.text == "":
+            # if there's no user given title we give it a unique id based on time
+            music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+        else:
+            # otherwise we set it to the users title
+            music_title = str(self.root.get_screen("progress").ids.title.text)
+
+        # rename the file
+        os.rename(
+            return_path,
+            os.path.join(XML_PATH, f"{music_title}.musicxml"),
+        )
+
+        # and update self.files (needed for the scorllview)
+        self.files = os.listdir(XML_PATH)
+        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()

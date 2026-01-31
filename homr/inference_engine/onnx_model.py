@@ -99,9 +99,7 @@ if platform == "android":
                     raise TypeError(f"Unsupported dtype of input array: {arr.dtype}")
                 jmap.put(name, tensor)
 
-            t0 = perf_counter()
             results = self.session.run(jmap)
-            print(f"Raw inference time: {perf_counter() - t0:.4f}s")
 
             output_list = []
             for out_name, shape in outputs.items():
