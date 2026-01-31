@@ -6,6 +6,7 @@ https://github.com/teticio/kivy-tensorflow-helloworld/blob/main/model.py
 import numpy as np
 from kivy.utils import platform
 import hashlib
+import os
 
 if platform == "android":
     from jnius import autoclass  # type: ignore
@@ -54,20 +55,22 @@ if platform == "android":
             self.model_filename = model_filename
             self.options = InterpreterOptions()
             self.compatList = CompatibilityList()
-            if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():
-                serialization_dir = self._get_serialization_dir()
-                model_token = self._compute_model_token(self.model_filename)
-                
+            if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():                
                 # Delegate Options
                 delegate_options = self.compatList.getBestOptionsForThisDevice()
                 delegate_options = delegate_options.setPrecisionLossAllowed(
                     precision_loss
                 )
                 delegate_options = delegate_options.setInferencePreference(1 if sustained_speed else 0)
-                delegate_options = delegate_options.setSerializationParams(
-                    serialization_dir,
-                    model_token,
-                )
+
+                if os.path.exists(self.model_filename):
+                    serialization_dir = self._get_serialization_dir()
+                    model_token = self._compute_model_token(self.model_filename)
+
+                    delegate_options = delegate_options.setSerializationParams(
+                        serialization_dir,
+                        model_token,
+                    )
 
                 gpu_delegate = GpuDelegate(delegate_options)
                 self.options.addDelegate(gpu_delegate)

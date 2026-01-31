@@ -139,6 +139,7 @@ def process_image(
     config: ProcessingConfig,
     xml_generator_args: XmlGeneratorArguments,
 ) -> None:
+    t0 = perf_counter()
     eprint("Processing " + image_path)
     xml_file = replace_extension(image_path, ".musicxml")
     debug_cleanup: Debug | None = None
@@ -156,6 +157,8 @@ def process_image(
         else:
             multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
+
+        print(f"Preprocessing took {perf_counter() - t0}")
 
         appdata.homr_state = "Transforming"
         appdata.homr_progress = 1
