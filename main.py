@@ -119,7 +119,11 @@ class LandingPage(Screen):
     def on_enter(self):
         app = MDApp.get_running_app()
         app.img_paths = [] # clean up the image path list
+        app.xml_paths = [] # clean up the xml list
 
+        # update self.files (needed for the scorllview)
+        app.files = os.listdir(XML_PATH)
+        app.text_lables = [os.path.splitext(file)[0] for file in app.files]
 
 class CameraPage(Screen):
     # Unload the camera to stop recording
@@ -285,6 +289,7 @@ class Andromr(MDApp):
         ]
 
         self.img_paths = []
+        self.xml_paths = []
 
         # themes
         self.theme_cls.primary_palette = "LightGreen"
@@ -559,12 +564,15 @@ class Andromr(MDApp):
         # and set texture
         img_widget.texture = texture
 
-    def capture(self, filename="test_cropped.jpg"):
+    def take_picture(self, filename="test_cropped.jpg"):
         """Take an image"""
         take_picture(self.root.get_screen("camera").ids.camera_pre, self.display_img, filename)
 
     # Homr methods
-    def start_inference(self, path_to_image: str):
+    def start_inference(self):
+        print(self.img_paths)
+        path = self.img_paths[0]
+        del self.img_paths[0]
         # set the progress bar to 0
         appdata.progress = 0
 
@@ -576,7 +584,7 @@ class Andromr(MDApp):
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.homr_call, args=(path_to_image,), daemon=True)
+        self.ml_thread = Thread(target=self.homr_call, args=(path,), daemon=True)
         self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
         self.ml_thread.start()
         self.progress_thread.start()
@@ -592,18 +600,20 @@ class Andromr(MDApp):
         # else we run it without for easier debugging
         if platform == 'android':
             try:
-                self.homr_call2(path)
+                self._homr_call(path)
             except Exception as e:
                 error_msg = f"An error occured during inference: {e}"
                 Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
                 print(e)
         else:
-            self.homr_call2(path)
+            self._homr_call(path)
 
-        # switch to landing screen
-        Clock.schedule_once(lambda dt: self.change_screen("landing"))
+        if self.img_paths:
+            self.start_inference()
+        else:
+            Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
-    def homr_call2(self, path):
+    def _homr_call(self, path):
         return_path = homr(path)
         appdata.homr_running = False
 
@@ -620,9 +630,7 @@ class Andromr(MDApp):
             os.path.join(XML_PATH, f"{music_title}.musicxml"),
         )
 
-        # and update self.files (needed for the scorllview)
-        self.files = os.listdir(XML_PATH)
-        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
+        self.xml_paths.append(XML_PATH, f"{music_title}.musicxml")
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()

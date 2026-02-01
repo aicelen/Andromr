@@ -126,10 +126,8 @@ def inference(
 
             hop = np.expand_dims(hop, axis=0).transpose(0, 3, 1, 2)
             out = model.run(hop)
-            print(out.shape)
             out_filtered = np.argmax(out, axis=1)
             out_filtered = np.squeeze(out_filtered, axis=0)
-            print(out_filtered.shape)
             data.append(out_filtered)
 
             # Update progress bar value

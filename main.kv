@@ -68,7 +68,7 @@ ScreenManager:
         icon: "circle-slice-8"
         size_hint_x: None
         pos_hint: {'center_x': 0.5, 'center_y': 0.125}
-        on_release: app.capture()
+        on_release: app.take_picture()
         icon_size: "80dp"
 
 
@@ -102,7 +102,7 @@ ScreenManager:
             pos_hint: {"center_x": 0.5}
             size_hint: None, None
             user_font_size: "32sp"
-            on_release: app.start_inference(app.img_path)
+            on_release: app.start_inference()
 
         Widget:
 
