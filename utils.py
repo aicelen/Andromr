@@ -70,38 +70,6 @@ def get_sys_theme():
         return "Dark"
 
 
-def crop_image_by_corners(path, points, output_path):
-    """
-    Crops an image based on up to 4 points
-    Args:
-        path(str): Path to input image
-        points(List[int or float]): Points to cut from
-        output_path(str): Path to save the image
-
-    Returns:
-        None
-    """
-    img = Image.open(path)
-    img = ImageOps.exif_transpose(img)
-    arr = np.array(img)
-
-    # Find bounding box of the 4 points
-    x_coords = [point[0] for point in points]
-    y_coords = [point[1] for point in points]
-
-    min_x = int(round(min(x_coords)))
-    min_y = int(round(min(y_coords)))
-    max_x = int(round(max(x_coords)))
-    max_y = int(round(max(y_coords)))
-
-    # Crop the image
-    arr = arr[min_y:max_y, min_x:max_x]
-    img = Image.fromarray(arr)
-
-    # Save the cropped image
-    img.save(output_path)
-
-
 def downscale_cv2(input_path: str, scale: float):
     """
     Fast downscaling using OpenCV

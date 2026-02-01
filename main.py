@@ -42,7 +42,7 @@ import cv2
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.segmentation.inference_segnet import preload_segnet
 from globals import APP_PATH, XML_PATH, appdata
-from utils import crop_image_by_corners, get_sys_theme, downscale_cv2
+from utils import get_sys_theme, downscale_cv2
 
 if platform == "android":
     from android_camera_api import take_picture
@@ -116,7 +116,9 @@ else:
 
 # Classes of Screens used by kivy
 class LandingPage(Screen):
-    pass
+    def on_enter(self):
+        app = MDApp.get_running_app()
+        app.img_paths = [] # clean up the image path list
 
 
 class CameraPage(Screen):
@@ -169,80 +171,6 @@ class EditImagePage(Screen):
 
 class DownloadPage(Screen):
     pass
-
-
-class MovableMDIconButton(MDIconButton):
-    # custom button that is movable
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.max_x, self.max_y = Window.system_size
-        self.app = MDApp.get_running_app()
-
-    def on_touch_move(self, touch):
-        if self.collide_point(*touch.pos):
-            self.pos = (touch.x - self.width / 2, touch.y - self.height / 2)
-
-            # update button positions (of unmovable)
-            # get buttons
-            btn0 = self.app.root.get_screen("image_page").ids.btn0
-            btn1 = self.app.root.get_screen("image_page").ids.btn1
-            btn2 = self.app.root.get_screen("image_page").ids.btn2
-            btn3 = self.app.root.get_screen("image_page").ids.btn3
-
-            # and set their position so they form a rectangle with btn0 and btn3
-            btn1.pos = btn0.pos[0], btn3.pos[1]
-            btn2.pos = btn3.pos[0], btn0.pos[1]
-
-            # update lines
-            line_drawer = self.app.root.get_screen("image_page").ids.line_drawer
-            line_drawer.update_lines()
-
-
-class UnmovableMDIconButton(MDIconButton):
-    # custom button that is not movable
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.max_x, self.max_y = Window.system_size
-
-    def update_pos(self, x, y):
-        self.pos = x, y
-
-
-class LineDrawer(Widget):
-    # draws lines between buttons
-    # used in the EditImagePage
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.app = MDApp.get_running_app()
-
-    def update_lines(self):
-        """
-        updates the position of the lines by:
-        1. removing lines
-        2. creating a list with all positions
-        3. drawing the line
-        """
-        self.canvas.clear()
-        with self.canvas:
-            Color(1, 0, 0, 1)  # Red
-            # Get positions from buttons
-            btns = [
-                self.app.root.get_screen("image_page").ids.btn0,
-                self.app.root.get_screen("image_page").ids.btn1,
-                self.app.root.get_screen("image_page").ids.btn3,
-                self.app.root.get_screen("image_page").ids.btn2,
-            ]
-
-            points = []
-            for btn in btns:
-                x = btn.center_x
-                y = btn.center_y
-                points.extend([x, y])
-
-            # Close the shape by connecting last to first
-            points.extend([btns[0].center_x, btns[0].center_y])
-
-            Line(points=points, width=1.5)
 
 
 class License(RecycleView):
@@ -355,6 +283,8 @@ class Andromr(MDApp):
             "licensepage",
             "image_page",
         ]
+
+        self.img_paths = []
 
         # themes
         self.theme_cls.primary_palette = "LightGreen"
@@ -601,142 +531,22 @@ class Andromr(MDApp):
     def menu_callback(self):
         self.menu.dismiss()
 
-    # Crop Image methods
-    def crop(self):
-        """
-        crop the displayed image based on the positions of the buttons
-        """
-        # get button positions
-        pos_btns = [
-            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn0.center),
-            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn1.center),
-            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn2.center),
-            self.convert_to_img_pos(self.root.get_screen("image_page").ids.btn3.center),
-        ]
-
-        # call the crop function from utils.py
-        crop_image_by_corners(self.img_path, pos_btns, self.img_path)
-        self.start_inference(self.img_path)
-
-    def convert_to_img_pos(self, pos):
-        """
-        Converts the on-screen coordinates to image coordinates
-
-        Args:
-            pos(float/int): position to convert
-
-        Returns:
-            position on image
-        """
-
-        # unpack values
-        x, y = pos
-
-        # depending on where there's space we need to subtract the space from the coordinate of the button
-        if self.vertical_touch:
-            y -= self.space_left
-        else:
-            x -= self.space_left
-
-        # max: if the value is negative we want it to be 0
-        # min: we obviously don't want the user to be able to make the image bigger than it is.
-        # That's why the new side_length needs to be smaller than the side_length of the image
-        x = max(0, min(x * self.scale, self.size[0]))
-        y = max(0, min(y * self.scale, self.size[1]))
-
-        return [
-            x,
-            abs(self.size[1] - y),
-        ]  # the abs thing is a workaround because i read with (0,0) at bottom left while numpy/pillow thinks it's at(0, img_height)
-
-    def set_cutter_btn(self, instance=None):
-        """
-        Displays the drag+drop buttons on image-corners
-        """
-
-        # get original size of the image
-        img_x, img_y = self.size
-
-        # get screen size
-        win_x, win_y = Window.size
-
-        # calculate on which size the image and the screen touch
-        if img_x / win_x > img_y / win_y:
-            # sides touch vertically
-            self.vertical_touch = True
-            self.scale = img_x / win_x
-
-            dist_y = win_x * img_y / img_x
-            dist_x = win_x
-
-            # calculate how much space is left
-            self.space_left = (win_y - dist_y) / 2  # half beause we only need one distance
-
-            offset = 50  # buttons should be easily touchable. that's why there's an offset to the edge of the screen
-
-            # move buttons to the correct point
-            self.root.get_screen("image_page").ids.btn0.center = (
-                offset,
-                self.space_left + offset,
-            )
-            self.root.get_screen("image_page").ids.btn3.center = (
-                dist_x - offset,
-                self.space_left + dist_y - offset,
-            )
-            self.root.get_screen("image_page").ids.btn2.center = (
-                offset,
-                self.space_left + dist_y - offset,
-            )
-            self.root.get_screen("image_page").ids.btn1.center = (
-                dist_x - offset,
-                self.space_left + offset,
-            )
-
-        else:
-            # sides touch horizontally - currently not working
-            self.vertical_touch = False
-            self.scale = img_y / win_y
-            dist_x = win_y * img_x / img_y
-            dist_y = win_y
-
-            # calculate how much space is left
-            self.space_left = (win_x - dist_x) / 2  # half because we need only one distance
-
-            offset = 50
-            self.root.get_screen("image_page").ids.btn0.center = (
-                self.space_left - 25,
-                0,
-            )
-            self.root.get_screen("image_page").ids.btn3.center = (
-                self.space_left + dist_x - 25,
-                dist_y - 50,
-            )
-            self.root.get_screen("image_page").ids.btn2.center = (
-                self.space_left - 25,
-                dist_y - 50,
-            )
-            self.root.get_screen("image_page").ids.btn1.center = (
-                self.space_left + dist_x - 25,
-                0,
-            )
-
-        # and display the lines
-        line_drawer = self.root.get_screen("image_page").ids.line_drawer
-        line_drawer.update_lines()
+    def delete_image(self, img_idx):
+        del self.img_paths[img_idx]
+        if not self.img_paths:
+            self.change_screen("camera")
 
     # Camera methods
-    def display_img(self):
+    def display_img(self, path):
         """
         displays the taken image in the image_box
         """
         # display screen to image_page
         self.change_screen("image_page")
-
-        # remove the image loaded previously to the image box
-        self.root.get_screen("image_page").ids.image_box.clear_widgets()
+        self.img_paths.append(path)
 
         # downscale image to save time during rendering
-        buf, self.size, text_res = downscale_cv2(self.img_path, 0.25)
+        buf, self.size, text_res = downscale_cv2(path, 0.25)
 
         # create texture from buffer
         texture = Texture.create(size=text_res, colorfmt="rgb")
@@ -749,21 +559,9 @@ class Andromr(MDApp):
         # and set texture
         img_widget.texture = texture
 
-        # move the buttons to the correct location
-        self.set_cutter_btn()
-
-    def img_taken(self, img_path):
-        """
-        Function running after the image is taken, see android_camera_api.py
-        Args:
-            filename(str/Path): path to the image
-        """
-        self.img_path = img_path
-        Clock.schedule_once(lambda dt: self.display_img())
-
     def capture(self, filename="test_cropped.jpg"):
         """Take an image"""
-        take_picture(self.root.get_screen("camera").ids.camera_pre, self.img_taken, filename)
+        take_picture(self.root.get_screen("camera").ids.camera_pre, self.display_img, filename)
 
     # Homr methods
     def start_inference(self, path_to_image: str):

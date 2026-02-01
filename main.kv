@@ -76,7 +76,11 @@ ScreenManager:
     name: "image_page"
 
     MDBoxLayout:
-        id: image_box
+        padding: 30
+        Carousel:
+            id: image_box
+            direction: 'right'
+            loop: False
 
     MDBoxLayout:
         id: btn_box
@@ -85,11 +89,11 @@ ScreenManager:
         spacing: dp(10)
 
         MDIconButton:
-            icon: "crop"
+            icon: "delete-outline"
             pos_hint: {"center_x": 0.5}
             size_hint: None, None
             user_font_size: "32sp"
-            on_release: app.crop()
+            on_release: app.delete_image(image_box.index)
 
         Widget:
 
@@ -103,54 +107,12 @@ ScreenManager:
         Widget:
 
         MDIconButton:
-            icon: "camera-retake"
+            icon: "camera-plus"
             pos_hint: {"center_x": 0.5}
             size_hint: None, None
             user_font_size: "32sp"
             on_release: app.change_screen("camera")
 
-    MovableMDIconButton:
-        id: btn0
-        icon: "circle-medium"
-        size_hint: None, None
-        pos: 30, 30
-        ripple_scale: 0
-        theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1  # Red
-
-    UnmovableMDIconButton:
-        id: btn1
-        icon: "circle-medium"
-        size_hint: None, None
-        pos: 30, 30
-        disabled: True
-        opacity: 0
-        ripple_scale: 0
-        theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1  # Red
-
-    UnmovableMDIconButton:
-        id: btn2
-        icon: "circle-medium"
-        size_hint: None, None
-        pos: 30, 30
-        disabled: True
-        opacity: 0
-        ripple_scale: 0
-        theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1  # Red
-
-    MovableMDIconButton:
-        id: btn3
-        icon: "circle-medium"
-        size_hint: None, None
-        pos: 30, 30
-        ripple_scale: 0
-        theme_text_color: "Custom"
-        text_color: 1, 0, 0, 1  # Red
-
-    LineDrawer:
-        id: line_drawer
 
 <ProgressPage>:
     name: "progress"
