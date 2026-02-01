@@ -199,11 +199,9 @@ def prepare_staff_image(
     region_step2 = np.array(region) - np.array([*top_left, *top_left])
     top_left = top_left / scaling_factor
 
-    t0 = perf_counter()
     staff = _dewarp_staff(staff, None, top_left, scaling_factor)
     dewarp = dewarp_staff_image(staff_image, staff, index, debug)
     staff_image = dewarp.dewarp(staff_image)
-    print(perf_counter()- t0)
 
     staff_image, top_left = crop_image_and_return_new_top(
         staff_image, region_step2[0], region_step2[1], region_step2[2], region_step2[3]

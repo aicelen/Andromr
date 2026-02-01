@@ -41,6 +41,7 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.segmentation.inference_segnet import preload_segnet
+from homr.relieur import merge_xmls
 from globals import APP_PATH, XML_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
 
@@ -570,7 +571,6 @@ class Andromr(MDApp):
 
     # Homr methods
     def start_inference(self):
-        print(self.img_paths)
         path = self.img_paths[0]
         del self.img_paths[0]
         # set the progress bar to 0
@@ -611,6 +611,13 @@ class Andromr(MDApp):
         if self.img_paths:
             self.start_inference()
         else:
+            if len(self.xml_paths) >= 2:
+                out_path = os.path.join(XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+
+                merge_xmls(self.xml_paths, out_path)
+
+                for file in self.xml_paths:
+                    os.remove(file)
             Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
     def _homr_call(self, path):
@@ -630,7 +637,7 @@ class Andromr(MDApp):
             os.path.join(XML_PATH, f"{music_title}.musicxml"),
         )
 
-        self.xml_paths.append(XML_PATH, f"{music_title}.musicxml")
+        self.xml_paths.append(os.path.join(XML_PATH, f"{music_title}.musicxml"))
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
