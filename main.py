@@ -547,6 +547,13 @@ class Andromr(MDApp):
         """
         displays the taken image in the image_box
         """
+        # Schedule UI updates on the main thread
+        Clock.schedule_once(lambda dt: self._display_img(path), 0)
+
+    def _display_img(self, path):
+        """
+        Internal method that actually performs the UI updates
+        """
         # display screen to image_page
         self.change_screen("image_page")
         self.img_paths.append(path)
