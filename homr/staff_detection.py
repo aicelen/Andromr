@@ -506,6 +506,7 @@ def filter_edge_of_vision(staffs: list[Staff], image_shape: tuple[int, ...]) -> 
         result.append(staff)
     return result
 
+
 def sort_staffs_top_to_bottom(staffs: list[Staff]) -> list[Staff]:
     return sorted(staffs, key=lambda staff: staff.min_y)
 

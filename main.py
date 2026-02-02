@@ -1,9 +1,5 @@
 # main file of the app
 # Andromr class is the main class of the app
-from kivy.config import Config
-
-# 0 = No, 1 = Yes. We set it to 0 to handle it manually.
-Config.set('kivy', 'exit_on_escape', '0') 
 
 # Kivy imports
 from kivy.lang import Builder
@@ -22,8 +18,6 @@ from kivymd.toast import toast
 from kivy.metrics import dp, sp
 from kivy.uix.recycleview import RecycleView
 from kivy.graphics.texture import Texture
-from kivy.graphics import Line, Color
-from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.uix.camera import Camera
 
@@ -118,18 +112,75 @@ else:
 # Classes of Screens used by kivy
 class LandingPage(Screen):
     def on_enter(self):
-        app = MDApp.get_running_app()
-        app.img_paths = [] # clean up the image path list
-        app.xml_paths = [] # clean up the xml list
+        self.app = MDApp.get_running_app()
+        self.app.img_paths = []  # clean up the image path list
+        self.app.xml_paths = []  # clean up the xml list
+        Clock.schedule_once(self.update_scrollview, 0)
 
-        # update self.files (needed for the scorllview)
-        app.files = os.listdir(XML_PATH)
-        app.text_lables = [os.path.splitext(file)[0] for file in app.files]
+    def update_scrollview(self, *args):
+        self.app.files = os.listdir(XML_PATH)
+        text_lables = [os.path.splitext(file)[0] for file in self.app.files]
+        scroll_box = self.ids.scroll_box
+        scroll_box.clear_widgets()
+
+        for index, text in enumerate(text_lables):
+            # Create a horizontal box layout
+            row = MDBoxLayout(
+                orientation="horizontal",
+                size_hint_y=None,
+                height=dp(50),
+                spacing=10,  # Adjust spacing between label and button
+            )
+
+            l_name = MDLabel(
+                text=text,
+                size_hint_x=0.9,  # Make label take most space
+                size_hint_y=None,
+                height=dp(50),
+                halign="center",
+            )
+
+            b_delete = MDIconButton(
+                icon="delete-outline",
+                on_release=lambda func: self.app.confirm_delete(index),
+                size_hint_x=None,
+                pos_hint={"center_y": 0.5},
+                theme_icon_color="Custom",
+                icon_color=(1, 0, 0, 1),
+            )
+
+            b_export = MDIconButton(
+                icon="export-variant",
+                on_release=lambda func: self.app.export_file(idx=index),
+                size_hint_x=None,
+                pos_hint={"center_y": 0.5},
+                theme_icon_color="Custom",
+                icon_color=(0, 1, 1, 1),
+            )
+
+            row.add_widget(l_name)
+            row.add_widget(b_delete)
+            row.add_widget(b_export)
+            scroll_box.add_widget(row)  # Add row instead of individual widgets
+
 
 class CameraPage(Screen):
-    # Unload the camera to stop recording
-    # to improve gpu performance
+    def on_enter(self):
+        """
+        Restores the camerawidget
+        """
+        parent = self.ids.camera_pre.parent
+        parent.remove_widget(self.ids.camera_pre)
+        new_cam = KvCam(fit_mode="contain", play=True)
+        self.ids.camera_pre = new_cam
+        parent.add_widget(new_cam, index=0)
+
     def on_leave(self):
+        """
+        Docstring for on_leave
+
+        Unloading the camera to stop recording
+        """
         if platform == "android":
             self.ids.camera_pre._camera._release_camera()
 
@@ -274,11 +325,7 @@ class Andromr(MDApp):
         self.title = "Andromr"
         self.appdata = appdata
 
-        # create files list (used by the scorllview)
-        self.files = os.listdir(XML_PATH)
-
         # widgets
-        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
         self.last_screen = deque(maxlen=10)
         self.returnables = [
             "landing",
@@ -302,10 +349,8 @@ class Andromr(MDApp):
             self.bottom_pad = 0
 
     def on_start(self):
-        # Update Scrollview on start
-        self.update_scrollview()
         Window.bind(on_keyboard=self.on_custom_back)
-    
+
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
         Return navigation-bar height in *dp*.
@@ -328,7 +373,6 @@ class Andromr(MDApp):
             return True
         return False
 
-
     # UI methods
     def change_screen(self, screen_name, btn=None):
         """
@@ -345,66 +389,10 @@ class Andromr(MDApp):
         # set new screen
         self.sm.current = screen_name
 
-        # update the scrollview on the landing page
-        if screen_name == "landing":
-            self.update_scrollview()
-
-        if screen_name == "camera":
-            self._restore_camera()
-
     def previous_screen(self, btn=None):
         """Switch to the previous screen"""
         if len(self.last_screen) != 0 and self.sm.current in self.returnables:
             self.sm.current = self.last_screen.pop()
-
-    def update_scrollview(self):
-        """Function that updates the scrollview on the landing page"""
-        self.files = os.listdir(XML_PATH)
-        self.text_lables = [os.path.splitext(file)[0] for file in self.files]
-        scroll_box = self.sm.get_screen("landing").ids.scroll_box
-        scroll_box.clear_widgets()
-
-        for index, text in enumerate(self.text_lables):
-            # Create a horizontal box layout
-            row = MDBoxLayout(
-                orientation="horizontal",
-                size_hint_y=None,
-                height=dp(50),
-                spacing=10,  # Adjust spacing between label and button
-            )
-
-            l_name = MDLabel(
-                text=text,
-                size_hint_x=0.9,  # Make label take most space
-                size_hint_y=None,
-                height=dp(50),
-                halign="center",
-            )
-
-            b_delete = MDIconButton(
-                icon="delete-outline",
-                on_release=lambda func: self.confirm_delete(index),
-                size_hint_x=None,
-                pos_hint={"center_y": 0.5},
-                theme_icon_color="Custom",
-                icon_color=(1, 0, 0, 1),
-                # ripple_scale=0
-            )
-
-            b_export = MDIconButton(
-                icon="export-variant",
-                on_release=lambda func: self.export_file(idx=index),
-                size_hint_x=None,
-                pos_hint={"center_y": 0.5},
-                theme_icon_color="Custom",
-                icon_color=(0, 1, 1, 1),
-                # ripple_scale=0
-            )
-
-            row.add_widget(l_name)
-            row.add_widget(b_delete)
-            row.add_widget(b_export)
-            scroll_box.add_widget(row)  # Add row instead of individual widgets
 
     def show_info(self, text: str, title: str = ""):
         """
@@ -437,8 +425,10 @@ class Andromr(MDApp):
         """
         Update the progress bar used while running homr
         """
-        self.update_progress_event = Clock.schedule_interval(lambda dt: self._update_progress_bar_status(), 0.1)
-    
+        self.update_progress_event = Clock.schedule_interval(
+            lambda dt: self._update_progress_bar_status(), 0.1
+        )
+
     def _update_progress_bar_status(self):
         # Update the UI
         self.root.get_screen("progress").ids.progress_bar.value = int(appdata.homr_progress)
@@ -448,26 +438,28 @@ class Andromr(MDApp):
             # Stop the scheduled updates
             Clock.unschedule(self.update_progress_event)
 
-
     def update_download_bar(self, camera_page):
         """
         Start the periodic update of the progress bar.
         """
         # Schedule the update function to run 10 times per second
-        self.update_download_event = Clock.schedule_interval(lambda dt: self._update_download_bar_status(camera_page), 0.1)
-
+        self.update_download_event = Clock.schedule_interval(
+            lambda dt: self._update_download_bar_status(camera_page), 0.1
+        )
 
     def _update_download_bar_status(self, camera_page):
         # Update the UI
         self.root.get_screen("downloadpage").ids.download_bar.value = int(appdata.download_progress)
-        self.root.get_screen("downloadpage").ids.download_label.text = str(appdata.downloaded_assets)
+        self.root.get_screen("downloadpage").ids.download_label.text = str(
+            appdata.downloaded_assets
+        )
 
         # Check if the thread is finished
         if not self.download_thread.is_alive():
             # Stop the scheduled updates
             Clock.unschedule(self.update_download_event)
 
-            if appdata.downloaded_assets.startswith("A"): # Error occurd
+            if appdata.downloaded_assets.startswith("A"):  # Error occurd
                 self.change_screen("landing")
                 self.show_info(appdata.downloaded_assets)
             elif camera_page:
@@ -522,7 +514,7 @@ class Andromr(MDApp):
         """
         os.remove(os.path.join(XML_PATH, self.files[index]))
         self.dialog_delete.dismiss()
-        self.update_scrollview()
+        self.root.get_screen("landing").update_scrollview()
 
     def agree_license(self):
         """Function that is triggered when the user agreed to the license"""
@@ -605,7 +597,7 @@ class Andromr(MDApp):
         """
         # run homr with try-except on android
         # else we run it without for easier debugging
-        if platform == 'android':
+        if platform == "android":
             try:
                 self._homr_call(path)
             except Exception as e:
@@ -619,7 +611,9 @@ class Andromr(MDApp):
             self.start_inference()
         else:
             if len(self.xml_paths) >= 2:
-                out_path = os.path.join(XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+                out_path = os.path.join(
+                    XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+                )
 
                 merge_xmls(self.xml_paths, out_path)
 
@@ -681,17 +675,6 @@ class Andromr(MDApp):
             self.change_screen("camera")
         else:
             self.show_toast("You already downloaded all assets")
-
-    def _restore_camera(self, dt=None):
-        """
-        Restores the camerawidget
-        """
-        camera_screen = self.root.get_screen("camera")
-        parent = camera_screen.ids.camera_pre.parent
-        parent.remove_widget(camera_screen.ids.camera_pre)
-        new_cam = KvCam(fit_mode="contain", play=True)
-        camera_screen.ids.camera_pre = new_cam
-        parent.add_widget(new_cam, index=0)
 
 
 if __name__ == "__main__":

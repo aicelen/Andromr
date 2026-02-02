@@ -19,6 +19,7 @@ XML_PATH = os.path.join(APP_STORAGE, "musicxml")
 os.makedirs(XML_PATH, exist_ok=True)
 os.makedirs(MODEL_STORAGE, exist_ok=True)
 
+
 class AppData:
     def __init__(self):
         self.settings_file_path = os.path.join(APP_STORAGE, "saved_settings.json")

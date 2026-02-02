@@ -55,13 +55,13 @@ if platform == "android":
             self.model_filename = model_filename
             self.options = InterpreterOptions()
             self.compatList = CompatibilityList()
-            if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():                
+            if use_gpu and self.compatList.isDelegateSupportedOnThisDevice():
                 # Delegate Options
                 delegate_options = self.compatList.getBestOptionsForThisDevice()
-                delegate_options = delegate_options.setPrecisionLossAllowed(
-                    precision_loss
+                delegate_options = delegate_options.setPrecisionLossAllowed(precision_loss)
+                delegate_options = delegate_options.setInferencePreference(
+                    1 if sustained_speed else 0
                 )
-                delegate_options = delegate_options.setInferencePreference(1 if sustained_speed else 0)
 
                 if os.path.exists(self.model_filename):
                     serialization_dir = self._get_serialization_dir()

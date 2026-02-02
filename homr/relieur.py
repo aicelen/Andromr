@@ -7,18 +7,22 @@ from glob import glob
 import musicxml.xmlelement.xmlelement as mxl  # type: ignore
 from musicxml.parser.parser import parse_musicxml  # type: ignore
 
-def clef_attributes(clef)->dict[str]: # type ignore
+
+def clef_attributes(clef) -> dict[str]:  # type ignore
     # take mxl.XMLClef
     attributes = {}
     for a in clef.get_children_of_type(mxl.XMLSign):
         attributes["Sign"] = a.value_
     for a in clef.get_children_of_type(mxl.XMLSign):
         attributes["Line"] = a.value_
-    for a in clef.get_children_of_type(mxl.XMLClefOctaveChange,):
+    for a in clef.get_children_of_type(
+        mxl.XMLClefOctaveChange,
+    ):
         attributes["ClefOctaveChange"] = a.value_
     return attributes
 
-def time_attributes(time)->dict[str]: # type ignore
+
+def time_attributes(time) -> dict[str]:  # type ignore
     # take mxl.XMLTime
     attributes = {}
     for a in time.get_children_of_type(mxl.XMLBeats):
@@ -31,7 +35,8 @@ def time_attributes(time)->dict[str]: # type ignore
         attributes["SenzaMisura"] = a.value_
     return attributes
 
-def key_attributes(key)->dict[str]: # type ignore
+
+def key_attributes(key) -> dict[str]:  # type ignore
     # take mxl.XMLKey
     attributes = {}
     for a in key.get_children_of_type(mxl.XMLFifths):
@@ -42,11 +47,12 @@ def key_attributes(key)->dict[str]: # type ignore
         attributes["Mode"] = a.value_
     return attributes
 
+
 def merge_xmls(
     concat: tuple[str],
     path_out: str,
     debug=False,
-    ) -> tuple:
+) -> tuple:
     sorted_list = get_file_list(concat, debug=debug)
     if not sorted_list:
         return None, 0, 0
@@ -62,13 +68,13 @@ def merge_xmls(
         for measure in part1.get_children_of_type(mxl.XMLMeasure):
             for attrib in measure.get_children_of_type(mxl.XMLAttributes):
                 for div in attrib.get_children_of_type(mxl.XMLDivisions):
-                    part_attributes['Divisions'] = div.value_
+                    part_attributes["Divisions"] = div.value_
                 for key in attrib.get_children_of_type(mxl.XMLKey):
-                    part_attributes['Key'] = key_attributes(key)
+                    part_attributes["Key"] = key_attributes(key)
                 for xtime in attrib.get_children_of_type(mxl.XMLTime):
-                    part_attributes['Time'] = time_attributes(xtime)
+                    part_attributes["Time"] = time_attributes(xtime)
                 for clef in attrib.get_children_of_type(mxl.XMLClef):
-                    part_attributes['Clef'] = clef_attributes(clef)
+                    part_attributes["Clef"] = clef_attributes(clef)
         last_parts_attributes.append(part_attributes)
     for f in sorted_list[1:]:
         # new file to add
@@ -90,38 +96,47 @@ def merge_xmls(
                         if int(measure.number) == 1:
                             for attrib in measure.get_children_of_type(mxl.XMLAttributes):
                                 for div in attrib.get_children_of_type(mxl.XMLDivisions):
-                                    if last_parts_attributes[ib]['Divisions'] == div.value_:
+                                    if last_parts_attributes[ib]["Divisions"] == div.value_:
                                         attrib.remove(div)
                                         if debug:
-                                            print(f"Remove division at measure {new_number}, part {ib + 1}")
+                                            print(
+                                                f"Remove division at measure {new_number}, part {ib + 1}"
+                                            )
                                 for key in attrib.get_children_of_type(mxl.XMLKey):
-                                    if last_parts_attributes[ib]['Key'] == key_attributes(key):
+                                    if last_parts_attributes[ib]["Key"] == key_attributes(key):
                                         if debug:
-                                            print(f"Remove key at measure {new_number}, part {ib + 1}")
+                                            print(
+                                                f"Remove key at measure {new_number}, part {ib + 1}"
+                                            )
                                         attrib.remove(key)
                                 for xtime in attrib.get_children_of_type(mxl.XMLTime):
-                                    if last_parts_attributes[ib]['Time'] == time_attributes(xtime):
+                                    if last_parts_attributes[ib]["Time"] == time_attributes(xtime):
                                         attrib.remove(xtime)
                                         if debug:
-                                            print(f"Remove time at measure {new_number}, part {ib + 1}")
+                                            print(
+                                                f"Remove time at measure {new_number}, part {ib + 1}"
+                                            )
                                 for clef in attrib.get_children_of_type(mxl.XMLClef):
-                                    if last_parts_attributes[ib]['Clef'] == clef_attributes(clef):
+                                    if last_parts_attributes[ib]["Clef"] == clef_attributes(clef):
                                         attrib.remove(clef)
                                         if debug:
-                                            print(f"Remove clef at measure {new_number}, part {ib + 1}")
+                                            print(
+                                                f"Remove clef at measure {new_number}, part {ib + 1}"
+                                            )
                         measure.number = new_number
                         part1.add_child(measure)
                         if debug:
                             print(f"Added measure {new_number}, part {ib + 1}")
                     current_len = len(part1.get_children_of_type(mxl.XMLMeasure))
                 ib += 1
-            ip +=1
+            ip += 1
     m.write(path_out)
+
 
 def get_file_list(
     concat: tuple[str],
     debug=False,
-    ) -> list[str]:
+) -> list[str]:
     # get the list of files
     sorted_list = []
 

@@ -50,6 +50,6 @@ def preload_encoder(num_threads: int, use_gpu: bool) -> TensorFlowModel:
         encoder = TensorFlowModel(
             default_config.filepaths.encoder,
             num_threads=num_threads,
-            use_gpu=False, # GPU is not supported
+            use_gpu=False,  # GPU is not supported
             precision_loss=False,
         )

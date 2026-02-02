@@ -1,10 +1,9 @@
-
-
 import torch
-import ai_edge_torch # Use ai_edge_torch_nightly
+import ai_edge_torch  # Use ai_edge_torch_nightly
 from training.architecture.transformer.encoder import get_encoder
 from homr.transformer.configs import Config
 from tflite.quantize import quant_int8
+
 
 def convert_encoder(model_name):
     config = Config()
@@ -20,5 +19,5 @@ def convert_encoder(model_name):
     quant_int8(model_name)
 
 
-if  __name__ == "__main__":
+if __name__ == "__main__":
     convert_encoder("encoder_242")
