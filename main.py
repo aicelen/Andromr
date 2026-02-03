@@ -91,7 +91,7 @@ if platform == "android":
     preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
-    # Custom placeholder widget for Desktop
+
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
 
@@ -106,7 +106,7 @@ else:
             )
 
     def take_picture(widget, function, filename):
-        function(filename)
+        function("test_cropped.jpg")
 
 
 # Classes of Screens used by kivy
@@ -118,8 +118,8 @@ class LandingPage(Screen):
         Clock.schedule_once(self.update_scrollview, 0)
 
     def update_scrollview(self, *args):
-        self.app.files = os.listdir(XML_PATH)
-        text_lables = [os.path.splitext(file)[0] for file in self.app.files]
+        self.files = os.listdir(XML_PATH)
+        text_lables = [os.path.splitext(file)[0] for file in self.files]
         scroll_box = self.ids.scroll_box
         scroll_box.clear_widgets()
 
@@ -142,7 +142,7 @@ class LandingPage(Screen):
 
             b_delete = MDIconButton(
                 icon="delete-outline",
-                on_release=lambda func: self.app.confirm_delete(index),
+                on_release=lambda func: self.confirm_delete(index),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -151,7 +151,7 @@ class LandingPage(Screen):
 
             b_export = MDIconButton(
                 icon="export-variant",
-                on_release=lambda func: self.app.export_file(idx=index),
+                on_release=lambda func: self.export_file(idx=index),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -163,12 +163,61 @@ class LandingPage(Screen):
             row.add_widget(b_export)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
 
+    def export_file(self, idx, btn=None):
+        """
+        Save a file to Android External Storage
+        Args:
+            musicxml(bool): export as musicxml
+            idx(int): index of the element in self.files
+
+            Returns:
+                None
+        """
+        # export (.musicxml)
+        self.share_file(os.path.join(XML_PATH, self.files[idx]))
+
+    def share_file(self, path: str):
+        """
+        Share a file from a file path using android share sheets.
+        Based on https://github.com/Android-for-Python/share_send_example/
+        Args:
+            path(str): path to file located in app storage.
+        """
+        uri = SharedStorage().copy_to_shared(path)
+        ShareSheet().share_file(uri)
+
+    def confirm_delete(self, idx: int):
+        """
+        creates a special pop-up with two buttons; one is bound to delete an element in the scrollview, the other to cancel
+        Args:
+            idx(int): index of the element that we want to be deleted
+        """
+        self.dialog_delete = MDDialog(
+            text="Are you sure you want to delete this scan? This cannot be undone.",
+            buttons=[
+                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
+                MDFlatButton(text="CONFIRM", on_release=lambda func: self.delete_element(idx)),
+            ],
+        )
+        self.dialog_delete.open()
+
+    def delete_element(self, index: int):
+        """
+        Deletes a certain element of the scrollview
+        Args:
+            index(int): index of the element in the scrollview that should be deleted
+        """
+        os.remove(os.path.join(XML_PATH, self.files[index]))
+        self.dialog_delete.dismiss()
+        self.update_scrollview()
+
 
 class CameraPage(Screen):
     def on_enter(self):
         """
         Restores the camerawidget
         """
+        self.app = MDApp.get_running_app()
         parent = self.ids.camera_pre.parent
         parent.remove_widget(self.ids.camera_pre)
         new_cam = KvCam(fit_mode="contain", play=True)
@@ -184,9 +233,61 @@ class CameraPage(Screen):
         if platform == "android":
             self.ids.camera_pre._camera._release_camera()
 
+    def display_img(self, path):
+        """
+        displays the taken image in the image_box
+        """
+        # Schedule UI updates on the main thread
+        Clock.schedule_once(lambda dt: self._display_img(path), 0)
+
+    def _display_img(self, path):
+        """
+        Internal method that actually performs the UI updates
+        """
+        # display screen to image_page
+        self.app.change_screen("image_page")
+        self.app.img_paths.append(path)
+
+        # downscale image to save time during rendering
+        buf, self.size, text_res = downscale_cv2(path, 0.25)
+
+        # create texture from buffer
+        texture = Texture.create(size=text_res, colorfmt="rgb")
+        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
+        # create Image widget
+        img_widget = Image(fit_mode="contain")
+        self.app.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
+
+        # and set texture
+        img_widget.texture = texture
+
+    def take_picture(self, filename=f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"):
+        """Take an image"""
+        take_picture(self.ids.camera_pre, self.display_img, filename)
+
 
 class ProgressPage(Screen):
-    pass
+    def on_enter(self):
+        self.ids.title.text = ""
+
+    def update_progress_bar(self):
+        """
+        Update the progress bar used while running homr
+        """
+        self.update_progress_event = Clock.schedule_interval(
+            lambda dt: self._update_progress_bar_status(), 0.1
+        )
+
+    def _update_progress_bar_status(self):
+        app = MDApp.get_running_app()
+        # Update the UI
+        self.ids.progress_bar.value = int(appdata.homr_progress)
+        self.ids.progress_label.text = str(appdata.homr_state)
+        # Check if the thread is finished
+        if not app.ml_thread.is_alive():
+            # Stop the scheduled updates
+            Clock.unschedule(self.update_progress_event)
 
 
 class SettingsPage(Screen):
@@ -218,15 +319,51 @@ class LicensePage(Screen):
 
 
 class LicensePageButton(Screen):
-    pass
+    def agree_license(self):
+        """Function that is triggered when the user agreed to the license"""
+        app = MDApp.get_running_app()
+        appdata.agreed = True
+        appdata.save_settings()
+        app.change_screen("landing")
 
 
 class EditImagePage(Screen):
-    pass
+    def delete_image(self, img_idx):
+        app = MDApp.get_running_app()
+        del app.img_paths[img_idx]
+        if not app.img_paths:
+            app.change_screen("camera")
 
 
 class DownloadPage(Screen):
-    pass
+    def update_download_bar(self, camera_page):
+        """
+        Start the periodic update of the progress bar.
+        """
+        # Schedule the update function to run 10 times per second
+        self.update_download_event = Clock.schedule_interval(
+            lambda dt: self._update_download_bar_status(camera_page), 0.1
+        )
+
+    def _update_download_bar_status(self, camera_page):
+        app = MDApp.get_running_app()
+
+        # Update the UI
+        self.ids.download_bar.value = int(appdata.download_progress)
+        self.ids.download_label.text = str(appdata.downloaded_assets)
+
+        # Check if the thread is finished
+        if not app.download_thread.is_alive():
+            # Stop the scheduled updates
+            Clock.unschedule(self.update_download_event)
+
+            if appdata.downloaded_assets.startswith("A"):  # Error occurd
+                app.change_screen("landing")
+                app.show_info(appdata.downloaded_assets)
+            elif camera_page:
+                app.change_screen("camera")
+            else:
+                app.change_screen("settings")
 
 
 class License(RecycleView):
@@ -421,152 +558,12 @@ class Andromr(MDApp):
         """
         toast(text=text)
 
-    def update_progress_bar(self):
-        """
-        Update the progress bar used while running homr
-        """
-        self.update_progress_event = Clock.schedule_interval(
-            lambda dt: self._update_progress_bar_status(), 0.1
-        )
-
-    def _update_progress_bar_status(self):
-        # Update the UI
-        self.root.get_screen("progress").ids.progress_bar.value = int(appdata.homr_progress)
-        self.root.get_screen("progress").ids.progress_label.text = str(appdata.homr_state)
-        # Check if the thread is finished
-        if not self.ml_thread.is_alive():
-            # Stop the scheduled updates
-            Clock.unschedule(self.update_progress_event)
-
-    def update_download_bar(self, camera_page):
-        """
-        Start the periodic update of the progress bar.
-        """
-        # Schedule the update function to run 10 times per second
-        self.update_download_event = Clock.schedule_interval(
-            lambda dt: self._update_download_bar_status(camera_page), 0.1
-        )
-
-    def _update_download_bar_status(self, camera_page):
-        # Update the UI
-        self.root.get_screen("downloadpage").ids.download_bar.value = int(appdata.download_progress)
-        self.root.get_screen("downloadpage").ids.download_label.text = str(
-            appdata.downloaded_assets
-        )
-
-        # Check if the thread is finished
-        if not self.download_thread.is_alive():
-            # Stop the scheduled updates
-            Clock.unschedule(self.update_download_event)
-
-            if appdata.downloaded_assets.startswith("A"):  # Error occurd
-                self.change_screen("landing")
-                self.show_info(appdata.downloaded_assets)
-            elif camera_page:
-                self.change_screen("camera")
-            else:
-                self.change_screen("settings")
-
-    # Button click methods
-    def export_file(self, idx, btn=None):
-        """
-        Save a file to Android External Storage
-        Args:
-            musicxml(bool): export as musicxml
-            idx(int): index of the element in self.files
-
-            Returns:
-                None
-        """
-        # export (.musicxml)
-        self.share_file(os.path.join(XML_PATH, self.files[idx]))
-
-    def share_file(self, path: str):
-        """
-        Share a file from a file path using android share sheets.
-        Based on https://github.com/Android-for-Python/share_send_example/
-        Args:
-            path(str): path to file located in app storage.
-        """
-        uri = SharedStorage().copy_to_shared(path)
-        ShareSheet().share_file(uri)
-
-    def confirm_delete(self, idx: int):
-        """
-        creates a special pop-up with two buttons; one is bound to delete an element in the scrollview, the other to cancel
-        Args:
-            idx(int): index of the element that we want to be deleted
-        """
-        self.dialog_delete = MDDialog(
-            text="Are you sure you want to delete this scan? This cannot be undone.",
-            buttons=[
-                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
-                MDFlatButton(text="CONFIRM", on_release=lambda func: self.delete_element(idx)),
-            ],
-        )
-        self.dialog_delete.open()
-
-    def delete_element(self, index: int):
-        """
-        Deletes a certain element of the scrollview
-        Args:
-            index(int): index of the element in the scrollview that should be deleted
-        """
-        os.remove(os.path.join(XML_PATH, self.files[index]))
-        self.dialog_delete.dismiss()
-        self.root.get_screen("landing").update_scrollview()
-
-    def agree_license(self):
-        """Function that is triggered when the user agreed to the license"""
-        appdata.agreed = True
-        appdata.save_settings()
-        self.change_screen("landing")
-
     def open_menu(self, button):
         self.menu.caller = button
         self.menu.open()
 
     def menu_callback(self):
         self.menu.dismiss()
-
-    def delete_image(self, img_idx):
-        del self.img_paths[img_idx]
-        if not self.img_paths:
-            self.change_screen("camera")
-
-    # Camera methods
-    def display_img(self, path):
-        """
-        displays the taken image in the image_box
-        """
-        # Schedule UI updates on the main thread
-        Clock.schedule_once(lambda dt: self._display_img(path), 0)
-
-    def _display_img(self, path):
-        """
-        Internal method that actually performs the UI updates
-        """
-        # display screen to image_page
-        self.change_screen("image_page")
-        self.img_paths.append(path)
-
-        # downscale image to save time during rendering
-        buf, self.size, text_res = downscale_cv2(path, 0.25)
-
-        # create texture from buffer
-        texture = Texture.create(size=text_res, colorfmt="rgb")
-        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
-
-        # create Image widget
-        img_widget = Image(fit_mode="contain")
-        self.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
-
-        # and set texture
-        img_widget.texture = texture
-
-    def take_picture(self, filename="test_cropped.jpg"):
-        """Take an image"""
-        take_picture(self.root.get_screen("camera").ids.camera_pre, self.display_img, filename)
 
     # Homr methods
     def start_inference(self):
@@ -578,13 +575,13 @@ class Andromr(MDApp):
         # go to progress page
         self.change_screen("progress")
 
-        # reset text-field contents
-        self.root.get_screen("progress").ids.title.text = ""
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
         self.ml_thread = Thread(target=self.homr_call, args=(path,), daemon=True)
-        self.progress_thread = Thread(target=self.update_progress_bar, daemon=True)
+        self.progress_thread = Thread(
+            target=self.root.get_screen("progress").update_progress_bar, daemon=True
+        )
         self.ml_thread.start()
         self.progress_thread.start()
 
@@ -643,7 +640,11 @@ class Andromr(MDApp):
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
         self.download_thread = Thread(target=download_weights, daemon=True)
-        update = Thread(target=self.update_download_bar, args=(camera_page,), daemon=True)
+        update = Thread(
+            target=self.root.get_screen("downloadpage").update_download_bar,
+            args=(camera_page,),
+            daemon=True,
+        )
         self.download_thread.start()
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
@@ -651,8 +652,8 @@ class Andromr(MDApp):
     def check_download_assets(self, camera_page=False):
         """
         If not all tflite models are downloaded it will create a Dialog informing the user
-        that the App wants to download something. If the user allows to the app will switch
-        to a Screen displaying a Progressbar.
+        that the App wants to download the models. If the user allows it, the app will switch
+        to the downloadpage (which displays a progress bar).
         If all tflite models are downloaded it will directly switch to the camera screen.
         """
         if check_for_missing_models():

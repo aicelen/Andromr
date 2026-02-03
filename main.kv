@@ -68,7 +68,7 @@ ScreenManager:
         icon: "circle-slice-8"
         size_hint_x: None
         pos_hint: {'center_x': 0.5, 'center_y': 0.125}
-        on_release: app.take_picture()
+        on_release: root.take_picture()
         icon_size: "80dp"
 
 
@@ -93,7 +93,7 @@ ScreenManager:
             pos_hint: {"center_x": 0.5}
             size_hint: None, None
             user_font_size: "32sp"
-            on_release: app.delete_image(image_box.index)
+            on_release: root.delete_image(image_box.index)
 
         Widget:
 
@@ -331,7 +331,7 @@ ScreenManager:
                 pos_hint: {"center_x": 0.5}
                 md_bg_color: app.theme_cls.primary_color
                 text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
-                on_release: app.agree_license()
+                on_release: root.agree_license()
 <OSS_Licenses>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
