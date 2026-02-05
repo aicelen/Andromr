@@ -123,7 +123,7 @@ class LandingPage(Screen):
         scroll_box = self.ids.scroll_box
         scroll_box.clear_widgets()
 
-        for index, text in enumerate(text_lables):
+        for file, text in zip(self.files, text_lables):
             # Create a horizontal box layout
             row = MDBoxLayout(
                 orientation="horizontal",
@@ -142,7 +142,7 @@ class LandingPage(Screen):
 
             b_delete = MDIconButton(
                 icon="delete-outline",
-                on_release=lambda func: self.confirm_delete(index),
+                on_release=lambda func, path=os.path.join(XML_PATH, file): self.confirm_delete(path),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -151,7 +151,7 @@ class LandingPage(Screen):
 
             b_export = MDIconButton(
                 icon="export-variant",
-                on_release=lambda func: self.export_file(idx=index),
+                on_release=lambda func, path=os.path.join(XML_PATH, file): self.export_file(path),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -163,7 +163,7 @@ class LandingPage(Screen):
             row.add_widget(b_export)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
 
-    def export_file(self, idx, btn=None):
+    def export_file(self, path: str, btn=None):
         """
         Save a file to Android External Storage
         Args:
@@ -174,7 +174,11 @@ class LandingPage(Screen):
                 None
         """
         # export (.musicxml)
-        self.share_file(os.path.join(XML_PATH, self.files[idx]))
+        print(f"Trying to export {path}")
+        if platform == 'android':
+            self.share_file(path)
+        else:
+            print("Exporting is not implemented on Desktop")
 
     def share_file(self, path: str):
         """
@@ -186,28 +190,29 @@ class LandingPage(Screen):
         uri = SharedStorage().copy_to_shared(path)
         ShareSheet().share_file(uri)
 
-    def confirm_delete(self, idx: int):
+    def confirm_delete(self, path: str):
         """
         creates a special pop-up with two buttons; one is bound to delete an element in the scrollview, the other to cancel
         Args:
             idx(int): index of the element that we want to be deleted
         """
+        print(f"Trying to delete {path}")
         self.dialog_delete = MDDialog(
             text="Are you sure you want to delete this scan? This cannot be undone.",
             buttons=[
                 MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
-                MDFlatButton(text="CONFIRM", on_release=lambda func: self.delete_element(idx)),
+                MDFlatButton(text="CONFIRM", on_release=lambda func: self.delete_element(path)),
             ],
         )
         self.dialog_delete.open()
 
-    def delete_element(self, index: int):
+    def delete_element(self, path: str):
         """
         Deletes a certain element of the scrollview
         Args:
             index(int): index of the element in the scrollview that should be deleted
         """
-        os.remove(os.path.join(XML_PATH, self.files[index]))
+        os.remove(path)
         self.dialog_delete.dismiss()
         self.update_scrollview()
 
