@@ -238,29 +238,7 @@ class CameraPage(Screen):
         displays the taken image in the image_box
         """
         # Schedule UI updates on the main thread
-        Clock.schedule_once(lambda dt: self._display_img(path), 0)
-
-    def _display_img(self, path):
-        """
-        Internal method that actually performs the UI updates
-        """
-        # display screen to image_page
-        self.app.change_screen("image_page")
-        self.app.img_paths.append(path)
-
-        # downscale image to save time during rendering
-        buf, self.size, text_res = downscale_cv2(path, 0.25)
-
-        # create texture from buffer
-        texture = Texture.create(size=text_res, colorfmt="rgb")
-        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
-
-        # create Image widget
-        img_widget = Image(fit_mode="contain")
-        self.app.root.get_screen("image_page").ids.image_box.add_widget(img_widget)
-
-        # and set texture
-        img_widget.texture = texture
+        Clock.schedule_once(lambda dt: self.app.root.get_screen("image_page")._display_img(path), 0)
 
     def take_picture(self, filename=f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"):
         """Take an image"""
@@ -333,6 +311,33 @@ class EditImagePage(Screen):
         del app.img_paths[img_idx]
         if not app.img_paths:
             app.change_screen("camera")
+        else:
+            app.show_toast(f"Deleted Image {img_idx+1}")
+        self.ids.image_box.remove_widget(self.ids.image_box.slides[img_idx])
+    
+    def _display_img(self, path):
+        """
+        Internal method that actually performs the UI updates
+        """
+        # display screen to image_page
+        app = MDApp.get_running_app()
+        app.change_screen("image_page")
+        downscale_cv2(path, 0.25)
+        app.img_paths.append(path)
+
+        # downscale image to save time during rendering
+        buf, self.size, text_res = downscale_cv2(path, 0.25)
+
+        # create texture from buffer
+        texture = Texture.create(size=text_res, colorfmt="rgb")
+        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
+        # create Image widget
+        img_widget = Image(fit_mode="contain")
+        self.ids.image_box.add_widget(img_widget)
+
+        # and set texture
+        img_widget.texture = texture
 
 
 class DownloadPage(Screen):

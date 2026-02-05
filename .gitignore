@@ -8,6 +8,7 @@
 build/
 /datasets/
 /data/
+/libs/
 
 #tflite model folders
 /segnet_155/
@@ -41,6 +42,7 @@ commands.txt
 *.o
 _warps_cy.c
 *.npy
+*.aar
 
 # dev files
 onnx_ser.txt
