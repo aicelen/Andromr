@@ -627,7 +627,7 @@ class Andromr(MDApp):
         else:
             if len(self.xml_paths) >= 2:
                 out_path = os.path.join(
-                    XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+                    XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml"
                 )
 
                 merge_xmls(self.xml_paths, out_path)
