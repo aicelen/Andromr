@@ -38,6 +38,7 @@ from homr.segmentation.inference_segnet import preload_segnet
 from homr.relieur import merge_xmls
 from globals import APP_PATH, XML_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
+from plyer import filechooser
 
 if platform == "android":
     from android_camera_api import take_picture
@@ -106,7 +107,8 @@ else:
             )
 
     def take_picture(widget, function, filename):
-        function("test_cropped.jpg")
+        path = filechooser.open_file(title="Select your document")
+        function(path[0])
 
 
 # Classes of Screens used by kivy
@@ -115,9 +117,16 @@ class LandingPage(Screen):
         self.app = MDApp.get_running_app()
         self.app.img_paths = []  # clean up the image path list
         self.app.xml_paths = []  # clean up the xml list
+
         Clock.schedule_once(self.update_scrollview, 0)
 
     def update_scrollview(self, *args):
+        # Unload camera
+        if platform == "android":
+            self.app.root.get_screen("camera").ids.camera_pre._camera._release_camera()
+
+        self.app.root.get_screen("image_page").ids.image_box.clear_widgets() # clean up widgets
+
         self.files = os.listdir(XML_PATH)
         text_lables = [os.path.splitext(file)[0] for file in self.files]
         scroll_box = self.ids.scroll_box
@@ -223,20 +232,13 @@ class CameraPage(Screen):
         Restores the camerawidget
         """
         self.app = MDApp.get_running_app()
+
+        # Reload camera
         parent = self.ids.camera_pre.parent
         parent.remove_widget(self.ids.camera_pre)
         new_cam = KvCam(fit_mode="contain", play=True)
         self.ids.camera_pre = new_cam
         parent.add_widget(new_cam, index=0)
-
-    def on_leave(self):
-        """
-        Docstring for on_leave
-
-        Unloading the camera to stop recording
-        """
-        if platform == "android":
-            self.ids.camera_pre._camera._release_camera()
 
     def display_img(self, path):
         """
@@ -252,7 +254,13 @@ class CameraPage(Screen):
 
 class ProgressPage(Screen):
     def on_enter(self):
+        app = MDApp.get_running_app()
         self.ids.title.text = ""
+        # Unload camera
+        if platform == "android":
+            screen = app.root.get_screen("camera")
+            screen.ids.camera_pre._camera._release_camera()
+            screen.remove_widget(screen.ids.camera_pre)
 
     def update_progress_bar(self):
         """
@@ -473,7 +481,7 @@ class Andromr(MDApp):
         self.appdata = appdata
 
         # widgets
-        self.last_screen = deque(maxlen=10)
+        self.last_screen = deque(maxlen=4)
         self.returnables = [
             "landing",
             "camera",

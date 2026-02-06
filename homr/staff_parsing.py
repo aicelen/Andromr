@@ -210,7 +210,7 @@ def prepare_staff_image(
     scaling_factor = 1
 
     staff_image = remove_black_contours_at_edges_of_image(staff_image, staff.average_unit_size)
-    staff_image = center_image_on_canvas(staff_image, image_dimensions, margin_bottom=margin_bottom)
+    staff_image = center_image_on_canvas(staff_image, image_dimensions)
     return staff_image, staff
 
 
