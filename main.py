@@ -653,6 +653,11 @@ class Andromr(MDApp):
             os.path.join(XML_PATH, f"{music_title}.musicxml"),
         )
 
+        # Not removing input image on desktop to make things easier
+        if platform == 'android':
+            os.remove(path)
+            print(f"Removed {path}")
+
         self.xml_paths.append(os.path.join(XML_PATH, f"{music_title}.musicxml"))
 
     def start_download(self, camera_page=False):
