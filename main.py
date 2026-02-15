@@ -38,7 +38,7 @@ from homr.segmentation.inference_segnet import preload_segnet
 from homr.relieur import merge_xmls
 from globals import APP_PATH, XML_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
-from plyer import filechooser
+
 
 if platform == "android":
     from android_camera_api import take_picture
@@ -92,7 +92,7 @@ if platform == "android":
     preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
-
+    from plyer import filechooser
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
 
@@ -233,12 +233,18 @@ class CameraPage(Screen):
         """
         self.app = MDApp.get_running_app()
 
+
         # Reload camera
-        parent = self.ids.camera_pre.parent
-        parent.remove_widget(self.ids.camera_pre)
-        new_cam = KvCam(fit_mode="contain", play=True)
-        self.ids.camera_pre = new_cam
-        parent.add_widget(new_cam, index=0)
+        if self.app.previous_screen != "image_page":
+            self.reload_camera()
+
+    def reload_camera(self):
+            parent = self.ids.camera_pre.parent
+            if parent is not None:
+                parent.remove_widget(self.ids.camera_pre)
+            new_cam = KvCam(fit_mode="contain", play=True)
+            self.ids.camera_pre = new_cam
+            parent.add_widget(new_cam, index=0)
 
     def display_img(self, path):
         """
@@ -327,7 +333,7 @@ class EditImagePage(Screen):
         else:
             app.show_toast(f"Deleted Image {img_idx+1}")
         self.ids.image_box.remove_widget(self.ids.image_box.slides[img_idx])
-    
+
     def _display_img(self, path):
         """
         Internal method that actually performs the UI updates
@@ -481,7 +487,8 @@ class Andromr(MDApp):
         self.appdata = appdata
 
         # widgets
-        self.last_screen = deque(maxlen=4)
+        self.last_screens = deque(maxlen=4)
+        self.previous_screen = None
         self.returnables = [
             "landing",
             "camera",
@@ -505,6 +512,7 @@ class Andromr(MDApp):
 
     def on_start(self):
         Window.bind(on_keyboard=self.on_custom_back)
+        print('starting')
 
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
@@ -524,7 +532,7 @@ class Andromr(MDApp):
     def on_custom_back(self, window, key, scancode, codepoint, modifiers):
         print(f"Key pressed: {key}")  # Should print 27 for back button
         if key == 27:
-            self.previous_screen()
+            self.switch_to_previous_screen()
             return True
         return False
 
@@ -539,15 +547,17 @@ class Andromr(MDApp):
 
         # record current screen
         if self.sm.current in self.returnables:
-            self.last_screen.append(self.sm.current)
+            self.last_screens.append(self.sm.current)
+        
+        self.previous_screen = self.sm.current
 
         # set new screen
         self.sm.current = screen_name
 
-    def previous_screen(self, btn=None):
+    def switch_to_previous_screen(self, btn=None):
         """Switch to the previous screen"""
-        if len(self.last_screen) != 0 and self.sm.current in self.returnables:
-            self.sm.current = self.last_screen.pop()
+        if len(self.last_screens) != 0 and self.sm.current in self.returnables:
+            self.sm.current = self.last_screens.pop()
 
     def show_info(self, text: str, title: str = ""):
         """
@@ -699,7 +709,13 @@ class Andromr(MDApp):
             self.change_screen("camera")
         else:
             self.show_toast("You already downloaded all assets")
+    
+    def on_resume(self):
+        Clock.schedule_once(self._resume_camera, 0)
 
+    def _resume_camera(self, dt):
+        cam_screen = self.root.get_screen("camera")
+        cam_screen.reload_camera()
 
 if __name__ == "__main__":
     Andromr().run()
