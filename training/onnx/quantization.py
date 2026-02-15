@@ -24,7 +24,7 @@ def quantization_int8(
         )  # Preprocess model for better quantization results
         quantize_dynamic(
             "model_preprocessed.onnx", out_path, weight_type=QuantType.QInt8
-        )  # Quint8 is slower on x86-64
+        )
     else:
         quant_pre_process(
             model_path, "model_preprocessed.onnx"
