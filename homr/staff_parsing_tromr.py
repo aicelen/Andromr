@@ -14,5 +14,5 @@ def predict_best(org_image: NDArray, staff: Staff) -> list[EncodedSymbol]:
     global inference  # noqa: PLW0603
     if inference is None:
         inference = Staff2Score()
-
-    return inference.predict(org_image)
+    out, time = inference.predict(org_image)
+    return out

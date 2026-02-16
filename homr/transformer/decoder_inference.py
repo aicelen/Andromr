@@ -40,7 +40,6 @@ class ScoreDecoder:
         self.inv_lift_vocab = {v: k for k, v in config.lift_vocab.items()}
         self.inv_articulation_vocab = {v: k for k, v in config.articulation_vocab.items()}
         self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
-        self.state_vocab = config.state_vocab
 
     def generate(
         self,

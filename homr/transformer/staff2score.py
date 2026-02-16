@@ -43,6 +43,7 @@ class Staff2Score:
         context = self.encoder.generate(x)
 
         # Make a prediction using decoder
+        t1 = perf_counter()
         out = self.decoder.generate(
             start_token,
             nonote_token,
@@ -51,9 +52,7 @@ class Staff2Score:
             context=context,
         )
 
-        eprint(f"Inference Time Tromr: {perf_counter() - t0}")
-
-        return out
+        return out, perf_counter() - t1
 
 
 class ConvertToArray:
@@ -87,5 +86,17 @@ def test_transformer_on_image(path_to_img: str) -> None:
     eprint(out)
 
 
+def benchmark(path_to_img: str, it) -> None:
+    from PIL import Image
+
+    model = Staff2Score(False)
+    image = Image.open(path_to_img)
+    t_complete = 0
+    for i in range(it):
+        t_complete += model.predict(np.array(image))[1]
+    
+    eprint(t_complete/it)
+
+
 if __name__ == "__main__":
-    test_transformer_on_image("staff.png")
+    benchmark("staff.png", 10)
