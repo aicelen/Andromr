@@ -48,7 +48,7 @@ version = 1.3
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.0, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, peak_finding_utils, pyjnius, android, pykdtree, musicxml, requests, verysimpletree, androidstorage4kivy
+requirements = python3, kivy==2.3.1, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, pyjnius, android, pykdtree, musicxml, requests, verysimpletree, androidstorage4kivy
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -76,12 +76,10 @@ orientation = portrait
 #
 # OSX Specific
 #
-
-#
 # author = © Copyright Info
 
 # Kivy version to use
-osx.kivy_version = 2.3.0
+osx.kivy_version = 2.3.1
 
 #
 # Android specific
@@ -124,7 +122,7 @@ android.minapi = 24
 # android.sdk = 24
 
 # (str) Android NDK version to use
-android.ndk = 25b
+android.ndk = 28b
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 #android.ndk_api = 21
@@ -334,7 +332,7 @@ android.release_artifact = apk
 #p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-#p4a.branch = develop
+p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
