@@ -3,7 +3,7 @@ from collections.abc import Generator, Iterable
 import cv2
 import numpy as np
 
-from custom_scipy.peaks import find_peaks
+from homr.find_peaks import find_peaks
 
 from homr import constants
 from homr.bounding_boxes import (

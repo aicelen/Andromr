@@ -341,7 +341,7 @@ p4a.branch = develop
 #p4a.source_dir =
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
-local_recipes = ./python-for-android/pythonforandroid/recipes/peak_finding_utils
+# local_recipes = ./python-for-android/pythonforandroid/recipes/peak_finding_utils
 
 # (str) Filename to the hook for p4a
 #p4a.hook =
