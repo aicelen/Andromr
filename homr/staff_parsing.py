@@ -112,14 +112,9 @@ def center_image_on_canvas(
     return new_image
 
 
-def add_image_into_tr_omr_canvas(
-    image: NDArray, is_grandstaff: bool, margin_top: int = 0, margin_bottom: int = 0
-) -> NDArray:
-    if not is_grandstaff:
-        # take half of the image height away
-        margin_bottom += tr_omr_max_height // 2
-    new_shape = get_tr_omr_canvas_size(image.shape, margin_top, margin_bottom)
-    new_image = center_image_on_canvas(image, new_shape, margin_top, margin_bottom)
+def add_image_into_tr_omr_canvas(image: NDArray) -> NDArray:
+    new_shape = get_tr_omr_canvas_size(image.shape)
+    new_image = center_image_on_canvas(image, new_shape)
     return new_image
 
 
@@ -181,9 +176,8 @@ def prepare_staff_image(
     debug: Debug, index: int, staff: Staff, staff_image: NDArray, regions: StaffRegions
 ) -> tuple[NDArray, Staff]:
     region = _calculate_region(staff, regions)
-    margin_bottom = 0 if staff.is_grandstaff else default_config.max_height // 2
     image_dimensions = get_tr_omr_canvas_size(
-        (int(region[3] - region[1]), int(region[2] - region[0])), margin_bottom=margin_bottom
+        (int(region[3] - region[1]), int(region[2] - region[0]))
     )
     scaling_factor = image_dimensions[1] / (region[3] - region[1])
     staff_image = cv2.resize(

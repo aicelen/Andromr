@@ -38,7 +38,7 @@ from homr.transformer.configs import default_config
 from homr.type_definitions import NDArray
 
 from globals import appdata, MODEL_STORAGE
-
+from kivy.utils import platform
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
@@ -328,7 +328,8 @@ def check_for_missing_models() -> list:
         default_config.filepaths.encoder,
         default_config.filepaths.decoder_path,
     ]
-    delete_unused_models(models)
+    if platform == 'android':
+        delete_unused_models(models)
     missing_models = [model for model in models if not os.path.exists(model)]
     return missing_models
 
@@ -355,4 +356,4 @@ def homr(path, cache=False):
 
 
 if __name__ == "__main__":
-    homr("taken_img.jpg", cache=False)
+    homr("images/parrots/p1.jpg", cache=False)

@@ -98,22 +98,6 @@ def build_position() -> dict[str, int]:
     return build_dict(positions)
 
 
-def build_state() -> dict[str, int]:
-    """
-    States keeps track of the current clef (for upper and lower staff)
-    and the current key signature.
-    """
-    keys = [f"keySignature_{c}" for c in range(-7, 8)]
-    clefs = []
-    clefs.extend([f"clef_F{c}" for c in range(3, 6)])
-    clefs.extend([f"clef_C{c}" for c in range(1, 6)])
-    clefs.extend([f"clef_G{c}" for c in range(1, 3)])
-    states = [nonote]
-    for key, upper_clef, lower_clef in itertools.product(keys, clefs, clefs):
-        states.append(f"{key}+{upper_clef}+{lower_clef}")
-    return build_dict(states)
-
-
 def build_articulation() -> dict[str, int]:
     articulation = [nonote, empty]
 
@@ -315,7 +299,6 @@ class Vocabulary:
         self.articulation = build_articulation()
         self.pitch = build_pitch()
         self.position = build_position()
-        self.state = build_state()
 
 
 class SymbolDuration:
@@ -407,12 +390,20 @@ class EncodedSymbol:
         lift: str = nonote,
         articulation: str = nonote,
         position: str = nonote,
+        coordinates: tuple[float, float] | None = None,
     ) -> None:
         self.rhythm = rhythm
         self.pitch = pitch
         self.lift = lift
         self.articulation = articulation
         self.position = position
+
+        # These coordinates are derived from transformer attention and are inherently imprecise,
+        # since the model is optimized for predictive accuracy rather than spatial localization.
+        # Because patch tokens are processed in raster order (top-to-bottom, left-to-right),
+        # this ordering can be used to reject cases where attention-based coordinates
+        # violate monotonic scan constraints and are therefore unreliable.
+        self.coordinates = coordinates
         self._duration: SymbolDuration | None = None
 
     def is_control_symbol(self) -> bool:
@@ -439,6 +430,11 @@ class EncodedSymbol:
         result = copy.copy(self)
         result.rhythm = match[1] + "_" + str(duration) + match[3]
         result._duration = None
+        return result
+
+    def change_lift(self, lift: str) -> "EncodedSymbol":
+        result = copy.copy(self)
+        result.lift = lift
         return result
 
     def to_upper_position(self) -> "EncodedSymbol":
@@ -518,6 +514,11 @@ class EncodedSymbol:
 
     def __hash__(self) -> int:
         return hash((self.rhythm, self.pitch, self.lift, self.articulation, self.position))
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, EncodedSymbol):
+            return NotImplemented
+        return str(self) > str(other)
 
 
 def _remove_redudant_clefs_keys_and_time_signatures(
@@ -673,6 +674,9 @@ def _only_keep_lower_staff_if_there_is_a_clef(
             else:
                 result.append(symbol.to_upper_position())
         all_results.append(result)
+    delta = len(chords) - len(all_results)
+    if delta > 0:
+        eprint("Removed", delta, "results as there was no matching clef")
     return all_results
 
 
@@ -688,6 +692,25 @@ def remove_duplicated_symbols(
     return _flatten_chords(chords)
 
 
+def sort_token_chords(
+    symbols: list[EncodedSymbol], keep_chord_symbol: bool = False
+) -> list[list[EncodedSymbol]]:
+    chords: list[list[EncodedSymbol]] = []
+    is_in_chord = False
+    for symbol in symbols:
+        if symbol.rhythm == "chord":
+            is_in_chord = True
+        elif is_in_chord and len(chords) > 0:
+            if keep_chord_symbol:
+                chords[-1].append(EncodedSymbol("chord"))
+            chords[-1].append(symbol)
+            is_in_chord = False
+        else:
+            chords.append([symbol])
+
+    return [sorted(chord) for chord in chords]
+
+
 if __name__ == "__main__":
     import json
 
@@ -700,7 +723,6 @@ if __name__ == "__main__":
     eprint("Articulation=", json.dumps(vocab.articulation, indent=2))
     eprint("Pitch=", json.dumps(vocab.pitch, indent=2))
     eprint("Positions=", json.dumps(vocab.position, indent=2))
-    eprint("States=", json.dumps(vocab.state, indent=2))
 
     valid_combinations = []
 
@@ -720,21 +742,3 @@ if __name__ == "__main__":
     )
     for symbol in random.sample(valid_combinations, 10):
         eprint(symbol)
-
-
-def sort_token_chords(
-    symbols: list[EncodedSymbol], keep_chord_symbol: bool = False
-) -> list[list[EncodedSymbol]]:
-    chords: list[list[EncodedSymbol]] = []
-    is_in_chord = False
-    for symbol in symbols:
-        if symbol.rhythm == "chord":
-            is_in_chord = True
-        elif is_in_chord and len(chords) > 0:
-            if keep_chord_symbol:
-                chords[-1].append(EncodedSymbol("chord"))
-            chords[-1].append(symbol)
-            is_in_chord = False
-        else:
-            chords.append([symbol])
-    return chords

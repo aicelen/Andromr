@@ -305,6 +305,8 @@ class Staff(DebugDrawable):
 
         grid = [grid_a[x].merge(grid_b[x]) for x in sorted(x_positions)]
         result = Staff(grid)
+        result.symbols.extend(self.symbols)
+        result.symbols.extend(other.symbols)
         result.is_grandstaff = True
         return result
 
@@ -393,6 +395,7 @@ class Staff(DebugDrawable):
     ) -> "Staff":
         copy = Staff([point.transform_coordinates(transformation) for point in self.grid])
         copy.symbols = [symbol.transform_coordinates(transformation) for symbol in self.symbols]
+        copy.is_grandstaff = self.is_grandstaff
         return copy
 
 

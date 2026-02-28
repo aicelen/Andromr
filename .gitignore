@@ -49,6 +49,8 @@ onnx_ser.txt
 test.py
 todo.md
 commands.txt
+profiler.py
+onnxruntime_profile.json
 
 # include
 !icon.png

@@ -138,13 +138,16 @@ else:
             self.model_path = model_path
             self.session = None
             self.session_options = ort.SessionOptions()
+            # self.session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             self.session_options.intra_op_num_threads = num_threads
 
         def load(self):
             self.session = ort.InferenceSession(self.model_path, self.session_options)
 
         def run(self, inputs: dict, outputs: dict) -> dict:
+            t0 = perf_counter()
             result = self.session.run(output_names=list(outputs), input_feed=inputs)
+            print(f"Raw inference time: {perf_counter() - t0:.4f}s")
             return result
 
         def close_session(self):

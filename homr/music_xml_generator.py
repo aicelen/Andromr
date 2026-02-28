@@ -66,19 +66,21 @@ class SymbolChord:
     def into_positions(self) -> list["SymbolChord"]:
         upper = []
         lower = []
+        lower_is_only_rest = True
         for symbol in self.symbols:
             if symbol.position == "upper":
                 upper.append(symbol)
             else:
                 lower.append(symbol)
-        return [
-            chord
-            for chord in [
-                SymbolChord(upper, self.tuplet_mark),
-                SymbolChord(lower, self.tuplet_mark),
-            ]
-            if len(chord.symbols) > 0
-        ]
+                lower_is_only_rest = lower_is_only_rest and symbol.rhythm.startswith("rest")
+
+        chords = (
+            SymbolChord(upper, self.tuplet_mark),
+            SymbolChord(lower, self.tuplet_mark),
+        )
+        if lower_is_only_rest:
+            chords = (chords[1], chords[0])
+        return [chord for chord in chords if len(chord.symbols) > 0]
 
     def strip_slur_ties(self) -> tuple[list[str], "SymbolChord"]:
         slurs_ties = set()
@@ -141,7 +143,7 @@ def build_measures(
         if direction:
             current_measure.add_child(direction)
     attributes: mxl.XMLAttributes | None = first_attributes
-    for group in groups:
+    for group_no, group in enumerate(groups):
         symbol = group.symbols[0]
         rhythm = symbol.rhythm
         last_attributes = attributes
@@ -152,15 +154,17 @@ def build_measures(
                 build_multi_measure_rest(symbol, attributes)
             else:
                 staff_positions = group.into_positions()
-                for i, staff_pos in enumerate(staff_positions):
+                for pos_no, staff_pos in enumerate(staff_positions):
                     chord_duration = (
-                        group.get_duration() if i == len(staff_positions) - 1 else Fraction(0)
+                        group.get_duration() if pos_no == len(staff_positions) - 1 else Fraction(0)
                     )
                     for note_xml in build_note_chord(staff_pos, state, chord_duration):
                         current_measure.add_child(note_xml)
             continue
         if rhythm == "newline":
-            measures[-1].add_child(mxl.XMLPrint(new_system="yes"))
+            is_last_measure = group_no == len(groups) - 1
+            if not is_last_measure:
+                current_measure.add_child(mxl.XMLPrint(new_system="yes"))
         elif rhythm.startswith("clef"):
             attributes = build_or_get_attributes(current_measure, last_attributes, force_new=True)
             for should_be_clef in group.symbols:

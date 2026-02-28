@@ -131,11 +131,11 @@ class StaffAnchor(DebugDrawable):
         cv2.line(img, [x - 50, self.zone.stop], [x + 50, self.zone.stop], color, 2)
 
 
-def _get_all_contours(lines: list[StaffLineSegment]) -> list:
+def _get_all_contours(lines: list[StaffLineSegment]):
     all_fragments: list[RotatedBoundingBox] = []
     for line in lines:
         all_fragments.extend(line.staff_fragments)
-    result: list = []
+    result = []
     for fragment in all_fragments:
         result.extend(fragment.contours)
     return result
@@ -308,7 +308,9 @@ def are_lines_parallel(lines: list[StaffLineSegment], unit_size: float) -> bool:
             fragment.angle - average_angle
         ) > constants.max_angle_for_lines_to_be_parallel and fragment.size[
             0
-        ] > constants.is_short_connected_line(unit_size):
+        ] > constants.is_short_connected_line(
+            unit_size
+        ):
             return False
     return True
 
@@ -343,12 +345,12 @@ def find_staff_anchors(
         # Therefore we try to detect them at the left and right side of the symbol as well.
         if are_clefs:
             adjacent = [
+                center_symbol.move_to_x_horizontal_by(-10),
                 center_symbol,
-                center_symbol.move_to_x_horizontal_by(50),
-                center_symbol,
-                center_symbol.move_to_x_horizontal_by(100),
-                center_symbol,
-                center_symbol.move_to_x_horizontal_by(150),
+                center_symbol.move_to_x_horizontal_by(10),
+                center_symbol.move_to_x_horizontal_by(30),
+                center_symbol.move_to_x_horizontal_by(60),
+                center_symbol.move_to_x_horizontal_by(80),
             ]
         else:
             adjacent = [
@@ -503,6 +505,7 @@ def filter_edge_of_vision(staffs: list[Staff], image_shape: tuple[int, ...]) -> 
 
         if (beyond_left or beyond_right) and shorter_than_usual:
             continue
+
         result.append(staff)
     return result
 
@@ -614,7 +617,9 @@ def find_horizontal_lines(
 
     count = np.insert(count, [0, len(count)], [0, 0])  # type: ignore
     norm = (count - np.mean(count)) / np.std(count)
-    centers, _ = find_peaks(norm, height=line_threshold, distance=unit_size, prominence=1)
+    centers, _ = find_peaks(
+        norm, height=line_threshold, distance=unit_size, prominence=1
+    )
     centers -= 1
     norm = norm[1:-1]  # Remove prepend / append
     _valid_centers, groups = filter_line_peaks(centers, norm)
