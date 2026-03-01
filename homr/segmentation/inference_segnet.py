@@ -100,10 +100,9 @@ def inference(
         ExtractResult class.
     """
     eprint("Starting Inference.")
-    global model
-    preload_segnet(appdata.threads, appdata.gpu)
-    if not model.loaded or appdata.settings_changed:
-        model.load()
+    model = TensorFlowModel(
+        segnet_path_tflite, num_threads=appdata.threads, use_gpu=appdata.gpu, precision_loss=True
+    )
 
     t0 = perf_counter()
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
@@ -124,8 +123,10 @@ def inference(
                 x = x_loop
             hop = image[y : y + win_size, x : x + win_size, :]
 
-            hop = np.expand_dims(hop, axis=0).transpose(0, 3, 1, 2)
-            out = model.run(hop)
+            hop = np.expand_dims(hop, axis=0)
+            t1 = perf_counter()
+            out = model.run(hop.transpose(0, 3, 1, 2), (1, 6, 320, 320))
+            print(perf_counter() - t1)
             out_filtered = np.argmax(out, axis=1)
             out_filtered = np.squeeze(out_filtered, axis=0)
             data.append(out_filtered)

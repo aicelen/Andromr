@@ -89,7 +89,7 @@ if platform == "android":
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
 
     # Preloading during inferene cuased a black screen; this works well
-    preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
+    # preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
     from plyer import filechooser

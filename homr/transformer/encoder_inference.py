@@ -15,18 +15,18 @@ class Encoder:
         """
         Enocder using only one .tflite file.
         """
-        global encoder
-
-        preload_encoder(appdata.threads, appdata.gpu)
-
-        if not encoder.loaded or appdata.settings_changed:
-            encoder.load()
+        encoder = TensorFlowModel(
+            default_config.filepaths.encoder,
+            num_threads=appdata.threads,
+            use_gpu=False,  # GPU is not supported
+            precision_loss=False,
+        )
 
         self.encoder = encoder
 
     def generate(self, x: NDArray) -> NDArray:
         t0 = perf_counter()
-        out = self.encoder.run(x)
+        out = self.encoder.run(x, (1,1280,312))
         t1 = perf_counter()
 
         print(f"Inference time of Encoder: {round(t1 - t0, 3)}s")
