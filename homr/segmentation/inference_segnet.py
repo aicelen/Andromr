@@ -11,28 +11,7 @@ from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 from globals import appdata
 
-model: TensorFlowModel | None = None
-
-
-def preload_segnet(num_threads: int, use_gpu: bool):
-    """
-    Preloading does not load the model into RAM. Instead it loads all
-    the configs for inference. This solves a problem with pyjnius which does
-    not work reliable when using it within a Thread (pyjnius raises a
-    java.lang.ClassNotFoundException). More details can be found in this issue:
-    https://github.com/kivy/pyjnius/issues/758
-
-    :param num_threads: Description
-    :type num_threads: int
-    :param use_gpu: Description
-    :type use_gpu: bool
-    """
-    global model
-    if model is None or appdata.settings_changed:
-        model = TensorFlowModel(
-            segnet_path_tflite, num_threads=num_threads, use_gpu=use_gpu, precision_loss=True
-        )
-
+segnet: TensorFlowModel | None = None
 
 class ExtractResult:
     def __init__(
@@ -100,9 +79,11 @@ def inference(
         ExtractResult class.
     """
     eprint("Starting Inference.")
-    model = TensorFlowModel(
-        segnet_path_tflite, num_threads=appdata.threads, use_gpu=appdata.gpu, precision_loss=True
-    )
+    global segnet
+    if segnet is None:
+        segnet = TensorFlowModel(
+            segnet_path_tflite
+        )
 
     t0 = perf_counter()
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
@@ -125,7 +106,7 @@ def inference(
 
             hop = np.expand_dims(hop, axis=0)
             t1 = perf_counter()
-            out = model.run(hop.transpose(0, 3, 1, 2), (1, 6, 320, 320))
+            out = segnet.run(hop.transpose(0, 3, 1, 2), (1, 6, 320, 320))
             print(perf_counter() - t1)
             out_filtered = np.argmax(out, axis=1)
             out_filtered = np.squeeze(out_filtered, axis=0)

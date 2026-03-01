@@ -1,6 +1,9 @@
+"""
+Based on https://github.com/aicelen/Kivy-LiteRT-Next
+"""
+
 from kivy.utils import platform
 import numpy as np
-from time import perf_counter
 
 if platform =='android':
     from jnius import autoclass # type: ignore
@@ -23,18 +26,15 @@ if platform =='android':
 
     class TensorFlowModel():
         """
-        Class for inference of a .tflite model using LiteRT Next (version 2.1.1)
+        Class for inference of a .tflite model using LiteRT Compiled Model API (version 2.1.1)
         Args:
-            model_name(str): Name of the model for inference (needs to be located in assets folder)
-            use_gpu(bool): If True uses GPU acceleration
+            model_name(str): Name of the model for inference;
+            use_gpu(bool): If True uses GPU acceleration, FP16 model only
         """
         def __init__(
             self, 
             model_filename: str,
-            num_threads: int = 1,
-            use_gpu: bool = True,
-            precision_loss: bool = True,
-            sustained_speed: bool = False,
+            use_gpu: bool = False,
         ):
             if use_gpu:
                 acc = Accelerator.GPU
@@ -77,9 +77,6 @@ if platform =='android':
             
             return np.array(result, dtype=np.float32).reshape(output_shape)
 
-        def load():
-            pass
-
 else:
     if platform == "win":
         import tensorflow as tf  # type: ignore
@@ -95,23 +92,16 @@ else:
         Cross platform inference of .tflite models
 
         :param model_path: Path to the .tflite model
-        :param num_threads: Number of threads to use (CPU only)
-        :param use_gpu: Use GPU acceleration
-        :param precisionLoss: Use fp16 calculations to speed up
-                              inference (only works with use_gpu=True)
+        :param use_gpu: Use GPU acceleration; Not Implemented
         """
 
         def __init__(
             self,
             model_filename: str,
-            num_threads: int = 1,
-            use_gpu: bool = True,
-            precision_loss: bool = True,
-            sustained_speed: bool = False,
+            use_gpu: bool = False,
         ):
             self.model_path = model_filename
-            self.num_threads = num_threads
-            self.interpreter = Interpreter(self.model_path, num_threads=self.num_threads)
+            self.interpreter = Interpreter(self.model_path)
             self.interpreter.allocate_tensors()
 
         def resize_input(self, shape):
@@ -124,7 +114,6 @@ else:
 
         def run(self, x, output_shape: tuple):
             # assumes one input and one output for now
-            print(x.shape)
             self.interpreter.set_tensor(self.interpreter.get_input_details()[0]["index"], x)
             self.interpreter.invoke()
             return self.interpreter.get_tensor(self.interpreter.get_output_details()[0]["index"])

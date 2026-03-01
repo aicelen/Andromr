@@ -15,41 +15,19 @@ class Encoder:
         """
         Enocder using only one .tflite file.
         """
-        encoder = TensorFlowModel(
-            default_config.filepaths.encoder,
-            num_threads=appdata.threads,
-            use_gpu=False,  # GPU is not supported
-            precision_loss=False,
-        )
+        global encoder
+        if encoder is None:
+            encoder = TensorFlowModel(
+                default_config.filepaths.encoder
+            )
 
         self.encoder = encoder
 
     def generate(self, x: NDArray) -> NDArray:
         t0 = perf_counter()
-        out = self.encoder.run(x, (1,1280,312))
+        out = self.encoder.run(x, (1, 1281, 312))
         t1 = perf_counter()
 
         print(f"Inference time of Encoder: {round(t1 - t0, 3)}s")
 
         return out.astype(np.float32)
-
-
-def preload_encoder(num_threads: int, use_gpu: bool) -> TensorFlowModel:
-    """
-    Load the CNN part of the encoder
-
-    :param num_threads: Number of threads
-    :type num_threads: int
-    :param use_gpu: Use GPU for inference
-    :type use_gpu: bool
-    :return: The loaded TensorflowModel
-    :rtype: TensorFlowModel
-    """
-    global encoder
-    if encoder is None or appdata.settings_changed:
-        encoder = TensorFlowModel(
-            default_config.filepaths.encoder,
-            num_threads=num_threads,
-            use_gpu=False,  # GPU is not supported
-            precision_loss=False,
-        )

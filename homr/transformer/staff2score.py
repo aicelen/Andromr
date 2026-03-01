@@ -17,7 +17,7 @@ class Staff2Score:
     Inference class for Tromr. Use predict() for prediction
     """
 
-    def __init__(self, use_gpu: bool = True) -> None:
+    def __init__(self) -> None:
         self.config = Config()
         self.encoder = Encoder()
         self.decoder = get_decoder(self.config)

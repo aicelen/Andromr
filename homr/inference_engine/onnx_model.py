@@ -1,6 +1,6 @@
 """
-Inference of .onnx models for kivy android apps using native Java APIs.
-Made by aicelen 2025 released under MIT license.
+Based on https://github.com/aicelen/Onnx-Kivy-Android but with crucial optimizations for KV caching.
+The KV cache tensors stay in Java instead of converting them back to python.
 """
 
 import numpy as np
@@ -139,7 +139,7 @@ else:
             self.session = None
             self.session_options = ort.SessionOptions()
             # self.session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-            self.session_options.intra_op_num_threads = num_threads
+            self.session_options.intra_op_num_threads = 0
 
         def load(self):
             self.session = ort.InferenceSession(self.model_path, self.session_options)

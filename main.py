@@ -34,7 +34,6 @@ import cv2
 
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
-from homr.segmentation.inference_segnet import preload_segnet
 from homr.relieur import merge_xmls
 from globals import APP_PATH, XML_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
@@ -87,9 +86,6 @@ if platform == "android":
             flipped = np.flip(frame_rgb, 0)
             buf = flipped.tobytes()
             self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
-
-    # Preloading during inferene cuased a black screen; this works well
-    # preload_segnet(num_threads=appdata.threads, use_gpu=appdata.gpu)
 
 else:
     from plyer import filechooser
@@ -289,22 +285,28 @@ class ProgressPage(Screen):
 
 class SettingsPage(Screen):
     def on_leave(self):
-        app = MDApp.get_running_app()
-        gpu = self.ids.checkbox_gpu.active
-        use_xnnpack = self.ids.checkbox_xnnpack.active
-        num_threads = self.ids.slider_threads.value
-        if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
-            appdata.settings_changed = True
+        if True:
+            app = MDApp.get_running_app()
+            appdata.xnnpack = self.ids.checkbox_xnnpack.active
+            appdata.save_settings()
         else:
-            appdata.settings_changed = False
+            # support for GPU acceleration
+            app = MDApp.get_running_app()
+            gpu = self.ids.checkbox_gpu.active
+            use_xnnpack = self.ids.checkbox_xnnpack.active
+            num_threads = self.ids.slider_threads.value
+            if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
+                appdata.settings_changed = True
+            else:
+                appdata.settings_changed = False
 
-        if gpu and not appdata.gpu:
-            app.show_info("Please restart the app to use GPU acceleration")
+            if gpu and not appdata.gpu:
+                app.show_info("Please restart the app to use GPU acceleration")
 
-        appdata.threads = int(num_threads)
-        appdata.xnnpack = use_xnnpack
-        appdata.gpu = gpu
-        appdata.save_settings()
+            appdata.threads = int(num_threads)
+            appdata.xnnpack = use_xnnpack
+            appdata.gpu = gpu
+            appdata.save_settings()
 
 
 class OSSLicensePage(Screen):
