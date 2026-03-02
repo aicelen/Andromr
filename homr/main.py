@@ -172,13 +172,6 @@ def process_image(
         xml.write(xml_file)
 
         eprint("Finished parsing " + str(len(result_staffs)) + " staves")
-        teaser_file = replace_extension(image_path, "_teaser.png")
-        if config.write_staff_positions:
-            staff_position_files = replace_extension(image_path, ".txt")
-            save_staff_positions(multi_staffs, image.shape, staff_position_files)
-        debug.write_teaser(teaser_file, multi_staffs)
-        debug.clean_debug_files_from_previous_runs()
-
         eprint("Result was written to", xml_file)
     except:
         if os.path.exists(xml_file):

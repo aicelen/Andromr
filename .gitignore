@@ -23,7 +23,6 @@ build/
 
 # test file
 test.py
-commands.txt
 
 # file extensions
 *.pth
@@ -49,6 +48,7 @@ onnx_ser.txt
 test.py
 todo.md
 commands.txt
+error.txt
 profiler.py
 onnxruntime_profile.json
 

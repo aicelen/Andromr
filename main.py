@@ -35,6 +35,7 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
+from validation.rate_validation_result import rate_folder
 from globals import APP_PATH, XML_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
 
@@ -308,6 +309,15 @@ class SettingsPage(Screen):
             appdata.gpu = gpu
             appdata.save_settings()
 
+    def verify_homr(self):
+        app = MDApp.get_running_app()
+        need_download = app.check_download_assets(camera_page=False, validation=True)
+        if not need_download:
+            app.start_inference(
+                path_to_image="test_data/tabi/tabi.jpg", 
+                out_path="test_data/tabi/tabi.musicxml", 
+                verify=True
+            )
 
 class OSSLicensePage(Screen):
     pass
@@ -596,9 +606,13 @@ class Andromr(MDApp):
         self.menu.dismiss()
 
     # Homr methods
-    def start_inference(self):
-        path = self.img_paths[0]
-        del self.img_paths[0]
+    def start_inference(self, path_to_image: str = None, out_path: str = None, verify: bool = False):
+        if path_to_image is None:
+            path = self.img_paths[0]
+            del self.img_paths[0]
+        else:
+            path = path_to_image
+
         # set the progress bar to 0
         appdata.progress = 0
 
@@ -608,14 +622,14 @@ class Andromr(MDApp):
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.homr_call, args=(path,), daemon=True)
+        self.ml_thread = Thread(target=self.homr_call, args=(path, out_path, verify,), daemon=True)
         self.progress_thread = Thread(
             target=self.root.get_screen("progress").update_progress_bar, daemon=True
         )
         self.ml_thread.start()
         self.progress_thread.start()
 
-    def homr_call(self, path: str):
+    def homr_call(self, path: str, out_path: str, verify: bool):
         """
         calls the homr (optical music recognition software) and returns when finished to the landing page
         Args:
@@ -626,15 +640,36 @@ class Andromr(MDApp):
         # else we run it without for easier debugging
         if platform == "android":
             try:
-                self._homr_call(path)
+                self._homr_call(path, out_path, verify)
             except Exception as e:
                 error_msg = f"An error occured during inference: {e}"
                 Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
                 print(e)
         else:
-            self._homr_call(path)
+            self._homr_call(path, out_path, verify)
 
-        if self.img_paths:
+        if verify:
+            try:
+                average_diff, n_errors= rate_folder(
+                    "test_data/tabi",
+                    compare_all=True
+                )
+                if average_diff < 30:
+                    text = f"Results are great. The average difference was {average_diff} with a total of {n_errors} failures."
+                else:
+                    text = f"Results are bad. The average difference was {average_diff} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr."
+
+                Clock.schedule_once(lambda dt: self.change_screen("settings"))
+                Clock.schedule_once(
+                    lambda dt: self.show_info(text=text, title="Results")
+                )
+
+            except Exception as e:
+                error_msg = f"An error occured during inference: {e}"
+                Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
+                print(e)
+
+        elif self.img_paths:
             self.start_inference()
         else:
             if len(self.xml_paths) >= 2:
@@ -648,29 +683,32 @@ class Andromr(MDApp):
                     os.remove(file)
             Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
-    def _homr_call(self, path):
+    def _homr_call(self, path, out_path, verify):
         return_path = homr(path)
         appdata.homr_running = False
+        if out_path is not None:
+            # if there's a given output path we use that
+            new_path = out_path
 
-        if self.root.get_screen("progress").ids.title.text == "":
-            # if there's no user given title we give it a unique id based on time
-            music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
         else:
-            # otherwise we set it to the users title
-            music_title = str(self.root.get_screen("progress").ids.title.text)
+            if self.root.get_screen("progress").ids.title.text != "":
+                music_title = str(self.root.get_screen("progress").ids.title.text)
+            else:
+                music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
 
-        # rename the file
-        os.rename(
-            return_path,
-            os.path.join(XML_PATH, f"{music_title}.musicxml"),
-        )
+            # rename the file
+            os.rename(
+                return_path,
+                new_path
+            )
 
         # Not removing input image on desktop to make things easier
-        if platform == 'android':
+        if platform == 'android' and not verify:
             os.remove(path)
             print(f"Removed {path}")
 
-        self.xml_paths.append(os.path.join(XML_PATH, f"{music_title}.musicxml"))
+        self.xml_paths.append(new_path)
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
@@ -684,7 +722,7 @@ class Andromr(MDApp):
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
 
-    def check_download_assets(self, camera_page=False):
+    def check_download_assets(self, camera_page=False, validation=False):
         """
         If not all tflite models are downloaded it will create a Dialog informing the user
         that the App wants to download the models. If the user allows it, the app will switch
@@ -707,10 +745,13 @@ class Andromr(MDApp):
                 ],
             )
             self.dialog_download.open()
+            return True
         elif camera_page:
             self.change_screen("camera")
-        else:
+        elif not validation:
             self.show_toast("You already downloaded all assets")
+        return False
+
     
     def on_resume(self):
         Clock.schedule_once(self._resume_camera, 0)

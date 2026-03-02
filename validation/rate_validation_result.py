@@ -7,9 +7,8 @@ import editdistance
 
 from homr.simple_logging import eprint
 from homr.staff_parsing import remove_duplicated_symbols  # type: ignore[attr-defined]
-from homr.transformer.vocabulary import EncodedSymbol
-from training.datasets.music_xml_parser import music_xml_file_to_tokens
-from training.transformer.training_vocabulary import sort_token_chords
+from homr.transformer.vocabulary import EncodedSymbol, sort_token_chords
+from validation.music_xml_parser import music_xml_file_to_tokens
 
 
 def _ignore_articulation(symbol: EncodedSymbol) -> EncodedSymbol:
@@ -156,6 +155,7 @@ def write_validation_result_for_folder(
 def rate_all_folders(foldername: str, compare_all: bool) -> bool:
     folders = get_all_direct_subfolders(foldername)
     if len(folders) == 0:
+        print('No folders')
         return False
     all_diffs = []
     sum_of_failures = 0

@@ -24,16 +24,16 @@ package.domain = com.aicelen
 source.dir = .
 
 # (list) Source files to include (leave empty to include all the files)
-source.include_exts = py, png, kv, atlas, json, pkl, txt
+source.include_exts = py, png, kv, atlas, json, pkl, txt, jpg, musicxml
 
 # (list) List of inclusions using pattern matching
-#source.include_patterns = assets/*,images/*.png
+source.include_patterns = test_data/
 
 # (list) Source files to exclude (leave empty to not exclude anything)
 source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = .gradle, .buildozer, .recipes, .venv, .vscode, bin, build, datasets, training, validation, segnet_155, cnn_encoder_188, decoder_188, cnn_encoder_236, data 
+source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .venv, .vscode, bin, build, datasets, data, images, opencv, training
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -48,7 +48,7 @@ version = 1.3
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.1, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, pyjnius, android, pykdtree, musicxml, requests, verysimpletree, androidstorage4kivy
+requirements = python3, kivy==2.3.1, kivymd==1.2.0, numpy, opencv, pillow, typing_extensions, pyjnius, android, pykdtree, musicxml, requests, androidstorage4kivy, editdistance
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes

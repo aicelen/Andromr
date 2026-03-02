@@ -189,6 +189,13 @@ ScreenManager:
             MDBoxLayout:
                 orientation: "horizontal"
                 MDRaisedButton:
+                    text: "Validate Optical Music Recognition"
+                    on_release: root.verify_homr()
+                    size_hint_x: 1
+
+            MDBoxLayout:
+                orientation: "horizontal"
+                MDRaisedButton:
                     text: "Download Assets (60MB)"
                     on_release: app.check_download_assets()
                     size_hint_x: 1
