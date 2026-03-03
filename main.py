@@ -236,12 +236,14 @@ class CameraPage(Screen):
             self.reload_camera()
 
     def reload_camera(self):
-            parent = self.ids.camera_pre.parent
-            if parent is not None:
-                parent.remove_widget(self.ids.camera_pre)
-            new_cam = KvCam(fit_mode="contain", play=True)
-            self.ids.camera_pre = new_cam
-            parent.add_widget(new_cam, index=0)
+        try:
+            old_cam = self.ids.camera_pre
+            self.remove_widget(old_cam)
+        except ReferenceError:
+            print("Reference Error during reloading")  # already GC'd, nothing to remove
+        new_cam = KvCam(fit_mode="contain", play=True)
+        self.ids.camera_pre = new_cam
+        self.add_widget(new_cam, index=0)
 
     def display_img(self, path):
         """
@@ -757,8 +759,10 @@ class Andromr(MDApp):
         Clock.schedule_once(self._resume_camera, 0)
 
     def _resume_camera(self, dt):
-        cam_screen = self.root.get_screen("camera")
-        cam_screen.reload_camera()
+        if self.sm.current == "camera" or self.sm.current == "image_page":
+            print('Reload')
+            cam_screen = self.root.get_screen("camera")
+            cam_screen.reload_camera()
 
 if __name__ == "__main__":
     Andromr().run()
