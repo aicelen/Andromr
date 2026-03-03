@@ -14,9 +14,11 @@ else:
     APP_STORAGE = os.path.join(APP_PATH, "data")
 
 MODEL_STORAGE = os.path.join(APP_STORAGE, "models")
-
+IMAGE_PATH = os.path.join(APP_STORAGE, "images")
 XML_PATH = os.path.join(APP_STORAGE, "musicxml")
+
 os.makedirs(XML_PATH, exist_ok=True)
+os.makedirs(IMAGE_PATH, exist_ok=True)
 os.makedirs(MODEL_STORAGE, exist_ok=True)
 
 

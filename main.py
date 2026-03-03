@@ -36,7 +36,7 @@ import cv2
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
 from validation.rate_validation_result import rate_folder
-from globals import APP_PATH, XML_PATH, appdata
+from globals import APP_PATH, XML_PATH, IMAGE_PATH, appdata
 from utils import get_sys_theme, downscale_cv2
 
 
@@ -114,6 +114,13 @@ class LandingPage(Screen):
         self.app = MDApp.get_running_app()
         self.app.img_paths = []  # clean up the image path list
         self.app.xml_paths = []  # clean up the xml list
+
+        # remove all images in the image folder
+        image_paths = os.listdir(IMAGE_PATH)
+        for path in image_paths:
+            os.remove(os.path.join(IMAGE_PATH, path))
+            print(f"Removed {path}")
+
 
         Clock.schedule_once(self.update_scrollview, 0)
 
@@ -252,7 +259,7 @@ class CameraPage(Screen):
         # Schedule UI updates on the main thread
         Clock.schedule_once(lambda dt: self.app.root.get_screen("image_page")._display_img(path), 0)
 
-    def take_picture(self, filename=f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"):
+    def take_picture(self, filename=os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")):
         """Take an image"""
         take_picture(self.ids.camera_pre, self.display_img, filename)
 
