@@ -10,51 +10,13 @@ import onnxruntime as ort
 
 from homr.segmentation.config import (
     segmentation_version,
-    segnet_path_onnx,
-    segnet_path_onnx_fp16,
+    segnet_path_tflite
 )
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
+from homr.inference_engine.tflite_model import TensorFlowModel
 
-
-class Segnet:
-    def __init__(self, use_gpu_inference: bool) -> None:
-        self.use_gpu = False
-        if use_gpu_inference:
-            try:
-                self.model = ort.InferenceSession(
-                    segnet_path_onnx_fp16, providers=["CUDAExecutionProvider"]
-                )
-                self.fp16 = True
-                self.use_gpu = True
-            except Exception as e:
-                eprint(
-                    "Error while trying to load model using CUDA. You probably don't have a compatible gpu"  # noqa: E501
-                )
-                eprint(e)
-                self.model = ort.InferenceSession(segnet_path_onnx_fp16)
-                self.fp16 = True
-        else:
-            self.model = ort.InferenceSession(segnet_path_onnx)
-            self.fp16 = False
-
-        self.io_binding = self.model.io_binding()
-        self.device_id = 0
-
-        self.input_name = self.model.get_inputs()[0].name  # size: [batch_size, 3, 320, 320]
-        self.output_name = self.model.get_outputs()[0].name
-
-    def run(self, input_data: NDArray) -> NDArray:
-        if self.fp16:
-            self.io_binding.bind_cpu_input("input", input_data.astype(np.float16))
-        else:
-            self.io_binding.bind_cpu_input("input", input_data.astype(np.float32))
-
-        self.io_binding.bind_output("output", "cpu")
-        self.model.run_with_iobinding(self.io_binding)
-        out = self.io_binding.get_outputs()[0].numpy()
-        return out
-
+segnet: TensorFlowModel | None = None
 
 class ExtractResult:
     def __init__(
@@ -149,7 +111,11 @@ def inference(
     if step_size < 0:
         step_size = win_size // 2
 
-    model = Segnet(use_gpu_inference)
+    global segnet
+    if segnet is None:
+        segnet = TensorFlowModel(
+            segnet_path_tflite
+        )
 
     image_org = cv2.cvtColor(image_org, cv2.COLOR_GRAY2BGR)
     image = np.transpose(image_org, (2, 0, 1)).astype(np.float32)
@@ -168,13 +134,14 @@ def inference(
             batch.append(hop)
 
             if len(batch) == batch_size:
-                batch_out = model.run(np.stack(batch, axis=0))
+                hop = np.expand_dims(hop, axis=0)
+                batch_out = segnet.run(hop, (1, 6, 320, 320))
                 for out in batch_out:
                     data.append(np.argmax(out, axis=0))
                 batch.clear()
 
     if batch:
-        batch_out = model.run(np.stack(batch, axis=0))
+        batch_out = segnet.run(np.stack(batch, axis=0))
         for out in batch_out:
             data.append(np.argmax(out, axis=0))
 
@@ -231,7 +198,7 @@ def extract(
         staff, symbols, stems_rests, notehead, clefs_keys = inference(
             original_image,
             use_gpu_inference=use_gpu_inference,
-            batch_size=batch_size,
+            batch_size=1, # Fixed batch size
             step_size=step_size,
             win_size=win_size,
         )

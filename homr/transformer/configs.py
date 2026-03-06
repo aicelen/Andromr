@@ -12,14 +12,11 @@ root_dir = os.getcwd()
 
 class FilePaths:
     def __init__(self) -> None:
-        model_name = "286"
+        model_name = "331"
 
-        self.encoder = os.path.join(MODEL_STORAGE, f"encoder_{model_name}.tflite")  # noqa: E501
+        self.encoder_path = os.path.join(MODEL_STORAGE, f"encoder_{model_name}_int8.tflite")
 
-        self.decoder_path = os.path.join(
-            MODEL_STORAGE,
-            f"decoder_{model_name}.onnx",
-        )  # noqa: E501
+        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_int8.onnx")
 
         self.checkpoint = os.path.join(
             root_dir,
@@ -56,6 +53,9 @@ class DecoderArgs:
         self.ff_glu = True
         self.rel_pos_bias = False
         self.use_scalenorm = False
+        self.attn_dropout = 0.1
+        self.ff_dropout = 0.1
+        self.layer_dropout = 0.1
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -64,6 +64,9 @@ class DecoderArgs:
             "ff_glu": self.ff_glu,
             "rel_pos_bias": self.rel_pos_bias,
             "use_scalenorm": self.use_scalenorm,
+            "attn_dropout": self.attn_dropout,
+            "ff_dropout": self.ff_dropout,
+            "layer_dropout": self.layer_dropout,
         }
 
     def to_json_string(self) -> str:
@@ -88,22 +91,29 @@ class Config:
         self.num_lift_tokens = len(self.vocab.lift)
         self.num_articulation_tokens = len(self.vocab.articulation)
         self.num_position_tokens = len(self.vocab.position)
-        self.encoder_structure = "hybrid"
+        self.encoder_structure = "convnext"
         self.encoder_depth = 8
         self.backbone_layers = [3, 4, 6, 3]
-        self.encoder_dim = 312
+        self.encoder_dim = 512
+        # encoder_h_dim balances how many dimensions the
+        # horizontal vs vertical embeddings get
+        self.encoder_h_dim = self.encoder_dim // 3
         self.encoder_heads = 8
-        self.decoder_dim = 312
+        self.decoder_dim = self.encoder_dim
         self.decoder_depth = 8
         self.decoder_heads = 8
-        self.temperature = 0.01
         self.decoder_args = DecoderArgs()
         self.lift_vocab = self.vocab.lift
         self.pitch_vocab = self.vocab.pitch
         self.rhythm_vocab = self.vocab.rhythm
         self.articulation_vocab = self.vocab.articulation
         self.position_vocab = self.vocab.position
+        self.use_gpu_inference = False
 
+        # Scheduled Sampling parameters
+        self.scheduled_sampling_start_prob = 1.0
+        self.scheduled_sampling_end_prob = 0.7
+        self.scheduled_sampling_decay_steps = 20000
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -126,7 +136,6 @@ class Config:
             "decoder_dim": self.decoder_dim,
             "decoder_depth": self.decoder_depth,
             "decoder_heads": self.decoder_heads,
-            "temperature": self.temperature,
             "decoder_args": self.decoder_args.to_dict(),
         }
 

@@ -18,7 +18,7 @@ class Staff2Score:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.encoder = Encoder(self.config)
+        self.encoder = Encoder()
         self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
