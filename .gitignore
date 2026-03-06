@@ -2,6 +2,7 @@
 /.buildozer/
 /.gradle/
 /.venv/
+/.torch2tflite/
 /.vscode/
 /bin/
 /opencv/

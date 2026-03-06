@@ -7,6 +7,7 @@
 # to reduce apk size put:
 # ndk {abiFilters 'arm64-v8a'} 
 # to make gestures work go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\sdl2\build\templates
+# or go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\_sdl_common\build\templates
 # and set in the AndroidManifest.tmpl android:enableOnBackInvokedCallback="false" under application
 
 [app]
@@ -33,7 +34,7 @@ source.include_patterns = test_data/
 source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .venv, .vscode, bin, build, datasets, data, images, opencv, training
+source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .venv, .vscode, bin, build, datasets, data, images, opencv, training, private, .torch2tflite
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
@@ -261,11 +262,11 @@ android.gradle_dependencies = com.google.ai.edge.litert:litert:2.1.1, com.micros
 #android.manifest.orientation = fullSensor
 
 # (list) Android additional libraries to copy into libs/armeabi
-#android.add_libs_armeabi = libs/android/*.so
-#android.add_libs_armeabi_v7a = %(source.dir)s/opencv/native/libs/armeabi-v7a/libopencv_java4.so
-android.add_libs_arm64_v8a = %(source.dir)s/opencv/native/libs/armeabi-v8a/libopencv_java4.so
-android.add_libs_x86 = %(source.dir)s/opencv/native/libs/x86/libopencv_java4.so
-#android.add_libs_mips = libs/android-mips/*.so
+# android.add_libs_armeabi = libs/android/*.so
+# android.add_libs_armeabi_v7a = %(source.dir)s/opencv/native/libs/armeabi-v7a/libopencv_java4.so
+# android.add_libs_arm64_v8a = %(source.dir)s/opencv/native/libs/armeabi-v8a/libopencv_java4.so
+# android.add_libs_x86 = %(source.dir)s/opencv/native/libs/x86/libopencv_java4.so
+# android.add_libs_mips = libs/android-mips/*.so
 
 # (bool) Indicate whether the screen should stay on
 # Don't forget to add the WAKE_LOCK permission if you set this to True
