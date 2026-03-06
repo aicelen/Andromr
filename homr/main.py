@@ -1,10 +1,14 @@
+import argparse
 import glob
 import os
+import sys
+from concurrent.futures import Future
 from dataclasses import dataclass
-from time import perf_counter
+from enum import Enum
 
 import cv2
 import numpy as np
+import onnxruntime as ort
 
 from homr import color_adjust, download_utils
 from homr.autocrop import autocrop
@@ -28,17 +32,16 @@ from homr.music_xml_generator import XmlGeneratorArguments, generate_xml
 from homr.noise_filtering import filter_predictions
 from homr.note_detection import add_notes_to_staffs, combine_noteheads_with_stems
 from homr.resize import resize_image
-from homr.segmentation.config import segnet_path_tflite
+from homr.segmentation.config import segnet_path_onnx, segnet_path_onnx_fp16
 from homr.segmentation.inference_segnet import extract
 from homr.simple_logging import eprint
 from homr.staff_detection import break_wide_fragments, detect_staff, make_lines_stronger
 from homr.staff_parsing import parse_staffs
 from homr.staff_position_save_load import load_staff_positions, save_staff_positions
-from homr.transformer.configs import default_config
+from homr.title_detection import detect_title, download_ocr_weights
+from homr.transformer.configs import Config, default_config
 from homr.type_definitions import NDArray
 
-from globals import appdata, MODEL_STORAGE
-from kivy.utils import platform
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
@@ -58,10 +61,30 @@ class PredictedSymbols:
         self.bar_lines = bar_lines
 
 
+class InvalidProgramArgumentException(Exception):
+    """Raise this exception for issues which the user can address."""
+
+
+class GpuSupport(Enum):
+    No = "no"
+    AUTO = "auto"
+    FORCE = "force"
+
+
 def get_predictions(
-    original: NDArray, preprocessed: NDArray, img_path: str, enable_cache: bool
+    original: NDArray,
+    preprocessed: NDArray,
+    img_path: str,
+    enable_cache: bool,
+    use_gpu_inference: bool,
 ) -> InputPredictions:
-    result = extract(preprocessed, img_path, step_size=320, use_cache=enable_cache)
+    result = extract(
+        preprocessed,
+        img_path,
+        step_size=320,
+        use_cache=enable_cache,
+        use_gpu_inference=use_gpu_inference,
+    )
     original_image = cv2.resize(original, (result.staff.shape[1], result.staff.shape[0]))
     preprocessed_image = cv2.resize(preprocessed, (result.staff.shape[1], result.staff.shape[0]))
     return InputPredictions(
@@ -80,15 +103,17 @@ def replace_extension(path: str, new_extension: str) -> str:
 
 
 def load_and_preprocess_predictions(
-    image_path: str, enable_debug: bool, enable_cache: bool
+    image_path: str, enable_debug: bool, enable_cache: bool, use_gpu_inference: bool
 ) -> tuple[InputPredictions, Debug]:
     image = cv2.imread(image_path)
     if image is None:
-        raise ValueError("Failed to read " + image_path)
+        raise InvalidProgramArgumentException(
+            "The file format is not supported, please provide a JPG or PNG image file:" + image_path
+        )
     image = autocrop(image)
     image = resize_image(image)
     preprocessed = color_adjust.apply_clahe(image)
-    predictions = get_predictions(image, preprocessed, image_path, enable_cache)
+    predictions = get_predictions(image, preprocessed, image_path, enable_cache, use_gpu_inference)
     debug = Debug(predictions.original, image_path, enable_debug)
     debug.write_image("color_adjust", preprocessed)
 
@@ -132,6 +157,7 @@ class ProcessingConfig:
     write_staff_positions: bool
     read_staff_positions: bool
     selected_staff: int
+    use_gpu_inference: bool
 
 
 def process_image(
@@ -139,7 +165,6 @@ def process_image(
     config: ProcessingConfig,
     xml_generator_args: XmlGeneratorArguments,
 ) -> None:
-    t0 = perf_counter()
     eprint("Processing " + image_path)
     xml_file = replace_extension(image_path, ".musicxml")
     debug_cleanup: Debug | None = None
@@ -154,24 +179,37 @@ def process_image(
             multi_staffs = load_staff_positions(
                 debug, image, staff_position_files, config.selected_staff
             )
+            title = ""
         else:
-            multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
+            multi_staffs, image, debug, title_future = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug
 
-        print(f"Preprocessing took {perf_counter() - t0}")
-
-        appdata.homr_state = "Transforming"
-        appdata.homr_progress = 1
+        transformer_config = Config()
+        transformer_config.use_gpu_inference = config.use_gpu_inference
 
         result_staffs = parse_staffs(
-            debug, multi_staffs, image, selected_staff=config.selected_staff
+            debug,
+            multi_staffs,
+            image,
+            selected_staff=config.selected_staff,
+            config=transformer_config,
         )
 
+        title = title_future.result(60)
+        eprint("Found title:", title)
+
         eprint("Writing XML", result_staffs)
-        xml = generate_xml(xml_generator_args, result_staffs, "")  # "" for the empty title
+        xml = generate_xml(xml_generator_args, result_staffs, title)
         xml.write(xml_file)
 
         eprint("Finished parsing " + str(len(result_staffs)) + " staves")
+        teaser_file = replace_extension(image_path, "_teaser.png")
+        if config.write_staff_positions:
+            staff_position_files = replace_extension(image_path, ".txt")
+            save_staff_positions(multi_staffs, image.shape, staff_position_files)
+        debug.write_teaser(teaser_file, multi_staffs)
+        debug.clean_debug_files_from_previous_runs()
+
         eprint("Result was written to", xml_file)
     except:
         if os.path.exists(xml_file):
@@ -180,22 +218,14 @@ def process_image(
     finally:
         if debug_cleanup is not None:
             debug_cleanup.clean_debug_files_from_previous_runs()
-    return xml_file
 
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
-) -> tuple[list[MultiStaff], NDArray, Debug]:
-    appdata.homr_state = "Segementing"
-    appdata.homr_progress = 1
-
+) -> tuple[list[MultiStaff], NDArray, Debug, Future[str]]:
     predictions, debug = load_and_preprocess_predictions(
-        image_path, config.enable_debug, config.enable_cache
+        image_path, config.enable_debug, config.enable_cache, config.use_gpu_inference
     )
-
-    appdata.homr_state = "Extracting"
-    appdata.homr_progress = 1
-
     symbols = predict_symbols(debug, predictions)
 
     symbols.staff_fragments = break_wide_fragments(symbols.staff_fragments)
@@ -207,8 +237,6 @@ def detect_staffs_in_image(
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
-
-    appdata.homr_progress = 7
 
     average_note_head_height = float(
         np.median([notehead.notehead.size[1] for notehead in noteheads_with_stems])
@@ -230,17 +258,12 @@ def detect_staffs_in_image(
     debug.write_bounding_boxes(
         "anchor_input", symbols.staff_fragments + bar_line_boxes + symbols.clefs_keys
     )
-
-    appdata.homr_progress = 10
-
     staffs = detect_staff(
         debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
     )
-
-    appdata.homr_progress = 90
-
     if len(staffs) == 0:
         raise Exception("No staffs found")
+    title_future = detect_title(debug, staffs[0])
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
 
     brace_dot_img = prepare_brace_dot_image(predictions.symbols, predictions.staff)
@@ -261,7 +284,7 @@ def detect_staffs_in_image(
 
     debug.write_all_bounding_boxes_alternating_colors("notes", multi_staffs, notes)
 
-    return multi_staffs, predictions.preprocessed, debug
+    return multi_staffs, predictions.preprocessed, debug, title_future
 
 
 def get_all_image_files_in_folder(folder: str) -> list[str]:
@@ -279,17 +302,29 @@ def get_all_image_files_in_folder(folder: str) -> list[str]:
     return sorted(without_teasers)
 
 
-def download_weights() -> str | None:
-    try:
-        base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
-        missing_models = check_for_missing_models()
-        if len(missing_models) == 0:
-            return
+def download_weights(use_gpu_inference: bool) -> None:
+    base_url = "https://github.com/liebharc/homr/releases/download/onnx_checkpoints/"
+    if use_gpu_inference:
+        models = [
+            segnet_path_onnx_fp16,
+            default_config.filepaths.encoder_path_fp16,
+            default_config.filepaths.decoder_path_fp16,
+        ]
+        missing_models = [model for model in models if not os.path.exists(model)]
+    else:
+        models = [
+            segnet_path_onnx,
+            default_config.filepaths.encoder_path,
+            default_config.filepaths.decoder_path,
+        ]
+        missing_models = [model for model in models if not os.path.exists(model)]
 
-        appdata.downloaded_assets = f"Downloaded 0 of {len(missing_models)}"
+    if len(missing_models) == 0:
+        return
 
-        eprint("Downloading", len(missing_models), "models - this is only required once")
-        for idx, model in enumerate(missing_models):
+    eprint("Downloading", len(missing_models), "models - this is only required once")
+    for model in missing_models:
+        if not os.path.exists(model):
             base_name = os.path.basename(model).split(".")[0]
             eprint(f"Downloading {base_name}")
             try:
@@ -297,56 +332,120 @@ def download_weights() -> str | None:
                 download_url = base_url + zip_name
                 downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
                 download_utils.download_file(download_url, downloaded_zip)
+
                 destination_dir = os.path.dirname(model)
                 download_utils.unzip_file(downloaded_zip, destination_dir)
             finally:
                 if os.path.exists(downloaded_zip):
                     os.remove(downloaded_zip)
 
-            appdata.downloaded_assets = f"Downloaded {idx + 1} of {len(missing_models)}"
 
-    except Exception as e:
-        error_msg = f"An error occured while trying to download the models: {e}"
-        eprint(error_msg)
-        appdata.downloaded_assets = error_msg
-    return
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="homer", description="An optical music recognition (OMR) system"
+    )
+    parser.add_argument("image", type=str, nargs="?", help="Path to the image to process")
+    parser.add_argument(
+        "--init",
+        action="store_true",
+        help="Downloads the models if they are missing and then exits. "
+        + "You don't have to call init before processing images, "
+        + "it's only useful if you want to prepare for example a Docker image.",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument(
+        "--cache", action="store_true", help="Read an existing cache file or create a new one"
+    )
+    parser.add_argument(
+        "--output-large-page",
+        action="store_true",
+        help="Adds instructions to the musicxml so that it gets rendered on larger pages",
+    )
+    parser.add_argument(
+        "--output-metronome", type=int, help="Adds a metronome to the musicxml with the given bpm"
+    )
+    parser.add_argument(
+        "--output-tempo", type=int, help="Adds a tempo to the musicxml with the given bpm"
+    )
+    parser.add_argument(
+        "--write-staff-positions",
+        action="store_true",
+        help="Writes the position of all detected staffs to a txt file.",
+    )
+    parser.add_argument(
+        "--read-staff-positions",
+        action="store_true",
+        help="Reads the position of all staffs from a txt file instead"
+        + " of running the built-in staff detection.",
+    )
+    parser.add_argument(
+        "--gpu",
+        type=GpuSupport,
+        choices=list(GpuSupport),
+        default=GpuSupport.AUTO,
+        help=argparse.SUPPRESS,
+    )
 
+    args = parser.parse_args()
 
-def check_for_missing_models() -> list:
-    """
-    Checks for missing models and returns a list with all the links to the missing models.
-    """
-    models = [
-        segnet_path_tflite,
-        default_config.filepaths.encoder,
-        default_config.filepaths.decoder_path,
-    ]
-    if platform == 'android':
-        delete_unused_models(models)
-    missing_models = [model for model in models if not os.path.exists(model)]
-    return missing_models
+    has_gpu_support = "CUDAExecutionProvider" in ort.get_available_providers()
 
+    use_gpu_inference = (
+        args.gpu == GpuSupport.AUTO and has_gpu_support
+    ) or args.gpu == GpuSupport.FORCE
 
-def delete_unused_models(models_used):
-    models = os.listdir(MODEL_STORAGE)
-    unused_models = [
-        os.path.join(MODEL_STORAGE, x)
-        for x in models
-        if os.path.join(MODEL_STORAGE, x) not in models_used
-    ]
-    print(f"Deleting: {unused_models}")
-    for path in unused_models:
-        os.remove(path)
+    download_weights(use_gpu_inference)
+    if args.init:
+        download_ocr_weights()
+        eprint("Init finished")
+        return
 
+    config = ProcessingConfig(
+        args.debug,
+        args.cache,
+        args.write_staff_positions,
+        args.read_staff_positions,
+        -1,
+        use_gpu_inference,
+    )
 
-def homr(path, cache=False):
-    t0 = perf_counter()
-    config = ProcessingConfig(False, False, False, False, -1)
-    xml_generator_args = XmlGeneratorArguments(False, False, False)
-    out_path = process_image(path, config, xml_generator_args)
-    eprint(f"Homr took {perf_counter() - t0} seconds.")
-    return out_path
+    xml_generator_args = XmlGeneratorArguments(
+        args.output_large_page, args.output_metronome, args.output_tempo
+    )
+    if args.debug:
+        eprint(f"Using Log Level {2} for OnnxRuntime")
+        ort.set_default_logger_severity(2)
+    else:
+        ort.set_default_logger_severity(3)
+
+    if not args.image:
+        eprint("No image provided")
+        parser.print_help()
+        sys.exit(1)
+    elif os.path.isfile(args.image):
+        try:
+            process_image(args.image, config, xml_generator_args)
+        except InvalidProgramArgumentException as e:
+            eprint(str(e))
+            sys.exit(2)
+    elif os.path.isdir(args.image):
+        image_files = get_all_image_files_in_folder(args.image)
+        eprint("Processing", len(image_files), "files:", image_files)
+        error_files = []
+        for image_file in image_files:
+            eprint("=========================================")
+            try:
+                process_image(image_file, config, xml_generator_args)
+                eprint("Finished", image_file)
+            except Exception as e:
+                eprint(f"An error occurred while processing {image_file}: {e}")
+                error_files.append(image_file)
+        if len(error_files) > 0:
+            eprint("Errors occurred while processing the following files:", error_files)
+    else:
+        eprint(f"{args.image} is not a valid file or directory")
+        sys.exit(2)
 
 
 if __name__ == "__main__":
-    homr("images/parrots/p1.jpg", cache=False)
+    main()

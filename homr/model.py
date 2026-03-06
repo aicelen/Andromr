@@ -441,6 +441,7 @@ class MultiStaff(DebugDrawable):
 
         if i < n:
             result.append(self.staffs[i])
+
         return MultiStaff(result, self.connections)
 
     def break_apart(self) -> list["MultiStaff"]:

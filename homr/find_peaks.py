@@ -30,7 +30,6 @@ def find_peaks(
     properties : dict
         Dictionary with empty values (for compatibility)
     """
-    print('find peaks')
     x = np.asarray(x)
     if x.ndim != 1:
         raise ValueError("x must be 1D")
@@ -129,5 +128,5 @@ def find_peaks(
 
         # Sort back to original order
         peaks = np.array(sorted(keep), dtype=int)
-    print('returned peaks')
+
     return peaks, {}

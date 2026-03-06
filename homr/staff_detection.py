@@ -1,11 +1,10 @@
 from collections.abc import Generator, Iterable
 
 import cv2
+import cv2.typing as cvt
 import numpy as np
 
-from homr.find_peaks import find_peaks
-
-from homr import constants
+from homr import constants, find_peaks
 from homr.bounding_boxes import (
     DebugDrawable,
     RotatedBoundingBox,
@@ -131,11 +130,11 @@ class StaffAnchor(DebugDrawable):
         cv2.line(img, [x - 50, self.zone.stop], [x + 50, self.zone.stop], color, 2)
 
 
-def _get_all_contours(lines: list[StaffLineSegment]):
+def _get_all_contours(lines: list[StaffLineSegment]) -> list[cvt.MatLike]:
     all_fragments: list[RotatedBoundingBox] = []
     for line in lines:
         all_fragments.extend(line.staff_fragments)
-    result = []
+    result: list[cvt.MatLike] = []
     for fragment in all_fragments:
         result.extend(fragment.contours)
     return result
@@ -617,7 +616,7 @@ def find_horizontal_lines(
 
     count = np.insert(count, [0, len(count)], [0, 0])  # type: ignore
     norm = (count - np.mean(count)) / np.std(count)
-    centers, _ = find_peaks(
+    centers, _ = find_peaks.find_peaks(
         norm, height=line_threshold, distance=unit_size, prominence=1
     )
     centers -= 1

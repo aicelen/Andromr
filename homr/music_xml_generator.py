@@ -73,7 +73,6 @@ class SymbolChord:
             else:
                 lower.append(symbol)
                 lower_is_only_rest = lower_is_only_rest and symbol.rhythm.startswith("rest")
-
         chords = (
             SymbolChord(upper, self.tuplet_mark),
             SymbolChord(lower, self.tuplet_mark),

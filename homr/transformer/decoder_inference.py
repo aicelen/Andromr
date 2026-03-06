@@ -1,37 +1,28 @@
-from math import ceil
 from typing import Any
 
 import numpy as np
+import onnxruntime as ort
 
+from homr.simple_logging import eprint
 from homr.transformer.configs import Config
-from homr.transformer.utils import softmax
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
-from homr.inference_engine.onnx_model import OnnxModel
-from homr.transformer.configs import default_config
-
-from globals import appdata
-from kivy import platform
-
-model: OnnxModel | None = None
-
-
-def preload_decoder(num_threads):
-    global model
-    if model is None or appdata.settings_changed:
-        model = OnnxModel(default_config.filepaths.decoder_path, num_threads=num_threads)
 
 
 class ScoreDecoder:
     def __init__(
         self,
-        transformer: OnnxModel,
+        transformer: ort.InferenceSession,
+        fp16: bool,
+        use_gpu: bool,
         config: Config,
         ignore_index: int = -100,
     ):
         super().__init__()
         self.ignore_index = ignore_index
+        self.config = config
         self.net = transformer
+        self.io_binding = self.net.io_binding()
         self.max_seq_len = config.max_seq_len
         self.eos_token = config.eos_token
 
@@ -41,12 +32,22 @@ class ScoreDecoder:
         self.inv_articulation_vocab = {v: k for k, v in config.articulation_vocab.items()}
         self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
 
+        self.fp16 = fp16
+        self.use_gpu = use_gpu
+        self.device_id = 0
+        self.output_names = [
+            "out_rhythms",
+            "out_pitchs",
+            "out_lifts",
+            "out_positions",
+            "out_articulations",
+            "attention",
+        ]
+
     def generate(
         self,
         start_tokens: NDArray,
         nonote_tokens: NDArray,
-        temperature: float = 1.0,
-        filter_thres: float = 0.7,
         **kwargs: Any,
     ) -> list[EncodedSymbol]:
         num_dims = len(start_tokens.shape)
@@ -60,17 +61,10 @@ class ScoreDecoder:
         out_pitch = nonote_tokens
         out_lift = nonote_tokens
         out_articulations = nonote_tokens
-        cache, kv_input_names, kv_outputs_dicts = self.init_cache()
+        cache, kv_input_names, kv_output_names = self.init_cache()
+        output_names = self.output_names + kv_output_names
         context = kwargs["context"]
         context_reduced = kwargs["context"][:, :1]
-
-        outputs_dict = {
-            "out_rhythms": [1, 1, 260],
-            "out_pitchs": [1, 1, 72],
-            "out_lifts": [1, 1, 7],
-            "out_positions": [1, 1, 3],
-            "out_articulations": [1, 1, 171],
-        }
 
         symbols: list[EncodedSymbol] = []
 
@@ -80,51 +74,45 @@ class ScoreDecoder:
             x_rhythm = out_rhythm[:, -1:]
             x_articulations = out_articulations[:, -1:]
 
-            inputs = {
-                "rhythms": x_rhythm,
-                "pitchs": x_pitch,
-                "lifts": x_lift,
-                "articulations": x_articulations,
-                "context": context,
-                "cache_len": np.array([step]),
-            }
+            # after the first step we don't pass the full context into the decoder
+            # x_transformers uses [:, :0] to split the context
+            # which caused a Reshape error when loading the onnx model
+            context = context if step == 0 else context_reduced
 
-            if step == 0:
-                # only in the first step the cache get's passed in (on android)
-                for i in range(32):
-                    inputs[kv_input_names[i]] = cache[i]
+            # Bind Inputs
+            self.io_binding.bind_cpu_input("rhythms", x_rhythm)
+            self.io_binding.bind_cpu_input("pitchs", x_pitch)
+            self.io_binding.bind_cpu_input("lifts", x_lift)
+            self.io_binding.bind_cpu_input("articulations", x_articulations)
+            self.io_binding.bind_cpu_input("context", context)
+            self.io_binding.bind_cpu_input("cache_len", np.array([step], dtype=np.int64))
+            for name, cache_val in zip(kv_input_names, cache, strict=True):
+                self.io_binding.bind_ortvalue_input(name, cache_val)
 
-            else:
-                # after the first step we don't pass the full context into the decoder
-                # x_transformers uses [:, :0] to split the context
-                # which caused a Reshape error when loading the onnx model
-                context = context_reduced
-                if platform != "android":
-                    for i in range(32):
-                        inputs[kv_input_names[i]] = cache[i]
+            # Bind Outputs
+            for name in output_names:
+                self.io_binding.bind_output(name, "cuda" if self.use_gpu else "cpu", self.device_id)
 
-            rhythmsp, pitchsp, liftsp, positionsp, articulationsp, *cache = self.net.run(
-                inputs=inputs,
-                outputs=outputs_dict | kv_outputs_dicts,  # merges the dicts
-            )
+            # Run inference
+            self.net.run_with_iobinding(iobinding=self.io_binding)
 
-            filtered_lift_logits = top_k(liftsp[:, -1, :], thres=filter_thres)
-            filtered_pitch_logits = top_k(pitchsp[:, -1, :], thres=filter_thres)
-            filtered_rhythm_logits = top_k(rhythmsp[:, -1, :], thres=filter_thres)
-            filtered_articulations_logits = top_k(articulationsp[:, -1, :], thres=filter_thres)
-            filtered_positions_logits = top_k(positionsp[:, -1, :], thres=filter_thres)
+            # Get outputs
+            outputs = self.io_binding.get_outputs()
+            cache = outputs[6:]
 
-            lift_probs = softmax(filtered_lift_logits / temperature, dim=-1)
-            pitch_probs = softmax(filtered_pitch_logits / temperature, dim=-1)
-            rhythm_probs = softmax(filtered_rhythm_logits / temperature, dim=-1)
-            articulation_probs = softmax(filtered_articulations_logits / temperature, dim=-1)
-            positions_probs = softmax(filtered_positions_logits / temperature, dim=-1)
+            # Greedy decoding: pick the highest logit directly for each output
+            rhythmsp = outputs[0].numpy()
+            pitchsp = outputs[1].numpy()
+            liftsp = outputs[2].numpy()
+            positionsp = outputs[3].numpy()
+            articulationsp = outputs[4].numpy()
+            attention = outputs[5].numpy()
 
-            lift_sample = np.array([[lift_probs.argmax()]])
-            pitch_sample = np.array([[pitch_probs.argmax()]])
-            rhythm_sample = np.array([[rhythm_probs.argmax()]])
-            articulation_sample = np.array([[articulation_probs.argmax()]])
-            position_sample = np.array([[positions_probs.argmax()]])
+            rhythm_sample = np.array([[rhythmsp[:, -1, :].argmax()]])
+            pitch_sample = np.array([[pitchsp[:, -1, :].argmax()]])
+            lift_sample = np.array([[liftsp[:, -1, :].argmax()]])
+            articulation_sample = np.array([[articulationsp[:, -1, :].argmax()]])
+            position_sample = np.array([[positionsp[:, -1, :].argmax()]])
 
             lift_token = detokenize(lift_sample, self.inv_lift_vocab)
             pitch_token = detokenize(pitch_sample, self.inv_pitch_vocab)
@@ -141,15 +129,9 @@ class ScoreDecoder:
                 lift=lift_token[0],
                 articulation=articulation_token[0],
                 position=position_token[0],
+                coordinates=attention,
             )
             symbols.append(symbol)
-            if symbol.rhythm.startswith("keySignature"):
-                key = symbol.rhythm
-            elif symbol.rhythm.startswith("clef"):
-                if symbol.position == "upper":
-                    clef_upper = symbol.rhythm
-                else:
-                    clef_lower = symbol.rhythm
 
             out_lift = np.concatenate((out_lift, lift_sample), axis=-1)
             out_pitch = np.concatenate((out_pitch, pitch_sample), axis=-1)
@@ -161,38 +143,29 @@ class ScoreDecoder:
     def init_cache(self, cache_len: int = 0) -> tuple[list[NDArray], list[str], list[str]]:
         cache = []
         input_names = []
-        output_dict = {}
-        for i in range(32):
-            cache.append(np.zeros((1, 8, cache_len, 64), dtype=np.float32))
+        output_names = []
+        heads = self.config.decoder_heads
+        head_dim = self.config.decoder_dim // heads
+        for i in range(self.config.decoder_depth * 4):
+            if self.fp16:  # the cache needs to be fp16 as well
+                cache.append(
+                    ort.OrtValue.ortvalue_from_numpy(
+                        np.zeros((1, heads, cache_len, head_dim), dtype=np.float16),
+                        "cuda" if self.use_gpu else "cpu",
+                        self.device_id,
+                    )
+                )
+            else:
+                cache.append(
+                    ort.OrtValue.ortvalue_from_numpy(
+                        np.zeros((1, heads, cache_len, head_dim), dtype=np.float32),
+                        "cuda" if self.use_gpu else "cpu",
+                        self.device_id,
+                    )
+                )
             input_names.append(f"cache_in{i}")
-            output_dict[f"cache_out{i}"] = (
-                f"cache_in{i}"  # this is used to check if this gets converted to python or not
-            )
-        return cache, input_names, output_dict
-
-
-def top_k(logits: NDArray, thres: float = 0.9) -> NDArray:
-    """Numpy implementation matching torch's top_k behavior"""
-    k = ceil((1 - thres) * logits.shape[-1])
-
-    # Get top k elements
-    flat_logits = logits.ravel()
-    indices = np.argpartition(flat_logits, -k)[-k:]  # Get indices of top k elements
-    indices = indices[np.argsort(-flat_logits[indices])]  # Sort them in descending order
-    values = flat_logits[indices]  # Get the corresponding values
-
-    # Create output array with -inf
-    output = np.full_like(logits, -np.inf)
-
-    # Scatter the topk values back into the output array
-    # For multi-dimensional arrays, we need to convert flat indices to multi-indices
-    if logits.ndim > 1:
-        multi_indices = np.unravel_index(indices, logits.shape)
-        output[multi_indices] = values
-    else:
-        output[indices] = values
-
-    return output
+            output_names.append(f"cache_out{i}")
+        return cache, input_names, output_names
 
 
 def detokenize(tokens: NDArray, vocab: dict[int, str]) -> list[str]:
@@ -205,9 +178,22 @@ def get_decoder(config: Config) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    global model
-    preload_decoder(appdata.threads)
-    if appdata.settings_changed or model.session is None:
-        model.load()
+    use_gpu = False
+    if config.use_gpu_inference:
+        try:
+            onnx_transformer = ort.InferenceSession(
+                config.filepaths.decoder_path_fp16, providers=["CUDAExecutionProvider"]
+            )
+            fp16 = True
+            use_gpu = True
+        except Exception as ex:
+            eprint(ex)
+            eprint("Going on without GPU support")
+            onnx_transformer = ort.InferenceSession(config.filepaths.decoder_path_fp16)
+            fp16 = True
 
-    return ScoreDecoder(model, config=config)
+    else:
+        onnx_transformer = ort.InferenceSession(config.filepaths.decoder_path)
+        fp16 = False
+
+    return ScoreDecoder(onnx_transformer, fp16, use_gpu, config=config)

@@ -1,5 +1,6 @@
 import re
 
+from homr.circle_of_fifths import strip_naturals
 from homr.transformer.vocabulary import EncodedSymbol, empty, nonote
 from training.datasets.staff_merging import (
     EncodedSymbolWithPos,
@@ -15,6 +16,7 @@ def convert_kern_to_tokens(lines: list[str]) -> list[EncodedSymbol]:
     )
     merged = _remove_redundant_key_changes(merged)
     merged = _fix_final_repeat_start(merged)
+    merged = strip_naturals(merged)
     return merged
 
 
@@ -145,7 +147,7 @@ class HumdrumKernConverter:
         if not suffix:
             return empty
 
-        mapping = {":": "arpeggiate", "[": "tieStart", "]": "tieStop"}
+        mapping = {":": "arpeggiate", "[": "slurStart", "]": "slurStop"}
         articulations = []
         for char in suffix:
             articulations.append(mapping[char])
@@ -252,7 +254,9 @@ class HumdrumKernConverter:
                 in_control_group = control_line
         return result
 
-    def convert_humdrum_kern(self, staff_no: int, lines: list[str]) -> list[EncodedSymbolWithPos]:  # noqa: C901
+    def convert_humdrum_kern(
+        self, staff_no: int, lines: list[str]
+    ) -> list[EncodedSymbolWithPos]:  # noqa: C901
         result: list[EncodedSymbolWithPos] = []
 
         clef = EncodedSymbolWithPos(-10, self._get_default_clef(staff_no))

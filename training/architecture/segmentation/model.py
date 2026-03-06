@@ -15,7 +15,7 @@ class CamVidModel(pl.LightningModule):
 
     def __init__(
         self,
-        arch: str = "UnetPlusPlus",
+        arch: str = "Unet",
         encoder_name: str = "resnet18",
         in_channels: int = 3,
         out_classes: int = 0,
@@ -147,12 +147,6 @@ class CamVidModel(pl.LightningModule):
                 "frequency": 1,
             },
         }
-
-
-def create_unet(skip_weights_download: bool = False) -> CamVidModel:
-    return CamVidModel(
-        encoder_name="resnet34", out_classes=3, skip_weights_download=skip_weights_download
-    )
 
 
 def create_segnet(skip_weights_download: bool = False) -> CamVidModel:

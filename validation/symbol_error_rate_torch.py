@@ -1,31 +1,35 @@
 import argparse
 import os
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import cv2
 import editdistance
+import onnxruntime as ort
 
 from homr import download_utils
+from homr.main import GpuSupport
 from homr.simple_logging import eprint
 from homr.staff_parsing import add_image_into_tr_omr_canvas
 from homr.transformer.configs import Config as ConfigTorch
-from homr.transformer.vocabulary import EncodedSymbol
+from homr.transformer.vocabulary import EncodedSymbol, sort_token_chords
 from training.transformer.training_vocabulary import (
     read_tokens,
-    sort_token_chords,
     token_lines_to_str,
 )
 
 
 def calc_symbol_error_rate_for_list(
-    dataset: list[str], config: ConfigTorch | None, onnx: bool
+    dataset: list[str], config: ConfigTorch | None, onnx: bool, use_gpu: bool
 ) -> None:
     model: Any
     if onnx:
         from homr.transformer.staff2score import Staff2Score as Staff2ScoreOnnx
 
-        model = Staff2ScoreOnnx(False)
+        config = ConfigTorch()
+        config.use_gpu_inference = use_gpu
+        model = Staff2ScoreOnnx(config)
         result_file = "onnx_ser.txt"
 
     else:
@@ -44,14 +48,17 @@ def calc_symbol_error_rate_for_list(
     i = 0
     total = len(dataset)
     interesting_results: list[tuple[str, str]] = []
+    inference_time = 0.0
     for sample in dataset:
         img_path, token_path = sample.strip().split(",")
         expected = read_tokens(token_path)
         image = cv2.imread(img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         if image is None:
             raise ValueError("Failed to read " + img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        t0 = perf_counter()
         actual: list[EncodedSymbol] = model.predict(image)
+        inference_time += perf_counter() - t0
         # Calculate the SER only based on notes and rests
         relevant_symbols = ("note", "rest", "keySignature")
         actual = [
@@ -68,9 +75,6 @@ def calc_symbol_error_rate_for_list(
         ]
         distance = editdistance.eval(expected, actual)
         ser = distance / len(expected)
-        if ser > 0.5:
-            eprint("Expected:", token_lines_to_str(expected))
-            eprint("Actual  :", token_lines_to_str(actual))
 
         all_sers.append(ser)
         ser = round(100 * ser)
@@ -83,6 +87,10 @@ def calc_symbol_error_rate_for_list(
             interesting_results.append((token_lines_to_str(expected), token_lines_to_str(actual)))
         percentage = round(i / total * 100)
         img_path_rel = os.path.relpath(img_path)
+        if ser > 25:
+            eprint(f"SER: {ser}%, ({img_path_rel})")
+            eprint("Expected:", token_lines_to_str(expected))
+            eprint("Actual  :", token_lines_to_str(actual))
         eprint(f"Progress: {percentage}%, SER: {ser}%, SER avg: {ser_avg}% ({img_path_rel})")
 
     for result in interesting_results:
@@ -90,7 +98,7 @@ def calc_symbol_error_rate_for_list(
         eprint("Actual  :", result[1])
 
     ser_avg = round(100 * sum(all_sers) / len(all_sers))
-    eprint(f"Done, SER avg: {ser_avg}%")
+    eprint(f"Done after {round(inference_time, 2)} seconds, SER avg: {ser_avg}%")
 
     with open(result_file, "w") as f:
         f.write(f"SER avg: {ser_avg}%\n")
@@ -114,7 +122,7 @@ def index_folder(folder: str, index_file: str) -> None:
         staff_image = cv2.imread(img_file)
         if staff_image is None:
             raise ValueError("Failed to load " + img_file)
-        prepared = add_image_into_tr_omr_canvas(staff_image, False, 0, 0)
+        prepared = add_image_into_tr_omr_canvas(staff_image)
         processed_path = img_file.replace(".jpg", "-pre.jpg")
         cv2.imwrite(processed_path, prepared)
         result.append(str.join(",", [processed_path, token_file]))
@@ -129,6 +137,15 @@ def main() -> None:
     with the original inference code located in homr/transformer.
     """
     parser = argparse.ArgumentParser(description="Calculate symbol error rate.")
+
+    parser.add_argument(
+        "--gpu",
+        type=GpuSupport,
+        choices=list(GpuSupport),
+        default=GpuSupport.AUTO,
+        help=argparse.SUPPRESS,
+    )
+
     # optional: if no path is given it uses the onnx backend with
     # the model located in homr/transformer
     parser.add_argument(
@@ -140,9 +157,7 @@ def main() -> None:
     data_set_location = os.path.abspath(os.path.join(script_location, "..", "datasets"))
     validation_data_set_location = os.path.join(data_set_location, "validation")
     download_path = os.path.join(data_set_location, "validation.zip")
-    download_url = (
-        "https://github.com/liebharc/homr/releases/download/datasets/validation_tokens.zip"
-    )
+    download_url = "https://github.com/liebharc/homr/releases/download/datasets/validation_v2.zip"
     if not os.path.exists(validation_data_set_location):
         try:
             eprint("Downloading validation data set")
@@ -161,8 +176,12 @@ def main() -> None:
 
     if args.checkpoint_file is None:
         # use onnx backend
-        eprint("Running with onnx backend")
-        calc_symbol_error_rate_for_list(index, None, onnx=True)
+        has_gpu_support = "CUDAExecutionProvider" in ort.get_available_providers()
+        use_gpu_inference = (
+            args.gpu == GpuSupport.AUTO and has_gpu_support
+        ) or args.gpu == GpuSupport.FORCE
+        eprint(f"Running with onnx backend with {'GPU' if use_gpu_inference else 'CPU'}")
+        calc_symbol_error_rate_for_list(index, None, onnx=True, use_gpu=use_gpu_inference)
 
     else:
         eprint("Running with torch backend")
@@ -180,7 +199,7 @@ def main() -> None:
 
         for checkpoint_file in checkpoint_files:
             config.filepaths.checkpoint = str(checkpoint_file)
-            calc_symbol_error_rate_for_list(index, config, onnx=False)
+            calc_symbol_error_rate_for_list(index, config, onnx=False, use_gpu=False)
 
 
 if __name__ == "__main__":

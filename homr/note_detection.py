@@ -1,3 +1,4 @@
+import cv2.typing as cvt
 import numpy as np
 
 from homr import constants
@@ -24,7 +25,7 @@ class NoteheadWithStem(DebugDrawable):
             self.stem.draw_onto_image(img, color)
 
 
-def adjust_bbox(bbox, noteheads: NDArray):
+def adjust_bbox(bbox: cvt.Rect, noteheads: NDArray) -> cvt.Rect:
     region = noteheads[bbox[1] : bbox[3], bbox[0] : bbox[2]]
     ys, _ = np.where(region > 0)
     if len(ys) == 0:
@@ -35,24 +36,24 @@ def adjust_bbox(bbox, noteheads: NDArray):
     return (bbox[0], int(top), bbox[2], int(bottom))
 
 
-def get_center(bbox) -> tuple[int, int]:
+def get_center(bbox: cvt.Rect) -> tuple[int, int]:
     cen_y = int(round((bbox[1] + bbox[3]) / 2))
     cen_x = int(round((bbox[0] + bbox[2]) / 2))
     return cen_x, cen_y
 
 
-def check_bbox_size(bbox, noteheads: NDArray, unit_size: float) -> list:
+def check_bbox_size(bbox: cvt.Rect, noteheads: NDArray, unit_size: float) -> list[cvt.Rect]:
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
     cen_x, _ = get_center(bbox)
     note_w = constants.NOTEHEAD_SIZE_RATIO * unit_size
     note_h = unit_size
 
-    new_bbox: list = []
+    new_bbox: list[cvt.Rect] = []
     if abs(w - note_w) > abs(w - note_w * 2):
         # Contains at least two notes, one left and one right.
-        left_box = (bbox[0], bbox[1], cen_x, bbox[3])
-        right_box = (cen_x, bbox[1], bbox[2], bbox[3])
+        left_box: cvt.Rect = (bbox[0], bbox[1], cen_x, bbox[3])
+        right_box: cvt.Rect = (cen_x, bbox[1], bbox[2], bbox[3])
 
         # Upper and lower bounds could have changed
         left_box = adjust_bbox(left_box, noteheads)

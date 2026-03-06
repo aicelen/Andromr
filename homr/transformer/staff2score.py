@@ -2,7 +2,6 @@ import os
 from time import perf_counter
 
 import numpy as np
-from PIL import Image
 
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
@@ -17,9 +16,9 @@ class Staff2Score:
     Inference class for Tromr. Use predict() for prediction
     """
 
-    def __init__(self) -> None:
-        self.config = Config()
-        self.encoder = Encoder()
+    def __init__(self, config: Config) -> None:
+        self.config = config
+        self.encoder = Encoder(self.config)
         self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
@@ -31,7 +30,7 @@ class Staff2Score:
         """
         Inference an image (NDArray) using Tromr.
         """
-        x = _transform(image=image).transpose(0, 3, 1, 2)
+        x = _transform(image=image)
 
         t0 = perf_counter()
 
@@ -43,7 +42,6 @@ class Staff2Score:
         context = self.encoder.generate(x)
 
         # Make a prediction using decoder
-        t1 = perf_counter()
         out = self.decoder.generate(
             start_token,
             nonote_token,
@@ -52,7 +50,9 @@ class Staff2Score:
             context=context,
         )
 
-        return out, perf_counter() - t1
+        eprint(f"Inference Time Tromr: {perf_counter()-t0}")
+
+        return out
 
 
 class ConvertToArray:
@@ -65,7 +65,7 @@ class ConvertToArray:
 
     def __call__(self, image: NDArray) -> NDArray:
         arr = np.array(image) / 255
-        arr = arr[np.newaxis, :, :, np.newaxis]
+        arr = arr[np.newaxis, np.newaxis, :, :]
         return self.normalize(arr).astype(np.float32)
 
 
@@ -80,23 +80,13 @@ def test_transformer_on_image(path_to_img: str) -> None:
     """
     from PIL import Image
 
-    model = Staff2Score(False)
+    model = Staff2Score(Config())
     image = Image.open(path_to_img)
     out = model.predict(np.array(image))
     eprint(out)
 
 
-def benchmark(path_to_img: str, it) -> None:
-    from PIL import Image
-
-    model = Staff2Score(False)
-    image = Image.open(path_to_img)
-    t_complete = 0
-    for i in range(it):
-        t_complete += model.predict(np.array(image))[1]
-    
-    eprint(t_complete/it)
-
-
 if __name__ == "__main__":
-    benchmark("staff.png", 10)
+    import sys
+
+    test_transformer_on_image(sys.argv[1])

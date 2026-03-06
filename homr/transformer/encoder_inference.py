@@ -1,33 +1,53 @@
 import numpy as np
-from time import perf_counter
+import onnxruntime as ort
+from onnxruntime import OrtValue
 
+from homr.simple_logging import eprint
+from homr.transformer.configs import Config
 from homr.type_definitions import NDArray
-from homr.inference_engine import TensorFlowModel
-from homr.transformer.configs import default_config
-
-from globals import appdata
-
-encoder: TensorFlowModel | None = None
 
 
 class Encoder:
-    def __init__(self) -> None:
-        """
-        Enocder using only one .tflite file.
-        """
-        global encoder
-        if encoder is None:
-            encoder = TensorFlowModel(
-                default_config.filepaths.encoder
-            )
+    def __init__(self, config: Config) -> None:
+        self.use_gpu = False
+        if config.use_gpu_inference:
+            try:
+                self.encoder = ort.InferenceSession(
+                    config.filepaths.encoder_path_fp16,
+                    providers=[
+                        (
+                            "CUDAExecutionProvider",
+                            {
+                                "cudnn_conv_algo_search": "DEFAULT",
+                            },
+                        )
+                    ],
+                )
+                self.fp16 = True
+                self.use_gpu = True
 
-        self.encoder = encoder
+            except Exception as ex:
+                eprint(ex)
+                eprint("Going on without GPU support")
+                self.encoder = ort.InferenceSession(config.filepaths.encoder_path_fp16)
+                self.fp16 = True
 
-    def generate(self, x: NDArray) -> NDArray:
-        t0 = perf_counter()
-        out = self.encoder.run(x, (1, 1281, 312))
-        t1 = perf_counter()
+        else:
+            self.encoder = ort.InferenceSession(config.filepaths.encoder_path)
+            self.fp16 = False
 
-        print(f"Inference time of Encoder: {round(t1 - t0, 3)}s")
+        self.io_binding = self.encoder.io_binding()
+        self.device_id = 0
 
-        return out.astype(np.float32)
+        self.input_name = self.encoder.get_inputs()[0].name
+        self.output_name = self.encoder.get_outputs()[0].name
+
+    def generate(self, x: NDArray) -> list[OrtValue]:
+        if self.fp16:
+            self.io_binding.bind_cpu_input("input", x.astype(np.float16))
+        else:
+            self.io_binding.bind_cpu_input("input", x.astype(np.float32))
+
+        self.io_binding.bind_output("output", "cuda" if self.use_gpu else "cpu", self.device_id)
+        self.encoder.run_with_iobinding(self.io_binding)
+        return self.io_binding.get_outputs()[0].numpy()
