@@ -21,5 +21,5 @@ def convert_encoder(model_version: int):
     quant_int8(f"encoder_{model_version}")
 
 
-if  __name__ == "__main__":
+if __name__ == "__main__":
     convert_encoder(331)

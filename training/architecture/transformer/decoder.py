@@ -153,9 +153,9 @@ class ScoreTransformerWrapper(nn.Module):
             # get the kv cache tensors from the LayerIntermediates class
             # the cache is built up like this:
             # LayerIntermediates(atten_intermediates=Intermediates(cached_kv=(cache_k, cache_v)))
-            # cache is alternating between shapes (batch, 8, seq_len, 64) and (batch, 8, 1281, 64)
+            # cache is alternating between shapes (batch, 8, seq_len, 64) and (batch, 8, 1280, 64)
             # 8 probably corresponds to the number of decoder_heads
-            # 1281 is the same as the encoder output
+            # 1280 is the same as the encoder output
             cache_out = []
             attn_inters = cache.attn_intermediates
             if return_center_of_attention:

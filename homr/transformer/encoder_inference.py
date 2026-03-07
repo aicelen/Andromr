@@ -15,15 +15,13 @@ class Encoder:
         """
         global encoder
         if encoder is None:
-            encoder = TensorFlowModel(
-                default_config.filepaths.encoder_path
-            )
+            encoder = TensorFlowModel(default_config.filepaths.encoder_path)
 
         self.encoder = encoder
 
     def generate(self, x: NDArray) -> NDArray:
         t0 = perf_counter()
-        out = self.encoder.run(x, (1, 1281, 512))
+        out = self.encoder.run(x, (1, 1280, 512))
         t1 = perf_counter()
 
         print(f"Inference time of Encoder: {round(t1 - t0, 3)}s")

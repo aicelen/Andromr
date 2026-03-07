@@ -90,6 +90,7 @@ if platform == "android":
 
 else:
     from plyer import filechooser
+
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
 
@@ -121,7 +122,6 @@ class LandingPage(Screen):
             os.remove(os.path.join(IMAGE_PATH, path))
             print(f"Removed {path}")
 
-
         Clock.schedule_once(self.update_scrollview, 0)
 
     def update_scrollview(self, *args):
@@ -129,7 +129,7 @@ class LandingPage(Screen):
         if platform == "android":
             self.app.root.get_screen("camera").ids.camera_pre._camera._release_camera()
 
-        self.app.root.get_screen("image_page").ids.image_box.clear_widgets() # clean up widgets
+        self.app.root.get_screen("image_page").ids.image_box.clear_widgets()  # clean up widgets
 
         self.files = os.listdir(XML_PATH)
         text_lables = [os.path.splitext(file)[0] for file in self.files]
@@ -155,7 +155,9 @@ class LandingPage(Screen):
 
             b_delete = MDIconButton(
                 icon="delete-outline",
-                on_release=lambda func, path=os.path.join(XML_PATH, file): self.confirm_delete(path),
+                on_release=lambda func, path=os.path.join(XML_PATH, file): self.confirm_delete(
+                    path
+                ),
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
@@ -188,7 +190,7 @@ class LandingPage(Screen):
         """
         # export (.musicxml)
         print(f"Trying to export {path}")
-        if platform == 'android':
+        if platform == "android":
             self.share_file(path)
         else:
             print("Exporting is not implemented on Desktop")
@@ -237,7 +239,6 @@ class CameraPage(Screen):
         """
         self.app = MDApp.get_running_app()
 
-
         # Reload camera
         if self.app.previous_screen != "image_page":
             self.reload_camera()
@@ -259,7 +260,10 @@ class CameraPage(Screen):
         # Schedule UI updates on the main thread
         Clock.schedule_once(lambda dt: self.app.root.get_screen("image_page")._display_img(path), 0)
 
-    def take_picture(self, filename=os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")):
+    def take_picture(
+        self,
+        filename=os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"),
+    ):
         """Take an image"""
         take_picture(self.ids.camera_pre, self.display_img, filename)
 
@@ -305,7 +309,11 @@ class SettingsPage(Screen):
             gpu = self.ids.checkbox_gpu.active
             use_xnnpack = self.ids.checkbox_xnnpack.active
             num_threads = self.ids.slider_threads.value
-            if appdata.threads != num_threads or appdata.xnnpack != use_xnnpack or appdata.gpu != gpu:
+            if (
+                appdata.threads != num_threads
+                or appdata.xnnpack != use_xnnpack
+                or appdata.gpu != gpu
+            ):
                 appdata.settings_changed = True
             else:
                 appdata.settings_changed = False
@@ -323,10 +331,11 @@ class SettingsPage(Screen):
         need_download = app.check_download_assets(camera_page=False, validation=True)
         if not need_download:
             app.start_inference(
-                path_to_image="test_data/tabi/tabi.jpg", 
-                out_path="test_data/tabi/tabi.musicxml", 
-                verify=True
+                path_to_image="test_data/tabi/tabi.jpg",
+                out_path="test_data/tabi/tabi.musicxml",
+                verify=True,
             )
+
 
 class OSSLicensePage(Screen):
     pass
@@ -352,7 +361,7 @@ class EditImagePage(Screen):
         if not app.img_paths:
             app.change_screen("camera")
         else:
-            app.show_toast(f"Deleted Image {img_idx+1}")
+            app.show_toast(f"Deleted Image {img_idx + 1}")
         self.ids.image_box.remove_widget(self.ids.image_box.slides[img_idx])
 
     def _display_img(self, path):
@@ -533,7 +542,7 @@ class Andromr(MDApp):
 
     def on_start(self):
         Window.bind(on_keyboard=self.on_custom_back)
-        print('starting')
+        print("starting")
 
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
@@ -569,7 +578,7 @@ class Andromr(MDApp):
         # record current screen
         if self.sm.current in self.returnables:
             self.last_screens.append(self.sm.current)
-        
+
         self.previous_screen = self.sm.current
 
         # set new screen
@@ -615,7 +624,9 @@ class Andromr(MDApp):
         self.menu.dismiss()
 
     # Homr methods
-    def start_inference(self, path_to_image: str = None, out_path: str = None, verify: bool = False):
+    def start_inference(
+        self, path_to_image: str = None, out_path: str = None, verify: bool = False
+    ):
         if path_to_image is None:
             path = self.img_paths[0]
             del self.img_paths[0]
@@ -631,7 +642,15 @@ class Andromr(MDApp):
         appdata.homr_running = True
 
         # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(target=self.homr_call, args=(path, out_path, verify,), daemon=True)
+        self.ml_thread = Thread(
+            target=self.homr_call,
+            args=(
+                path,
+                out_path,
+                verify,
+            ),
+            daemon=True,
+        )
         self.progress_thread = Thread(
             target=self.root.get_screen("progress").update_progress_bar, daemon=True
         )
@@ -651,27 +670,30 @@ class Andromr(MDApp):
             try:
                 self._homr_call(path, out_path, verify)
             except Exception as e:
+                if verify:
+                    Clock.schedule_once(lambda dt: self.change_screen("settings"))
+                else:
+                    Clock.schedule_once(lambda dt: self.change_screen("landing"))
                 error_msg = f"An error occured during inference: {e}"
                 Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
                 print(e)
+                return
         else:
             self._homr_call(path, out_path, verify)
 
         if verify:
             try:
-                average_diff, n_errors= rate_folder(
-                    "test_data/tabi",
-                    compare_all=True
-                )
-                if average_diff < 30:
-                    text = f"Results are great. The average difference was {average_diff} with a total of {n_errors} failures."
+                validation_metrics, n_errors = rate_folder("test_data/tabi", compare_all=True)
+
+                ser = validation_metrics.total_ser * 100
+
+                if ser < 3:
+                    text = f"Results are great. The average difference was {ser} with a total of {n_errors} failures."
                 else:
-                    text = f"Results are bad. The average difference was {average_diff} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr."
+                    text = f"Results are bad. The average difference was {ser} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr."
 
                 Clock.schedule_once(lambda dt: self.change_screen("settings"))
-                Clock.schedule_once(
-                    lambda dt: self.show_info(text=text, title="Results")
-                )
+                Clock.schedule_once(lambda dt: self.show_info(text=text, title="Results"))
 
             except Exception as e:
                 error_msg = f"An error occured during inference: {e}"
@@ -683,7 +705,8 @@ class Andromr(MDApp):
         else:
             if len(self.xml_paths) >= 2:
                 out_path = os.path.join(
-                    XML_PATH, f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml"
+                    XML_PATH,
+                    f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml",
                 )
 
                 merge_xmls(self.xml_paths, out_path)
@@ -707,15 +730,7 @@ class Andromr(MDApp):
             new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
 
             # rename the file
-            os.rename(
-                return_path,
-                new_path
-            )
-
-        # Not removing input image on desktop to make things easier
-        if platform == 'android' and not verify:
-            os.remove(path)
-            print(f"Removed {path}")
+            os.rename(return_path, new_path)
 
         self.xml_paths.append(new_path)
 
@@ -761,15 +776,15 @@ class Andromr(MDApp):
             self.show_toast("You already downloaded all assets")
         return False
 
-    
     def on_resume(self):
         Clock.schedule_once(self._resume_camera, 0)
 
     def _resume_camera(self, dt):
         if self.sm.current == "camera" or self.sm.current == "image_page":
-            print('Reload')
+            print("Reload")
             cam_screen = self.root.get_screen("camera")
             cam_screen.reload_camera()
+
 
 if __name__ == "__main__":
     Andromr().run()

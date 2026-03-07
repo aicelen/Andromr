@@ -74,7 +74,6 @@ class HomrTrainer(Trainer):
         prediction_loss_only: bool,
         ignore_keys: list[str] | None = None,
     ) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
-
         inputs = self._prepare_inputs(inputs)
 
         with torch.no_grad():

@@ -1,7 +1,6 @@
 from collections.abc import Generator, Iterable
 
 import cv2
-import cv2.typing as cvt
 import numpy as np
 
 from homr import constants, find_peaks
@@ -130,11 +129,11 @@ class StaffAnchor(DebugDrawable):
         cv2.line(img, [x - 50, self.zone.stop], [x + 50, self.zone.stop], color, 2)
 
 
-def _get_all_contours(lines: list[StaffLineSegment]) -> list[cvt.MatLike]:
+def _get_all_contours(lines: list[StaffLineSegment]):
     all_fragments: list[RotatedBoundingBox] = []
     for line in lines:
         all_fragments.extend(line.staff_fragments)
-    result: list[cvt.MatLike] = []
+    result = []
     for fragment in all_fragments:
         result.extend(fragment.contours)
     return result
@@ -307,9 +306,7 @@ def are_lines_parallel(lines: list[StaffLineSegment], unit_size: float) -> bool:
             fragment.angle - average_angle
         ) > constants.max_angle_for_lines_to_be_parallel and fragment.size[
             0
-        ] > constants.is_short_connected_line(
-            unit_size
-        ):
+        ] > constants.is_short_connected_line(unit_size):
             return False
     return True
 

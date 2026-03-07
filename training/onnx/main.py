@@ -3,13 +3,10 @@
 import os
 
 from homr.transformer.configs import Config
-from training.onnx.convert import (
-    convert_decoder
-)
+from training.onnx.convert import convert_decoder
 from training.onnx.quantization import quantization_int8
 from training.onnx.simplify import main as simplify_onnx_model
 from training.onnx.split_weights import split_weights
-
 
 
 def convert_transformer_quant() -> None:

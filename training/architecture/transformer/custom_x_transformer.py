@@ -68,19 +68,19 @@ class CustomAttentionLayers(AttentionLayers):
         in_attn_cond=None,  # https://arxiv.org/abs/2105.04090
         layers_execute_order: tuple[int, ...] | None = None,
     ):
-        assert not (
-            self.cross_attend ^ exists(context)
-        ), "context must be passed in if cross_attend is set to True"
-        assert not (
-            exists(condition) ^ self.need_condition
-        ), "condition needs to be passed in if using adaptive layernorm or vice versa"
+        assert not (self.cross_attend ^ exists(context)), (
+            "context must be passed in if cross_attend is set to True"
+        )
+        assert not (exists(condition) ^ self.need_condition), (
+            "condition needs to be passed in if using adaptive layernorm or vice versa"
+        )
 
         # handle condition
 
         if exists(condition):
-            assert (
-                condition.shape[-1] == self.dim_condition
-            ), f"expected condition dimension of {self.dim_condition} but received {condition.shape[-1]}"  # noqa: E501
+            assert condition.shape[-1] == self.dim_condition, (
+                f"expected condition dimension of {self.dim_condition} but received {condition.shape[-1]}"
+            )  # noqa: E501
 
             assert condition.ndim in {2, 3}
 

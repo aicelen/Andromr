@@ -12,6 +12,7 @@ from kivy import platform
 
 model: OnnxModel | None = None
 
+
 class ScoreDecoder:
     def __init__(
         self,
@@ -70,7 +71,7 @@ class ScoreDecoder:
             "out_pitchs": [1, 1, 72],
             "out_lifts": [1, 1, 7],
             "out_positions": [1, 1, 3],
-            "out_articulations": [1, 1, 171],
+            "out_articulations": [1, 1, 144],
         }
 
         symbols: list[EncodedSymbol] = []

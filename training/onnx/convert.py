@@ -66,6 +66,7 @@ class DecoderWrapper(torch.nn.Module):
             *cache,
         )
 
+
 def convert_decoder() -> str:
     """
     Converts the decoder to onnx.
@@ -129,6 +130,6 @@ def convert_decoder() -> str:
         opset_version=18,
         do_constant_folding=True,
         export_params=True,
-        dynamo=False
+        dynamo=False,
     )
     return path_out

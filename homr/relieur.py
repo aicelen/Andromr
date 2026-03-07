@@ -163,8 +163,8 @@ def get_file_list(
         return None
     return sorted(sorted_list)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     merge_xmls(
-        ["images/parrots/p0.musicxml", "images/parrots/p1.musicxml"],
-        "parrots_merged.musicxml"
+        ["images/parrots/p0.musicxml", "images/parrots/p1.musicxml"], "parrots_merged.musicxml"
     )

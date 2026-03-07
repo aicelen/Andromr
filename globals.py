@@ -35,7 +35,7 @@ class AppData:
         # Initialize other attributes
         self.homr_running = True
         self.homr_progress = 0
-        self.homr_state = "Segmentation"
+        self.homr_state = "Segmenting"
 
         self.download_running = True
         self.download_progress = 0

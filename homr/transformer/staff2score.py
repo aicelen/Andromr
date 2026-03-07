@@ -50,7 +50,7 @@ class Staff2Score:
             context=context,
         )
 
-        eprint(f"Inference Time Tromr: {perf_counter()-t0}")
+        eprint(f"Inference Time Tromr: {perf_counter() - t0}")
 
         return out
 

@@ -21,7 +21,7 @@ from training.datasets.musescore_svg import (
     SvgStaff,
     get_position_from_multiple_svg_files,
 )
-from training.datasets.music_xml_parser import Measure, music_xml_file_to_tokens
+from validation.music_xml_parser import Measure, music_xml_file_to_tokens
 from training.transformer.training_vocabulary import (
     calc_ratio_of_tuplets,
     token_lines_to_str,

@@ -10,6 +10,7 @@ build/
 /datasets/
 /data/
 /libs/
+/private/
 
 #tflite model folders
 /segnet_155/

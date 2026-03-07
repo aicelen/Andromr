@@ -25,7 +25,7 @@ if platform == "android":
     OrtSessionResult = autoclass("ai.onnxruntime.OrtSession$Result")
 
     class OnnxModel:
-        def __init__(self, model_path: str, num_threads: int = None):
+        def __init__(self, model_path: str, num_threads: int = 2):
             """
             Inference class of .onnx models for kivy apps on android using native Java APIs.
 
@@ -69,7 +69,7 @@ if platform == "android":
             dict
                 Outputs of the model
             """
-
+            t1 = perf_counter()
             jmap = HashMap()
 
             for input_name, tensor in self.cached_tensors.items():
@@ -122,6 +122,7 @@ if platform == "android":
                         self.cached_tensors[shape].close()
                     self.cached_tensors[shape] = tensor_obj
 
+            print(f"Inference Time ONNX: {perf_counter() - t1}")
             return output_list
 
         def close_session(self):

@@ -666,16 +666,3 @@ def build_divisions(division: int) -> mxl.XMLDivisions:
     # used to indicate a note's duration
     # https://usermanuals.musicxml.com/MusicXML/Content/EL-MusicXML-divisions.htm
     return mxl.XMLDivisions(value_=division // 4)
-
-
-if __name__ == "__main__":
-    import sys
-
-    from training.transformer.training_vocabulary import read_tokens
-
-    file = "tabi_measure.tokens"
-    if len(sys.argv) > 1:
-        file = sys.argv[1]
-    tokens = read_tokens(file)
-    xml = generate_xml(XmlGeneratorArguments(True), [tokens], "")
-    xml.write(file.replace(".tokens", ".musicxml"))

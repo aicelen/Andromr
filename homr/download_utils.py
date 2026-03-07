@@ -5,6 +5,7 @@ import zipfile
 import requests
 
 from homr.simple_logging import eprint
+from globals import appdata
 
 
 def download_file(url: str, filename: str) -> None:
@@ -29,6 +30,7 @@ def download_file(url: str, filename: str) -> None:
                             f"\rDownloaded {progressMb} of {totalMb} MB ({progressPercent}%)",
                             end="",
                         )
+                        appdata.download_progress = progressPercent
                         last_percent = progressPercent
                 else:
                     eprint(f"\rDownloaded {progressMb} MB", end="")

@@ -14,7 +14,7 @@ from homr.simple_logging import eprint
 from homr.staff_parsing import add_image_into_tr_omr_canvas
 from homr.transformer.configs import Config as ConfigTorch
 from homr.transformer.vocabulary import EncodedSymbol, sort_token_chords
-from training.transformer.training_vocabulary import (
+from validation.training_vocabulary import (
     read_tokens,
     token_lines_to_str,
 )

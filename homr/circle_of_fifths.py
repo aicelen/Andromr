@@ -49,7 +49,6 @@ def repeat_note_for_all_octaves(notes: list[str]) -> list[str]:
 
 
 class AbstractKeyTransformation(ABC):
-
     @abc.abstractmethod
     def add_accidental(self, note: str, accidental: str) -> str:
         pass
@@ -60,7 +59,6 @@ class AbstractKeyTransformation(ABC):
 
 
 class NoKeyTransformation(AbstractKeyTransformation):
-
     def __init__(self) -> None:
         self.current_accidentals: dict[str, str] = {}
 
@@ -78,7 +76,6 @@ class NoKeyTransformation(AbstractKeyTransformation):
 
 
 class KeyTransformation(AbstractKeyTransformation):
-
     def __init__(self, circle_of_fifth: int):
         self.circle_of_fifth = circle_of_fifth
         self.sharps: set[str] = set()

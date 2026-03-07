@@ -183,6 +183,9 @@ def process_image(
         transformer_config = Config()
         transformer_config.use_gpu_inference = config.use_gpu_inference
 
+        appdata.homr_state = "Transforming"
+        appdata.homr_progress = 1
+
         result_staffs = parse_staffs(
             debug,
             multi_staffs,
@@ -212,6 +215,8 @@ def process_image(
         if debug_cleanup is not None:
             debug_cleanup.clean_debug_files_from_previous_runs()
 
+    return xml_file
+
 
 def detect_staffs_in_image(
     image_path: str, config: ProcessingConfig
@@ -219,7 +224,13 @@ def detect_staffs_in_image(
     predictions, debug = load_and_preprocess_predictions(
         image_path, config.enable_debug, config.enable_cache, config.use_gpu_inference
     )
+    appdata.homr_state = "Segmenting"
+    appdata.homr_progress = 1
+
     symbols = predict_symbols(debug, predictions)
+
+    appdata.homr_state = "Extracting"
+    appdata.homr_progress = 1
 
     symbols.staff_fragments = break_wide_fragments(symbols.staff_fragments)
     debug.write_bounding_boxes("staff_fragments", symbols.staff_fragments)
@@ -227,6 +238,9 @@ def detect_staffs_in_image(
 
     noteheads_with_stems = combine_noteheads_with_stems(symbols.noteheads, symbols.stems_rest)
     debug.write_bounding_boxes_alternating_colors("notehead_with_stems", noteheads_with_stems)
+
+    appdata.homr_progress = 10
+
     eprint("Found " + str(len(noteheads_with_stems)) + " noteheads")
     if len(noteheads_with_stems) == 0:
         raise Exception("No noteheads found")
@@ -251,9 +265,15 @@ def detect_staffs_in_image(
     debug.write_bounding_boxes(
         "anchor_input", symbols.staff_fragments + bar_line_boxes + symbols.clefs_keys
     )
+
+    appdata.homr_progress = 15
+
     staffs = detect_staff(
         debug, predictions.staff, symbols.staff_fragments, symbols.clefs_keys, bar_line_boxes
     )
+
+    appdata.homr_progress = 90
+
     if len(staffs) == 0:
         raise Exception("No staffs found")
     debug.write_bounding_boxes_alternating_colors("staffs", staffs)
@@ -311,6 +331,7 @@ def download_weights() -> str | None:
         appdata.downloaded_assets = error_msg
     return
 
+
 def check_for_missing_models() -> list:
     """
     Checks for missing models and returns a list with all the links to the missing models.
@@ -320,10 +341,11 @@ def check_for_missing_models() -> list:
         default_config.filepaths.encoder_path,
         default_config.filepaths.decoder_path,
     ]
-    if platform == 'android':
+    if platform == "android":
         delete_unused_models(models)
     missing_models = [model for model in models if not os.path.exists(model)]
     return missing_models
+
 
 def delete_unused_models(models_used):
     models = os.listdir(MODEL_STORAGE)
@@ -335,6 +357,7 @@ def delete_unused_models(models_used):
     print(f"Deleting: {unused_models}")
     for path in unused_models:
         os.remove(path)
+
 
 def homr(path):
     t0 = perf_counter()
