@@ -1,26 +1,31 @@
 # Andromr
 
-Optical Music Recognition (OMR) for Android using [homr](https://github.com/liebharc/homr).
+Optical Music Recognition (convert a picture of music notes to a machine readable format like .musicxml) for Android using [homr](https://github.com/liebharc/homr).
+
+## How to use
+- Take a picture inside the app (and take more if you want)
+- Run optical music recognition (leave the app focused)
+- Export via the Share button
+
+## Features
+- All features of homr (near state-of-the-art optical music recognition)
+- Multi Page
+- Privacy (your scores stay on your device)
 
 ## Technical Details
-Andromr uses **Kivy** and **KivyMD** for the UI, with **Buildozer** to generate the APK. The OMR engine is based on [homr](https://github.com/liebharc/homr), which provides great quality due to the use Vision Transformers. Big thanks to [Christian Liebhardt](https://github.com/liebharc) for creating and open-sourcing such a great project.
+Andromr uses **Kivy** and **KivyMD** for the UI, with **Buildozer** to generate the APK. The OMR engine is based on [homr](https://github.com/liebharc/homr), which provides great quality due to the use of Vision Transformers. Big thanks to [Christian Liebhardt](https://github.com/liebharc) (for open-sourcing homr).
 
 homr itself uses 2 differnent models: A segmentation model and a transformer model (encoder and decoder).
-Due to performance reasons I decided to run the transformer models using onnxruntime and the CNN models using LiteRT.
-Furthermore I decided to split the encoder into the CNN-backbone (running in LiteRT) and the ViT (running in onnx).
+While the segmentation model and the transformer encoder use LiteRT as a backend, the transformer decoder uses OnnxRuntime which works well with dynamic shapes.
 
-The model inference is using native Java APIs accessed via pyjnius.
+The model inference is using native Java APIs accessed via pyjnius. On most recent phones you should be able to transform one page in around one minute.
 
 ## Build
 *Note: Buildozer is really fragile and support by me is limited.*
 
 Andromr is built with buildozer under WSL. If you are new to buildozer you can follow this [tutorial](https://www.youtube.com/watch?v=pzsvN3fuBA0) for setting buildozer up.
 
-You will also have to put the recipe located in .recipes to `.buildozer\android\platform\python-for-android\pythonforandroid\recipes` and add opencv.
-
-#### Setting up OpenCV:
-1.  Download the `opencv-android-sdk` (version 4.7.0) from [opencv.org](https://opencv.org/)
-3.  Copy the `native` folder from the SDK into a new folder named `opencv`, placed at the same level as your `buildozer.spec` file.
+Modifications to buildozer are listed in `buildozer.spec`.
 
 ## Contributing
 PRs are welcome :)
@@ -29,14 +34,11 @@ If you only want to change something about the homr backend please first think a
 
 ## Acknowledgments
 Thanks to [Christian Liebhardt](https://github.com/liebharc) for open-sourcing homr.
-All the other open-source licenses are listed in `data/oss_licenses.txt`.
+All the other open-source licenses are listed in `oss_licenses.txt`.
 
 ## Future Plans
-Late 2025: LiteRT Next integration (2x performance improvement for CNNs)
-
-Early 2026: Release of Andromr in PlayStore
-
-Mid 2026: NPU support for LiteRT Next
+- Release of Andromr in PlayStore
+- Improve Decoder performance
 
 ## License
 Andromr is open-sourced under the AGPL 3.0 license.

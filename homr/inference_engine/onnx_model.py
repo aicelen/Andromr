@@ -101,7 +101,7 @@ if platform == "android":
 
             t0 = perf_counter()
             results = self.session.run(jmap)
-            print(f"Raw inference time: {perf_counter() - t0:.4f}s")
+            # print(f"Raw inference time: {perf_counter() - t0:.4f}s")
 
             output_list = []
             for out_name, shape in outputs.items():
@@ -122,7 +122,7 @@ if platform == "android":
                         self.cached_tensors[shape].close()
                     self.cached_tensors[shape] = tensor_obj
 
-            print(f"Inference Time ONNX: {perf_counter() - t1}")
+            # print(f"Inference Time ONNX: {perf_counter() - t1}")
             return output_list
 
         def close_session(self):
@@ -148,7 +148,7 @@ else:
         def run(self, inputs: dict, outputs: dict) -> dict:
             t0 = perf_counter()
             result = self.session.run(output_names=list(outputs), input_feed=inputs)
-            print(f"Raw inference time: {perf_counter() - t0:.4f}s")
+            # print(f"Raw inference time: {perf_counter() - t0:.4f}s")
             return result
 
         def close_session(self):

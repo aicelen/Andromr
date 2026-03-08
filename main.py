@@ -127,7 +127,10 @@ class LandingPage(Screen):
     def update_scrollview(self, *args):
         # Unload camera
         if platform == "android":
-            self.app.root.get_screen("camera").ids.camera_pre._camera._release_camera()
+            try:
+                self.app.root.get_screen("camera").ids.camera_pre._camera._release_camera()
+            except Exception as e:
+                print(f"Unloading camera failed update_scrollview: {e}")
 
         self.app.root.get_screen("image_page").ids.image_box.clear_widgets()  # clean up widgets
 
@@ -262,9 +265,12 @@ class CameraPage(Screen):
 
     def take_picture(
         self,
-        filename=os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"),
+        filename=None,
     ):
         """Take an image"""
+        if filename is None:
+            filename = os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+        print(f"Took picture named {filename}")
         take_picture(self.ids.camera_pre, self.display_img, filename)
 
 
@@ -274,9 +280,12 @@ class ProgressPage(Screen):
         self.ids.title.text = ""
         # Unload camera
         if platform == "android":
-            screen = app.root.get_screen("camera")
-            screen.ids.camera_pre._camera._release_camera()
-            screen.remove_widget(screen.ids.camera_pre)
+            try:
+                screen = app.root.get_screen("camera")
+                screen.ids.camera_pre._camera._release_camera()
+                screen.remove_widget(screen.ids.camera_pre)
+            except Exception as e:
+                print(f"Unloading camera failed on_enter: {e}")
 
     def update_progress_bar(self):
         """
@@ -627,9 +636,12 @@ class Andromr(MDApp):
     def start_inference(
         self, path_to_image: str = None, out_path: str = None, verify: bool = False
     ):
+        print(self.img_paths)
         if path_to_image is None:
             path = self.img_paths[0]
             del self.img_paths[0]
+            print(f"New {self.img_paths}")
+            print(f"Running inferene on {path}")
         else:
             path = path_to_image
 
