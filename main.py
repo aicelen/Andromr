@@ -353,15 +353,23 @@ class OSSLicensePage(Screen):
 class LicensePage(Screen):
     pass
 
+class PrivacyPolicyPage(Screen):
+    pass
+
 
 class LicensePageButton(Screen):
     def agree_license(self):
         """Function that is triggered when the user agreed to the license"""
         app = MDApp.get_running_app()
+        app.change_screen("privacypolicypagebutton")
+
+class PrivacyPolicyPageButton(Screen):
+    def agree_license(self):
+        """Function that is triggered when the user agreed to the privacy policy"""
+        app = MDApp.get_running_app()
         appdata.agreed = True
         appdata.save_settings()
         app.change_screen("landing")
-
 
 class EditImagePage(Screen):
     def delete_image(self, img_idx):
@@ -482,6 +490,32 @@ class OSS_Licenses(RecycleView):
             for line in lines
         ]
 
+class PrivacyPolicy(RecycleView):
+    # shows the privacy policy using a recycling view widget for better performance
+    def __init__(self, **kwargs):
+        super(PrivacyPolicy, self).__init__(**kwargs)
+        self.dark_mode = get_sys_theme() == "Dark"
+
+        def estimate_height(text, font_size=10, width=300):
+            # Very rough estimate: average characters per line
+            avg_char_width = font_size * 0.6
+            approx_chars_per_line = width / avg_char_width
+            lines = max(1, int(len(text) / approx_chars_per_line) + 1)
+            line_height = sp(font_size) * 0.9
+            return int(lines * line_height)
+
+        with open(os.path.join(APP_PATH, "privacy_policy.txt"), "r", encoding="utf-8") as file:
+            lines = [line.rstrip("\n") for line in file]  # only remove trailing newline
+        self.data = [
+            {
+                "text": line,
+                "size": (None, estimate_height(line)),
+                "color": (1, 1, 1, 1) if self.dark_mode else (0, 0, 0, 1),
+            }
+            for line in lines
+        ]
+        print(self.data)
+
 
 # App class
 class Andromr(MDApp):
@@ -505,7 +539,13 @@ class Andromr(MDApp):
                 },
                 {
                     "viewclass": "OneLineListItem",
-                    "text": "About",
+                    "text": "Privacy Policy",
+                    "height": dp(48),
+                    "on_release": lambda x="privacypolicypage": self.change_screen(x),
+                },
+                {
+                    "viewclass": "OneLineListItem",
+                    "text": "Open-Source Licenses",
                     "height": dp(48),
                     "on_release": lambda x="osslicensepage": self.change_screen(x),
                 },
@@ -534,6 +574,7 @@ class Andromr(MDApp):
             "settings",
             "osslicensepage",
             "licensepage",
+            "privacypolicypage",
             "image_page",
         ]
 

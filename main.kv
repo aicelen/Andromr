@@ -8,6 +8,8 @@ ScreenManager:
     OSSLicensePage:
     LicensePageButton:
     LicensePage:
+    PrivacyPolicyPage:
+    PrivacyPolicyPageButton:
 
 <LandingPage>:
     name: "landing"
@@ -305,6 +307,57 @@ ScreenManager:
                 md_bg_color: app.theme_cls.primary_color
                 text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
                 on_release: root.agree_license()
+
+<PrivacyPolicyPage>:
+    name: 'privacypolicypage'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
+        MDTopAppBar:
+            id: toolbar_privacypolicypage
+            title: "Privacy Policy"
+            elevation: 0
+            type_height: 'small'
+            left_action_items: [['arrow-left', lambda x: app.change_screen("landing", x)]]
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+        BoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+            PrivacyPolicy:
+                id: rv_pp
+
+<PrivacyPolicyPageButton>:
+    name: 'privacypolicypagebutton'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
+        MDTopAppBar:
+            id: toolbar_privacypolicypage
+            title: "Privacy Policy"
+            elevation: 0
+            type_height: 'small'
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (1, 1, 1, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+        BoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+            PrivacyPolicy:
+                id: rv_pp
+            MDRectangleFlatButton:
+                text: "I have read and agree to the Privacy Policy"
+                size_hint_x: 0.9
+                size_hint_y: None
+                height: "48dp"
+                pos_hint: {"center_x": 0.5}
+                md_bg_color: app.theme_cls.primary_color
+                text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+                on_release: root.agree_license()
+
+
 <OSS_Licenses>:
     viewclass: 'WrappedLabel'
     RecycleBoxLayout:
@@ -323,6 +376,17 @@ ScreenManager:
         size_hint_y: None
         height: self.minimum_height
         orientation: 'vertical'
+
+<PrivacyPolicy>:
+    viewclass: 'WrappedLabel'
+    RecycleBoxLayout:
+        key_size: 'size'
+        default_size: None, None
+        default_size_hint: 1, None
+        size_hint_y: None
+        height: self.minimum_height
+        orientation: 'vertical'
+
 
 <WrappedLabel@Label>:
     markup: True
