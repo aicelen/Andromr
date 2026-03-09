@@ -56,3 +56,5 @@ onnxruntime_profile.json
 
 # include
 !icon.png
+!test_data/entertainer/entertainer.png
+!test_data/entertainer/entertainer_reference.musicxml

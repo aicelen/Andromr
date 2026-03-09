@@ -364,4 +364,4 @@ def homr(path):
 
 
 if __name__ == "__main__":
-    homr("images/parrots/p1.jpg")
+    homr("test_data/entertainer/entertainer.png")

@@ -340,8 +340,8 @@ class SettingsPage(Screen):
         need_download = app.check_download_assets(camera_page=False, validation=True)
         if not need_download:
             app.start_inference(
-                path_to_image="test_data/tabi/tabi.jpg",
-                out_path="test_data/tabi/tabi.musicxml",
+                path_to_image="test_data/entertainer/entertainer.png",
+                out_path="test_data/entertainer/entertainer.musicxml",
                 verify=True,
             )
 
@@ -736,7 +736,7 @@ class Andromr(MDApp):
 
         if verify:
             try:
-                validation_metrics, n_errors = rate_folder("test_data/tabi", compare_all=True)
+                validation_metrics, n_errors = rate_folder("test_data/entertainer", compare_all=True)
 
                 ser = validation_metrics.total_ser * 100
 
