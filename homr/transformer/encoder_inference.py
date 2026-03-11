@@ -5,6 +5,8 @@ from homr.type_definitions import NDArray
 from homr.inference_engine import TensorFlowModel
 from homr.transformer.configs import default_config
 
+from globals import appdata
+
 encoder: TensorFlowModel | None = None
 
 
@@ -14,7 +16,7 @@ class Encoder:
         Enocder using only one .tflite file.
         """
         global encoder
-        if encoder is None:
+        if encoder is None or encoder.num_threads != appdata.threads:
             encoder = TensorFlowModel(default_config.filepaths.encoder_path)
 
         self.encoder = encoder

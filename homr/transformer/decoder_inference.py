@@ -10,7 +10,7 @@ from homr.type_definitions import NDArray
 from globals import appdata
 from kivy import platform
 
-model: OnnxModel | None = None
+decoder: OnnxModel | None = None
 
 
 class ScoreDecoder:
@@ -170,8 +170,9 @@ def get_decoder(config: Config) -> ScoreDecoder:
     """
     Returns Tromr's Decoder
     """
-    global model
-    if model is None or appdata.settings_changed:
-        model = OnnxModel(Config().filepaths.decoder_path, num_threads=appdata.threads)
-        model.load()
-    return ScoreDecoder(model, config=config, fp16=False, use_gpu=False)
+    global decoder
+    if decoder is None or decoder.num_threads != appdata.threads:
+        decoder = OnnxModel(Config().filepaths.decoder_path)
+        decoder.load()
+
+    return ScoreDecoder(decoder, config=config, fp16=False, use_gpu=False)

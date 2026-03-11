@@ -4,6 +4,8 @@ Based on https://github.com/aicelen/Kivy-LiteRT-Next
 
 from kivy.utils import platform
 import numpy as np
+from globals import appdata
+from homr.simple_logging import eprint
 
 if platform == "android":
     from jnius import autoclass  # type: ignore
@@ -16,8 +18,9 @@ if platform == "android":
     CompiledModel = autoclass("com.google.ai.edge.litert.CompiledModel")
     Accelerator = autoclass("com.google.ai.edge.litert.Accelerator")
     Options = autoclass("com.google.ai.edge.litert.CompiledModel$Options")
+    CpuOptions = autoclass("com.google.ai.edge.litert.CompiledModel$CpuOptions")
     HashSet = autoclass("java.util.HashSet")
-
+    Integer = autoclass('java.lang.Integer')
     # buildozer is sometimes cutting unused classes away
     # but Tensorbuffer is used run_inference()
     # importing stops buildozer from cutting it away
@@ -33,23 +36,23 @@ if platform == "android":
 
         def __init__(
             self,
-            model_filename: str,
-            use_gpu: bool = False,
+            model_filename: str
         ):
-            if use_gpu:
-                acc = Accelerator.GPU
-            else:
-                acc = Accelerator.CPU
-
-            # create accelerator
             accelerator_set = HashSet()
-            accelerator_set.add(acc)
-            opts = Options(accelerator_set)
+            self.use_gpu = appdata.gpu
+            self.num_threads = appdata.threads
+            eprint("Using GPU acceleration" if self.use_gpu else f"Using CPU with {self.num_threads} threads.")
 
-            # create model
+            if self.use_gpu:
+                accelerator_set.add(Accelerator.GPU)
+                opts = Options(accelerator_set)
+            else:
+                accelerator_set.add(Accelerator.CPU)
+                opts = Options(accelerator_set)
+                cpu_opts = CpuOptions(Integer(self.num_threads), None, None)
+                opts.setCpuOptions(cpu_opts)
+
             self.model = CompiledModel.create(model_filename, opts)
-
-            # create input and output buffers
             self.input_buffers = self.model.createInputBuffers()
             self.output_buffers = self.model.createOutputBuffers()
 
@@ -98,8 +101,11 @@ else:
         def __init__(
             self,
             model_filename: str,
-            use_gpu: bool = False,
         ):
+            self.use_gpu = appdata.gpu
+            self.num_threads = appdata.threads
+            eprint("GPU acceleration is only supported on Android." if self.use_gpu else f"Using CPU with {self.num_threads} threads.")
+
             self.model_path = model_filename
             self.interpreter = Interpreter(self.model_path)
             self.interpreter.allocate_tensors()

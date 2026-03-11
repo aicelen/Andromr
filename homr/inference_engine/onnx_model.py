@@ -25,7 +25,7 @@ if platform == "android":
     OrtSessionResult = autoclass("ai.onnxruntime.OrtSession$Result")
 
     class OnnxModel:
-        def __init__(self, model_path: str, num_threads: int = 2):
+        def __init__(self, model_path: str):
             """
             Inference class of .onnx models for kivy apps on android using native Java APIs.
 
@@ -35,19 +35,20 @@ if platform == "android":
                 Path to the .onnx model you want to run inference on.
             """
             self.model_path = model_path
+            self.num_threads = appdata.threads
+            self.xnnpack = appdata.xnnpack
+
             self.session = None
-            if num_threads is None:
-                num_threads = appdata.threads
             self.env = OrtEnvironment.getEnvironment()
             self.so = OrtSessionOptions()
 
             if appdata.xnnpack:
                 xnnpack_map = HashMap()
-                xnnpack_map.put("intra_op_num_threads", str(appdata.threads or 2))
+                xnnpack_map.put("intra_op_num_threads", str(self.num_threads))
                 self.so.addXnnpack(xnnpack_map)
 
             else:
-                self.so.setIntraOpNumThreads(num_threads)
+                self.so.setIntraOpNumThreads(self.num_threads)
 
         def load(self):
             self.session = self.env.createSession(self.model_path, self.so)
@@ -135,8 +136,10 @@ else:
     import onnxruntime as ort
 
     class OnnxModel:
-        def __init__(self, model_path: str, num_threads=0):
+        def __init__(self, model_path: str, num_threads: int = 0):
             self.model_path = model_path
+            self.num_threads = num_threads
+            self.xnnpack = False
             self.session = None
             self.session_options = ort.SessionOptions()
             # self.session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL

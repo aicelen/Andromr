@@ -187,6 +187,26 @@ ScreenManager:
                     pos_hint: {'center_y': 0.5}
                     size_hint: None, None
                     size: "48dp", "48dp"
+            
+            MDBoxLayout:
+                MDLabel:
+                    id: l_threads
+                    text: "Threads"
+
+                MDIconButton:
+                    id: inf_threads
+                    icon: "information-slab-circle-outline"
+                    pos_hint: {'center_y': 0.5}
+                    on_release: app.show_info("Number of threads the models can utilize. Use number of big cores of your SOC. If you're unsure use 2 for lower end phones, else 4. \nDefault: 2")
+                    ripple_scale: 0
+
+            MDSlider:
+                id: slider_threads
+                min: 1
+                max: 8
+                value: app.appdata.threads
+                step: 1
+                show_off: False
 
             MDBoxLayout:
                 orientation: "horizontal"

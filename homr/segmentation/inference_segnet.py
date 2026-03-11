@@ -113,7 +113,7 @@ def inference(
     progress_increment = 100 / num_steps
 
     global segnet
-    if segnet is None:
+    if segnet is None or segnet.num_threads != appdata.threads:
         segnet = TensorFlowModel(segnet_path_tflite)
 
     image_org = cv2.cvtColor(image_org, cv2.COLOR_GRAY2BGR)

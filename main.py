@@ -308,35 +308,29 @@ class ProgressPage(Screen):
 
 class SettingsPage(Screen):
     def on_leave(self):
-        if True:
-            app = MDApp.get_running_app()
-            appdata.xnnpack = self.ids.checkbox_xnnpack.active
-            appdata.save_settings()
+        self.get_settings()
+    
+    def get_settings(self):
+        """
+        Gets the settings (Xnnpack and number of threads) and saves them to a json.
+        """
+        use_xnnpack = self.ids.checkbox_xnnpack.active
+        num_threads = self.ids.slider_threads.value
+        if (
+            appdata.threads != num_threads
+            or appdata.xnnpack != use_xnnpack
+        ):
+            appdata.settings_changed = True
         else:
-            # support for GPU acceleration
-            app = MDApp.get_running_app()
-            gpu = self.ids.checkbox_gpu.active
-            use_xnnpack = self.ids.checkbox_xnnpack.active
-            num_threads = self.ids.slider_threads.value
-            if (
-                appdata.threads != num_threads
-                or appdata.xnnpack != use_xnnpack
-                or appdata.gpu != gpu
-            ):
-                appdata.settings_changed = True
-            else:
-                appdata.settings_changed = False
+            appdata.settings_changed = False
 
-            if gpu and not appdata.gpu:
-                app.show_info("Please restart the app to use GPU acceleration")
-
-            appdata.threads = int(num_threads)
-            appdata.xnnpack = use_xnnpack
-            appdata.gpu = gpu
-            appdata.save_settings()
+        appdata.threads = int(num_threads)
+        appdata.xnnpack = use_xnnpack
+        appdata.save_settings()
 
     def verify_homr(self):
         app = MDApp.get_running_app()
+        self.get_settings()
         need_download = app.check_download_assets(camera_page=False, validation=True)
         if not need_download:
             app.start_inference(
@@ -514,7 +508,6 @@ class PrivacyPolicy(RecycleView):
             }
             for line in lines
         ]
-        print(self.data)
 
 
 # App class
