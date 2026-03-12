@@ -312,20 +312,17 @@ class SettingsPage(Screen):
     
     def get_settings(self):
         """
-        Gets the settings (Xnnpack and number of threads) and saves them to a json.
+        Gets the settings (number of threads) and saves them to a json.
         """
-        use_xnnpack = self.ids.checkbox_xnnpack.active
         num_threads = self.ids.slider_threads.value
         if (
             appdata.threads != num_threads
-            or appdata.xnnpack != use_xnnpack
         ):
             appdata.settings_changed = True
         else:
             appdata.settings_changed = False
 
         appdata.threads = int(num_threads)
-        appdata.xnnpack = use_xnnpack
         appdata.save_settings()
 
     def verify_homr(self):

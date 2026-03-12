@@ -174,19 +174,6 @@ ScreenManager:
         MDBoxLayout:
             orientation: "vertical"
             padding: dp(25)
-
-            MDBoxLayout:
-                MDLabel:
-                    id: label_xnnpack
-                    text: "Xnnpack acceleration"
-
-                MDCheckbox:
-                    id: checkbox_xnnpack
-                    active: app.appdata.xnnpack
-                    ripple_scale: 0
-                    pos_hint: {'center_y': 0.5}
-                    size_hint: None, None
-                    size: "48dp", "48dp"
             
             MDBoxLayout:
                 MDLabel:
