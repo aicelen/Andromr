@@ -50,6 +50,7 @@ class CamVidModel(pl.LightningModule):
         # Normalize image
         image = (image - self.mean) / self.std
         mask = self.model(image)
+        mask = torch.argmax(mask, dim=1)
         return mask
 
     def shared_step(self, batch, stage):

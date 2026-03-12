@@ -4,6 +4,8 @@ Based on https://github.com/aicelen/Kivy-LiteRT-Next
 
 from kivy.utils import platform
 import numpy as np
+from time import perf_counter
+
 from globals import appdata
 from homr.simple_logging import eprint
 
@@ -56,7 +58,7 @@ if platform == "android":
             self.input_buffers = self.model.createInputBuffers()
             self.output_buffers = self.model.createOutputBuffers()
 
-        def run(self, input_data, output_shape: tuple):
+        def run(self, input_data, output_shape: tuple, int64: bool = False):
             """
             Method of TensorFlowModel class performing inference of chosen model
             Args:
@@ -73,12 +75,18 @@ if platform == "android":
             buf_in.writeFloat(input_data)
 
             # run inference
+            t0 = perf_counter()
             self.model.run(self.input_buffers, self.output_buffers)
+            print(perf_counter() - t0)
+
             # read output from the first output tensor
             buf_out = self.output_buffers.get(0)
-            result = buf_out.readFloat()
-
-            return np.array(result, dtype=np.float32).reshape(output_shape)
+            if int64:
+                result = buf_out.readLong()
+                return np.array(result, dtype=np.int64).reshape(output_shape)
+            else:
+                result = buf_out.readFloat()
+                return np.array(result, dtype=np.float32).reshape(output_shape)
 
 else:
     if platform == "win":
@@ -118,7 +126,7 @@ else:
         def get_input_shape(self):
             return self.interpreter.get_input_details()[0]["shape"]
 
-        def run(self, x, output_shape: tuple):
+        def run(self, x, output_shape: tuple, int64: bool = False):
             # assumes one input and one output for now
             self.interpreter.set_tensor(self.interpreter.get_input_details()[0]["index"], x)
             self.interpreter.invoke()

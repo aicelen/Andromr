@@ -121,7 +121,6 @@ def inference(
 
     c, h, w = image.shape
     data: list[NDArray] = []
-    batch: list[NDArray] = []
 
     for y_loop in range(0, max(h, win_size), step_size):
         y = min(y_loop, h - win_size)
@@ -129,21 +128,12 @@ def inference(
             x = min(x_loop, w - win_size)
 
             hop = extract_patch(image, y, x, win_size)
+            hop = np.expand_dims(hop, axis=0)
+            output = segnet.run(hop, output_shape=(1, 320, 320), int64=True)
+            print(np.unique(output))
+            data.append(np.squeeze(output, axis=0))
 
-            batch.append(hop)
-
-            if len(batch) == batch_size:
-                hop = np.expand_dims(hop, axis=0)
-                batch_out = segnet.run(hop, (1, 6, 320, 320))
-                for out in batch_out:
-                    data.append(np.argmax(out, axis=0))
-                batch.clear()
             appdata.homr_progress += progress_increment
-
-    if batch:
-        batch_out = segnet.run(np.stack(batch, axis=0))
-        for out in batch_out:
-            data.append(np.argmax(out, axis=0))
 
     eprint(f"Segnet Inference time: {perf_counter() - t0}; batch_size {batch_size}")
 
