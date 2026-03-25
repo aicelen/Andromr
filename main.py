@@ -21,6 +21,7 @@ from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
 from kivy.uix.camera import Camera
 from kivy.utils import get_color_from_hex
+from kivymd.utils.set_bars_colors import set_bars_colors
 
 # Built-in imports
 from threading import Thread
@@ -579,6 +580,11 @@ class Andromr(MDApp):
         self.theme_cls.material_style = "M3"
         if platform == "android":
             self.bottom_pad = self.nav_bar_height_dp()
+            set_bars_colors(
+                self.theme_cls.primary_color,  # status bar color
+                self.theme_cls.primary_color,  # navigation bar color
+                "Dark" if self.theme_cls.theme_style == "Light" else "Light"
+            )
         else:
             self.bottom_pad = 0
 
