@@ -20,6 +20,7 @@ from kivy.uix.recycleview import RecycleView
 from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
 from kivy.uix.camera import Camera
+from kivy.utils import get_color_from_hex
 
 # Built-in imports
 from threading import Thread
@@ -164,7 +165,7 @@ class LandingPage(Screen):
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
-                icon_color=(1, 0, 0, 1),
+                icon_color=get_color_from_hex("#D32F2F"),
             )
 
             b_export = MDIconButton(
@@ -173,12 +174,12 @@ class LandingPage(Screen):
                 size_hint_x=None,
                 pos_hint={"center_y": 0.5},
                 theme_icon_color="Custom",
-                icon_color=(0, 1, 1, 1),
+                icon_color=self.app.theme_cls.text_color,
             )
 
             row.add_widget(l_name)
-            row.add_widget(b_delete)
             row.add_widget(b_export)
+            row.add_widget(b_delete)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
 
     def export_file(self, path: str, btn=None):
@@ -572,7 +573,8 @@ class Andromr(MDApp):
         self.xml_paths = []
 
         # themes
-        self.theme_cls.primary_palette = "LightGreen"
+        self.theme_cls.primary_palette = "Orange"
+        self.theme_cls.primary_hue = "300"
         self.theme_cls.theme_style = get_sys_theme()
         self.theme_cls.material_style = "M3"
         if platform == "android":
