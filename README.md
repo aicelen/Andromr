@@ -1,5 +1,7 @@
 # Andromr
 
+**Andromr is currently in Play Store closed testing, to release Andromr I need 12 testers. It would be awesome if you could help me release Andromr by becoming a tester: https://play.google.com/apps/testing/com.aicelen.andromr.**
+
 Optical Music Recognition (convert a picture of music notes to a machine readable format like .musicxml) for Android using [homr](https://github.com/liebharc/homr).
 
 ## How to use
