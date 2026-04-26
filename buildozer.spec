@@ -41,7 +41,7 @@ source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.4
+version = 1.4.1
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
