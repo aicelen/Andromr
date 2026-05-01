@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 from kivy import platform
-
+from homr.simple_logging import eprint
 
 APP_PATH = os.getcwd()
 
@@ -45,23 +45,28 @@ class AppData:
     def _load_settings(self):
         if os.path.exists(self.settings_file_path):
             # Load file normally
-            with open(self.settings_file_path, "r") as f:
-                settings = json.load(f)
+            try:
+                with open(self.settings_file_path, "r") as f:
+                    settings = json.load(f)
 
-            # Validate and use loaded settings
-            self.threads = settings.get("threads", self.default_settings["threads"])
-            self.xnnpack = settings.get("xnnpack", self.default_settings["xnnpack"])
-            self.agreed = settings.get("agreed", self.default_settings["agreed"])
-            self.gpu = settings.get("gpu", self.default_settings["gpu"])
+                # Validate and use loaded settings
+                self.threads = settings.get("threads", self.default_settings["threads"])
+                self.xnnpack = settings.get("xnnpack", self.default_settings["xnnpack"])
+                self.agreed = settings.get("agreed", self.default_settings["agreed"])
+                self.gpu = settings.get("gpu", self.default_settings["gpu"])
+                return
 
-        else:
-            # Create new file using defaults
-            Path(self.settings_file_path).parent.mkdir(parents=True, exist_ok=True)
-            self.threads = self.default_settings["threads"]
-            self.xnnpack = self.default_settings["xnnpack"]
-            self.agreed = self.default_settings["agreed"]
-            self.gpu = self.default_settings["gpu"]
-            self.save_settings()
+            except Exception as e:
+                eprint(f"An error occured during json loading. The file is probably corrupted. Creating a new file")
+                pass
+        
+        # Create new file using defaults
+        Path(self.settings_file_path).parent.mkdir(parents=True, exist_ok=True)
+        self.threads = self.default_settings["threads"]
+        self.xnnpack = self.default_settings["xnnpack"]
+        self.agreed = self.default_settings["agreed"]
+        self.gpu = self.default_settings["gpu"]
+        self.save_settings()
 
     def save_settings(self):
         settings_data = {
