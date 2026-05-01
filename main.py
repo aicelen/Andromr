@@ -39,7 +39,7 @@ from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
 from validation.rate_validation_result import rate_folder
 from globals import APP_PATH, XML_PATH, IMAGE_PATH, appdata
-from utils import get_sys_theme, downscale_cv2
+from utils import get_sys_theme, downscale_cv2, safe_filename
 
 
 if platform == "android":
@@ -774,8 +774,11 @@ class Andromr(MDApp):
             new_path = out_path
 
         else:
-            if self.root.get_screen("progress").ids.title.text != "":
-                music_title = str(self.root.get_screen("progress").ids.title.text)
+            title_text = str(self.root.get_screen("progress").ids.title.text)
+            if title_text:
+                music_title = safe_filename(title_text)
+                if os.path.exists(os.path.join(XML_PATH, f"{music_title}.musicxml")):
+                    music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
             else:
                 music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
             new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")

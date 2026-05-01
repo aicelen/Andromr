@@ -1,6 +1,10 @@
 import numpy as np
 import cv2
 from kivy.utils import platform
+from pathlib import Path
+import re
+from datetime import datetime
+
 
 
 def rotate_image(input_path, output_path):
@@ -81,3 +85,29 @@ def downscale_cv2(input_path: str, scale: float):
     flipped = np.flip(img_rgb, 0)
     buf = flipped.tobytes()
     return buf, size_old, new_size
+
+
+def safe_filename(user_input: str) -> str:
+    """
+    Ensures a safe filename to stop the file from ending up in unwanted locations.
+    Returns the safe filename.
+    Args:
+        user_input(str): The string the user inputted
+    """
+    # Strip any path parts
+    name = Path(user_input).name
+
+    print(name)
+
+    # Keep only the part before the first dot
+    name = name.split('.', 1)[0]
+    print(name)
+    # Only allow Letters, Numbers, _ and -
+    name = re.sub(r'[^A-Za-z0-9_-]', '', name)
+    print(name)
+
+    if not name:
+        # in case we're left with nothing we use the default name
+        return f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+
+    return name
