@@ -209,6 +209,16 @@ ScreenManager:
                     on_release: app.check_download_assets()
                     size_hint_x: 1
 
+            MDBoxLayout:
+                orientation: "horizontal"
+                MDRaisedButton:
+                    text: "Delete all models"
+                    on_release: root.confirm_delete_models()
+                    size_hint_x: 1
+                    line_color: (1, 0, 0, 1) # red border
+                    text_color: (1, 0, 0, 1) # red text
+                    md_bg_color: 0, 0, 0, 0
+
             Widget:
 
 <DownloadPage>

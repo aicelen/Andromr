@@ -329,7 +329,7 @@ def download_weights() -> str | None:
         eprint(error_msg)
         error_occured = True
         return error_occured, error_msg
-    return error_occured, "Incorrect hashes"
+    return error_occured, "The downloaded file is not the same as expected. Please redownload"
 
 
 def check_for_missing_models() -> list:

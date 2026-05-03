@@ -38,8 +38,9 @@ import cv2
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
+from homr.simple_logging import eprint
 from validation.rate_validation_result import rate_folder
-from globals import APP_PATH, XML_PATH, IMAGE_PATH, appdata
+from globals import APP_PATH, XML_PATH, IMAGE_PATH, MODEL_STORAGE, appdata
 from utils import get_sys_theme, downscale_cv2, safe_filename
 
 
@@ -339,6 +340,29 @@ class SettingsPage(Screen):
                 verify=True,
             )
 
+    def confirm_delete_models(self):
+        self.confirm = MDDialog(
+            text="Are you sure you want to delete all models. This requires you to redownload all of them.",
+            buttons=[
+                MDFlatButton(
+                    id="cancel",
+                    text="CANCEL",
+                    on_release=lambda dt: self.confirm.dismiss(),
+                ),
+                MDFlatButton(
+                    text="DELETE",
+                    on_release=lambda dt: self.delete_models(),
+                ),
+            ],
+        )
+        self.confirm.open()
+    
+    def delete_models(self):
+        self.confirm.dismiss()
+        models = os.listdir(MODEL_STORAGE)
+        for model in models:
+            os.remove(os.path.join(MODEL_STORAGE, model))
+            eprint(f"Deleted {model}")
 
 class OSSLicensePage(Screen):
     pass
@@ -424,7 +448,7 @@ class DownloadPage(Screen):
             error_occured, information = app.future.result()
             if error_occured:
                 app.change_screen("landing")
-                app.show_info(information)
+                app.show_info(text=information, title="Error")
             elif camera_page:
                 app.change_screen("camera")
             else:
