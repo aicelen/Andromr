@@ -11,6 +11,8 @@ build/
 /data/
 /libs/
 /private/
+/.ruff_cache/
+/.pytest_cache/
 
 #tflite model folders
 /segnet_155/

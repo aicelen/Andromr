@@ -34,7 +34,7 @@ source.include_patterns = test_data/
 source.exclude_exts = npy, tflite, pth, pt, onnx
 
 # (list) List of directory to exclude (leave empty to not exclude anything)
-source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .venv, .vscode, bin, build, datasets, data, images, opencv, training, private, pytests, .torch2tflite
+source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .pycache_cache, .venv, .vscode, bin, build, datasets, data, images, opencv, training, private, pytests, .torch2tflite
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'

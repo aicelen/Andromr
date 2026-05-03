@@ -52,21 +52,13 @@ if platform == "android":
 
     required_permissions = [Permission.CAMERA]
 
-    def has_all_permissions():
-        return all(check_permission(perm) for perm in required_permissions)
-
-    # Request permissions if not already granted
-    if not has_all_permissions():
-        request_permissions(required_permissions)
-        while not has_all_permissions():
-            sleep(0.1)
-            print("waiting for permissions...")
-
     # Custom camera widget for android
     class KvCam(Camera):
-        CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
-        resolution = (640, 480)  # 960, 720
-        index = CameraInfo.CAMERA_FACING_BACK
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
+            self.resolution = (640, 480)  # 960, 720
+            self.index = CameraInfo.CAMERA_FACING_BACK
 
         def on_tex(self, *l):
             if self._camera._buffer is None:
@@ -98,7 +90,7 @@ else:
     class KvCam(MDBoxLayout):
         """A placeholder for the camera on desktop platforms."""
 
-        def __init__(self, **kwargs):
+        def __init__(self, fit_mode=None, play=None, **kwargs):
             super().__init__(**kwargs)
             # Add a label to indicate that the camera is not available
             self.add_widget(
@@ -245,10 +237,39 @@ class CameraPage(Screen):
         Restores the camerawidget
         """
         self.app = MDApp.get_running_app()
+        if platform == 'android' and not check_permission(Permission.CAMERA):
+            self.permission_dialog = MDDialog(
+                text="To take pictures, you need to permit Camera usage.",
+                buttons=[
+                    MDFlatButton(
+                        id="cancel",
+                        text="CANCEL",
+                        on_release=lambda dt: self.on_permission_result(None, None),
+                    ),
+                    MDFlatButton(
+                        text="Request Permission",
+                        on_release=lambda dt: self.request_camera_permission(),
+                    ),
+                ],
+            )
+            self.permission_dialog.open()
+        else:
+            # Reload camera
+            if self.app.previous_screen != "image_page":
+                self.reload_camera()
+        
+    def request_camera_permission(self):
+        request_permissions([Permission.CAMERA], self.on_permission_result)
 
-        # Reload camera
-        if self.app.previous_screen != "image_page":
-            self.reload_camera()
+    def on_permission_result(self, permissions, grant_results):
+        Clock.schedule_once(lambda dt: self.permission_dialog.dismiss())
+        if check_permission(Permission.CAMERA):
+            # has permission
+            Clock.schedule_once(lambda dt: self.reload_camera())
+        else:
+            Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
+            self.app.show_info("Grant camera permission to use the Camera.")
+
 
     def reload_camera(self):
         try:
@@ -274,7 +295,8 @@ class CameraPage(Screen):
         """Take an image"""
         if filename is None:
             filename = os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
-        print(f"Took picture named {filename}")
+        if platform == 'android':
+            print(f"Took picture named {filename}")
         take_picture(self.ids.camera_pre, self.display_img, filename)
 
 

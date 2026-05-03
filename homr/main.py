@@ -334,7 +334,7 @@ def download_weights(pytest: bool = False) -> tuple[bool, str]:
     return error_occured, "The downloaded file is not the same as expected. Please redownload"
 
 
-def check_for_missing_models(pytest: False) -> list:
+def check_for_missing_models(pytest: bool = False) -> list:
     """
     Checks for missing models and returns a list with all the links to the missing models.
     """
