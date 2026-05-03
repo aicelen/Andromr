@@ -1,14 +1,17 @@
 import os
 import tarfile
 import zipfile
+import json
 
 import requests
 
 from homr.simple_logging import eprint
 from globals import appdata
 
+import hashlib
 
-def download_file(url: str, filename: str) -> None:
+
+def download_file(url: str, filename: str, model_name: str) -> None:
     response = requests.get(url, stream=True, timeout=5)
     total = int(response.headers.get("content-length", 0))
     totalMb = round(total / 1024 / 1024)
@@ -38,6 +41,11 @@ def download_file(url: str, filename: str) -> None:
         eprint(f"\rDownloaded {totalMb} of {totalMb} MB (100%)")
     else:
         eprint()  # Add newline after download progress
+    
+    if validate_hash(filename, model_name):
+        eprint(f"Validated {model_name}")
+        return True
+    return False
 
 
 def unzip_file(filename: str, output_folder: str, flatten_root_entry: bool = False) -> None:
@@ -103,3 +111,16 @@ def untar_file(filename: str, output_folder: str) -> None:
                     if not chunk:
                         break
                     target.write(chunk)
+
+
+def validate_hash(filepath: str, model_name: str):
+    h = hashlib.new("SHA256")
+    with open(filepath, "rb") as f:
+        h.update(f.read())
+    
+    hash_is = h.hexdigest()
+    if hash_is != appdata.hashes[model_name]:
+        eprint(f"The hashes are not identical: is {hash_is} expected {appdata.hashes[model_name]}")
+        return False
+
+    return True

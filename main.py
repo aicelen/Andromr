@@ -25,6 +25,7 @@ from kivymd.utils.set_bars_colors import set_bars_colors
 
 # Built-in imports
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 import os
 from datetime import datetime
 from time import sleep
@@ -417,13 +418,13 @@ class DownloadPage(Screen):
         self.ids.download_label.text = str(appdata.downloaded_assets)
 
         # Check if the thread is finished
-        if not app.download_thread.is_alive():
+        if app.future.done():
             # Stop the scheduled updates
             Clock.unschedule(self.update_download_event)
-
-            if appdata.downloaded_assets.startswith("A"):  # Error occurd
+            error_occured, information = app.future.result()
+            if error_occured:
                 app.change_screen("landing")
-                app.show_info(appdata.downloaded_assets)
+                app.show_info(information)
             elif camera_page:
                 app.change_screen("camera")
             else:
@@ -790,15 +791,15 @@ class Andromr(MDApp):
 
     def start_download(self, camera_page=False):
         self.dialog_download.dismiss()
-        self.download_thread = Thread(target=download_weights, daemon=True)
+        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.future = self.executor.submit(download_weights)
         update = Thread(
             target=self.root.get_screen("downloadpage").update_download_bar,
             args=(camera_page,),
             daemon=True,
         )
-        self.download_thread.start()
         update.start()
-        Clock.schedule_once(lambda dt: self.change_screen("downloadpage"))
+        Clock.schedule_once(lambda dt: self.change_screen("downloadpage"), 0.1)
 
     def check_download_assets(self, camera_page=False, validation=False):
         """

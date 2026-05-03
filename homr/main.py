@@ -296,6 +296,7 @@ def detect_staffs_in_image(
 
 def download_weights() -> str | None:
     try:
+        error_occured = False
         base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
         missing_models = check_for_missing_models()
         if len(missing_models) == 0:
@@ -306,14 +307,17 @@ def download_weights() -> str | None:
         eprint("Downloading", len(missing_models), "models - this is only required once")
         for idx, model in enumerate(missing_models):
             base_name = os.path.basename(model).split(".")[0]
+            print(base_name)
             eprint(f"Downloading {base_name}")
             try:
                 zip_name = base_name + ".zip"
                 download_url = base_url + zip_name
                 downloaded_zip = os.path.join(os.path.dirname(model), zip_name)
-                download_utils.download_file(download_url, downloaded_zip)
-                destination_dir = os.path.dirname(model)
-                download_utils.unzip_file(downloaded_zip, destination_dir)
+                if download_utils.download_file(download_url, downloaded_zip, zip_name):
+                    destination_dir = os.path.dirname(model)
+                    download_utils.unzip_file(downloaded_zip, destination_dir)
+                else:
+                    error_occured = True
             finally:
                 if os.path.exists(downloaded_zip):
                     os.remove(downloaded_zip)
@@ -323,8 +327,9 @@ def download_weights() -> str | None:
     except Exception as e:
         error_msg = f"An error occured while trying to download the models: {e}"
         eprint(error_msg)
-        appdata.downloaded_assets = error_msg
-    return
+        error_occured = True
+        return error_occured, error_msg
+    return error_occured, "Incorrect hashes"
 
 
 def check_for_missing_models() -> list:

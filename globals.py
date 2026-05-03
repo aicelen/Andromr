@@ -29,6 +29,13 @@ class AppData:
         # Default settings
         self.default_settings = {"threads": 2, "xnnpack": False, "agreed": False, "gpu": False}
 
+        # Hashes
+        self.hashes = {
+            "segnet_308_int8.zip": "2c7ba2ad87a20f11b5122ce76cb244167ba67c2d0be962ac55f746f6ef03f377",
+            "encoder_331_int8.zip": "75ddeefb4402cb95f0454e2cc1e31305463020598cd16fdf48b2461c7388a796",
+            "decoder_331_int8.zip": "f327d851ed674935f2c83804ce4806ae51793a422138e2b8d59bf96e97e49db1"
+        }
+
         # Load data
         self._load_settings()
 
