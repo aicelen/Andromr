@@ -130,7 +130,6 @@ def inference(
             hop = extract_patch(image, y, x, win_size)
             hop = np.expand_dims(hop, axis=0)
             output = segnet.run(hop, output_shape=(1, 320, 320), int64=True)
-            print(np.unique(output))
             data.append(np.squeeze(output, axis=0))
 
             appdata.homr_progress += progress_increment

@@ -445,10 +445,9 @@ class DownloadPage(Screen):
         if app.future.done():
             # Stop the scheduled updates
             Clock.unschedule(self.update_download_event)
-            error_occured, information = app.future.result()
-            if error_occured:
+            if app.future.result()[0]:
                 app.change_screen("landing")
-                app.show_info(text=information, title="Error")
+                app.show_info(text=app.future.result()[1], title="Error")
             elif camera_page:
                 app.change_screen("camera")
             else:

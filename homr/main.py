@@ -294,13 +294,15 @@ def detect_staffs_in_image(
     return multi_staffs, predictions.preprocessed, debug
 
 
-def download_weights() -> str | None:
+def download_weights(pytest: bool = False) -> tuple[bool, str]:
     try:
         error_occured = False
         base_url = "https://github.com/aicelen/Andromr/releases/download/v1.0/"
-        missing_models = check_for_missing_models()
+        missing_models = check_for_missing_models(pytest=pytest)
+
+        # if we run it inside a test it should not just skip the models
         if len(missing_models) == 0:
-            return
+            return False, "" # no error occured
 
         appdata.downloaded_assets = f"Downloaded 0 of {len(missing_models)}"
 
@@ -332,7 +334,7 @@ def download_weights() -> str | None:
     return error_occured, "The downloaded file is not the same as expected. Please redownload"
 
 
-def check_for_missing_models() -> list:
+def check_for_missing_models(pytest: False) -> list:
     """
     Checks for missing models and returns a list with all the links to the missing models.
     """
@@ -344,7 +346,10 @@ def check_for_missing_models() -> list:
     if platform == "android":
         delete_unused_models(models)
     missing_models = [model for model in models if not os.path.exists(model)]
-    return missing_models
+    if pytest:
+        return models
+    else:
+        return missing_models
 
 
 def delete_unused_models(models_used):
