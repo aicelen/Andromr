@@ -83,6 +83,30 @@ ScreenManager:
             loop: False
 
     MDBoxLayout:
+        padding: [dp(0), dp(0), dp(0), dp(84)]
+        size_hint_y: None
+        height: dp(40)
+        pos_hint: {"center_x": 0.5}
+
+        Widget:
+
+        MDBoxLayout:
+            size_hint: None, None
+            size: dp(36), dp(24)
+            md_bg_color: 0.4, 0.4, 0.4, 0.9
+            radius: [dp(14), dp(14), dp(14), dp(14)]
+
+            MDLabel:
+                text: f"{(image_box.index if image_box.index else 0) + 1}/{len(image_box.slides)}"
+                halign: "center"
+                valign: "middle"
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+                font_size: "12sp"
+
+        Widget:
+
+    MDBoxLayout:
         id: btn_box
         orientation: "horizontal"
         padding: [dp(10), dp(20), dp(10), dp(app.bottom_pad)]
@@ -172,7 +196,7 @@ ScreenManager:
         MDBoxLayout:
             orientation: "vertical"
             padding: dp(25)
-            
+
             MDBoxLayout:
                 MDLabel:
                     id: l_threads
