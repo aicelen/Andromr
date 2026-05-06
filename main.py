@@ -243,7 +243,7 @@ class CameraPage(Screen):
                 buttons=[
                     MDFlatButton(
                         id="cancel",
-                        text="CANCEL",
+                        text="Cancel",
                         on_release=lambda dt: self.on_permission_result(None, None),
                     ),
                     MDFlatButton(
@@ -363,28 +363,36 @@ class SettingsPage(Screen):
             )
 
     def confirm_delete_models(self):
-        self.confirm = MDDialog(
-            text="Are you sure you want to delete all models. This requires you to redownload all of them.",
-            buttons=[
-                MDFlatButton(
-                    id="cancel",
-                    text="CANCEL",
-                    on_release=lambda dt: self.confirm.dismiss(),
-                ),
-                MDFlatButton(
-                    text="DELETE",
-                    on_release=lambda dt: self.delete_models(),
-                ),
-            ],
-        )
-        self.confirm.open()
+        if os.listdir(MODEL_STORAGE):
+            self.confirm = MDDialog(
+                text="Are you sure you want to delete all models. This requires you to redownload all of them.",
+                buttons=[
+                    MDFlatButton(
+                        id="cancel",
+                        text="CANCEL",
+                        on_release=lambda dt: self.confirm.dismiss(),
+                    ),
+                    MDFlatButton(
+                        text="DELETE",
+                        on_release=lambda dt: self.delete_models(),
+                    ),
+                ],
+            )
+            self.confirm.open()
+        
+        else:
+            app = MDApp.get_running_app()
+            app.show_toast(f"No models downloaded")
     
     def delete_models(self):
         self.confirm.dismiss()
+        app = MDApp.get_running_app()
         models = os.listdir(MODEL_STORAGE)
         for model in models:
             os.remove(os.path.join(MODEL_STORAGE, model))
             eprint(f"Deleted {model}")
+
+        app.show_toast(f"Models deleted")
 
 class OSSLicensePage(Screen):
     pass
