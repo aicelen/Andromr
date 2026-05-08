@@ -3,13 +3,53 @@ import json
 from pathlib import Path
 from kivy import platform
 from homr.simple_logging import eprint
+import shutil
 
 APP_PATH = os.getcwd()
 
 if platform == "android":
     from android.storage import app_storage_path  # type: ignore
+    from android import mActivity # type: ignore
 
-    APP_STORAGE = os.path.join(app_storage_path())
+    def get_android_storage() -> str:
+        """
+        android.app_storage_path is deprecated and unsafe. Therefore 
+        we need to migrate the files to the newer getExternalFilesDir.
+        Returns path to the used App_Storage
+        """
+        old_path = app_storage_path()
+
+        context = mActivity.getApplicationContext()
+        result = context.getExternalFilesDir(None)
+        if result is None:
+            eprint("Using old path")
+            return old_path # external storage not available, can't migrate
+        new_path = str(result.toString())
+
+        dirs_to_migrate = ["models", "images", "musicxml"]
+        if os.path.exists(os.path.join(new_path, "saved_settings.json")) or not os.path.exists(os.path.join(old_path, "saved_settings.json")):
+            eprint("Already migrated. Using new path")
+            return new_path
+        try:
+            for directory in dirs_to_migrate:
+                cur_old_dir = os.path.join(old_path, directory)
+                cur_new_dir = os.path.join(new_path, directory)
+                shutil.copytree(cur_old_dir, cur_new_dir, dirs_exist_ok=True)
+                shutil.rmtree(cur_old_dir)
+
+            shutil.move(os.path.join(old_path, "saved_settings.json"), new_path)
+            eprint("using new path")
+            return new_path
+
+        except Exception as e:
+            eprint(f'Migration failed: {e}')
+            # Clean up any partial copy
+            if os.path.exists(new_path):
+                shutil.rmtree(new_path)
+        eprint("Using old path")
+        return old_path
+
+    APP_STORAGE = os.path.join(get_android_storage())
 else:
     APP_STORAGE = os.path.join(APP_PATH, "data")
 
