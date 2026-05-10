@@ -22,7 +22,7 @@ if platform == "android":
     Options = autoclass("com.google.ai.edge.litert.CompiledModel$Options")
     CpuOptions = autoclass("com.google.ai.edge.litert.CompiledModel$CpuOptions")
     HashSet = autoclass("java.util.HashSet")
-    Integer = autoclass('java.lang.Integer')
+    Integer = autoclass("java.lang.Integer")
     # buildozer is sometimes cutting unused classes away
     # but Tensorbuffer is used run_inference()
     # importing stops buildozer from cutting it away
@@ -36,14 +36,15 @@ if platform == "android":
             use_gpu(bool): If True uses GPU acceleration, FP16 model only
         """
 
-        def __init__(
-            self,
-            model_filename: str
-        ):
+        def __init__(self, model_filename: str):
             accelerator_set = HashSet()
             self.use_gpu = appdata.gpu
             self.num_threads = appdata.threads
-            eprint("Using GPU acceleration" if self.use_gpu else f"Using CPU with {self.num_threads} threads.")
+            eprint(
+                "Using GPU acceleration"
+                if self.use_gpu
+                else f"Using CPU with {self.num_threads} threads."
+            )
 
             if self.use_gpu:
                 accelerator_set.add(Accelerator.GPU)
@@ -112,7 +113,11 @@ else:
         ):
             self.use_gpu = appdata.gpu
             self.num_threads = appdata.threads
-            eprint("GPU acceleration is only supported on Android." if self.use_gpu else f"Using CPU with {self.num_threads} threads.")
+            eprint(
+                "GPU acceleration is only supported on Android."
+                if self.use_gpu
+                else f"Using CPU with {self.num_threads} threads."
+            )
 
             self.model_path = model_filename
             self.interpreter = Interpreter(self.model_path)

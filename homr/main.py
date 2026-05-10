@@ -161,11 +161,12 @@ def process_image(
     image_path: str,
     config: ProcessingConfig,
     xml_generator_args: XmlGeneratorArguments,
+    output_path: str = None,
 ) -> None:
     appdata.homr_state = "Segmenting"
     appdata.homr_progress = 1
     eprint("Processing " + image_path)
-    xml_file = replace_extension(image_path, ".musicxml")
+    xml_file = output_path
     debug_cleanup: Debug | None = None
     try:
         if config.read_staff_positions:
@@ -302,7 +303,7 @@ def download_weights(pytest: bool = False) -> tuple[bool, str]:
 
         # if we run it inside a test it should not just skip the models
         if len(missing_models) == 0:
-            return False, "" # no error occured
+            return False, ""  # no error occured
 
         appdata.downloaded_assets = f"Downloaded 0 of {len(missing_models)}"
 
@@ -364,11 +365,11 @@ def delete_unused_models(models_used):
         os.remove(path)
 
 
-def homr(path):
+def homr(path, output_path):
     t0 = perf_counter()
     config = ProcessingConfig(False, False, False, False, -1, False)
     xml_generator_args = XmlGeneratorArguments(False, False, False)
-    out_path = process_image(path, config, xml_generator_args)
+    out_path = process_image(path, config, xml_generator_args, output_path=output_path)
     eprint(f"Homr took {perf_counter() - t0} seconds.")
     return out_path
 

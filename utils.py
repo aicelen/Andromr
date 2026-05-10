@@ -6,7 +6,6 @@ import re
 from datetime import datetime
 
 
-
 def rotate_image(input_path, output_path):
     """
     Rotates an image 90 degrees clockwise and saves it.
@@ -97,17 +96,9 @@ def safe_filename(user_input: str) -> str:
     # Strip any path parts
     name = Path(user_input).name
 
-    print(name)
-
     # Keep only the part before the first dot
-    name = name.split('.', 1)[0]
-    print(name)
+    name = name.split(".", 1)[0]
     # Only allow Letters, Numbers, _ and -
-    name = re.sub(r'[^A-Za-z0-9_-]', '', name)
-    print(name)
-
-    if not name:
-        # in case we're left with nothing we use the default name
-        return f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    name = re.sub(r"[^A-Za-z0-9_-]", "", name)
 
     return name

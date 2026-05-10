@@ -181,6 +181,4 @@ def get_file_list(
 
 
 if __name__ == "__main__":
-    merge_xmls(
-        ["test_relieur.musicxml", "test_relieur.musicxml"], "test_relieur_merged.musicxml"
-    )
+    merge_xmls(["test_relieur.musicxml", "test_relieur.musicxml"], "test_relieur_merged.musicxml")

@@ -42,7 +42,7 @@ from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
 from homr.simple_logging import eprint
 from validation.rate_validation_result import rate_folder
-from globals import APP_PATH, XML_PATH, IMAGE_PATH, MODEL_STORAGE, appdata
+from globals import APP_PATH, XML_PATH, IMAGE_PATH, MODEL_STORAGE, appdata, APP_STORAGE
 from utils import get_sys_theme, downscale_cv2, safe_filename
 
 
@@ -51,6 +51,12 @@ if platform == "android":
     from androidstorage4kivy import SharedStorage, ShareSheet  # type: ignore
     from jnius import autoclass  # type: ignore
     from android.permissions import request_permissions, Permission, check_permission  # type: ignore
+    from android.activity import bind as activity_bind  # type: ignore
+
+    Intent = autoclass("android.content.Intent")
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    BufferedInputStream = autoclass("java.io.BufferedInputStream")
+    activity = PythonActivity.mActivity
 
     required_permissions = [Permission.CAMERA]
 
@@ -251,6 +257,21 @@ class LandingPage(Screen):
         self.dialog_delete.dismiss()
         self.update_scrollview()
 
+    def pick_file(self):
+        intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.setType("*/*")
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        PythonActivity.mActivity.startActivityForResult(intent, 42)
+
+    def on_result(self, request_code, result_code, data):
+        if request_code == 42 and result_code == -1 and data:  # -1 = RESULT_OK
+            uri = data.getData()
+            eprint(uri)
+            file_path = SharedStorage()._copy_uri_to_cache(uri)
+            eprint(file_path)
+            Clock.schedule_once(lambda dt: self.app.check_download_assets(file_path=file_path))
+
 
 class CameraPage(Screen):
     def on_enter(self):
@@ -258,7 +279,7 @@ class CameraPage(Screen):
         Restores the camerawidget
         """
         self.app = MDApp.get_running_app()
-        if platform == 'android' and not check_permission(Permission.CAMERA):
+        if platform == "android" and not check_permission(Permission.CAMERA):
             self.permission_dialog = MDDialog(
                 text="To take pictures, you need to permit Camera usage.",
                 buttons=[
@@ -278,7 +299,7 @@ class CameraPage(Screen):
             # Reload camera
             if self.app.previous_screen != "image_page":
                 self.reload_camera()
-        
+
     def request_camera_permission(self):
         request_permissions([Permission.CAMERA], self.on_permission_result)
 
@@ -290,7 +311,6 @@ class CameraPage(Screen):
         else:
             Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
             self.app.show_info("Grant camera permission to use the Camera.")
-
 
     def reload_camera(self):
         try:
@@ -315,8 +335,10 @@ class CameraPage(Screen):
     ):
         """Take an image"""
         if filename is None:
-            filename = os.path.join(IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
-        if platform == 'android':
+            filename = os.path.join(
+                IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+            )
+        if platform == "android":
             print(f"Took picture named {filename}")
         take_picture(self.ids.camera_pre, self.display_img, filename)
 
@@ -356,15 +378,13 @@ class ProgressPage(Screen):
 class SettingsPage(Screen):
     def on_leave(self):
         self.get_settings()
-    
+
     def get_settings(self):
         """
         Gets the settings (number of threads) and saves them to a json.
         """
         num_threads = self.ids.slider_threads.value
-        if (
-            appdata.threads != num_threads
-        ):
+        if appdata.threads != num_threads:
             appdata.settings_changed = True
         else:
             appdata.settings_changed = False
@@ -400,11 +420,11 @@ class SettingsPage(Screen):
                 ],
             )
             self.confirm.open()
-        
+
         else:
             app = MDApp.get_running_app()
             app.show_toast(f"No models downloaded")
-    
+
     def delete_models(self):
         self.confirm.dismiss()
         app = MDApp.get_running_app()
@@ -415,12 +435,14 @@ class SettingsPage(Screen):
 
         app.show_toast(f"Models deleted")
 
+
 class OSSLicensePage(Screen):
     pass
 
 
 class LicensePage(Screen):
     pass
+
 
 class PrivacyPolicyPage(Screen):
     pass
@@ -432,6 +454,7 @@ class LicensePageButton(Screen):
         app = MDApp.get_running_app()
         app.change_screen("privacypolicypagebutton")
 
+
 class PrivacyPolicyPageButton(Screen):
     def agree_license(self):
         """Function that is triggered when the user agreed to the privacy policy"""
@@ -439,6 +462,7 @@ class PrivacyPolicyPageButton(Screen):
         appdata.agreed = True
         appdata.save_settings()
         app.change_screen("landing")
+
 
 class EditImagePage(Screen):
     def delete_image(self, img_idx):
@@ -457,11 +481,10 @@ class EditImagePage(Screen):
         # display screen to image_page
         app = MDApp.get_running_app()
         app.change_screen("image_page")
-        downscale_cv2(path, 0.25)
         app.img_paths.append(path)
 
         # downscale image to save time during rendering
-        buf, self.size, text_res = downscale_cv2(path, 0.25)
+        buf, _, text_res = downscale_cv2(path, 0.25)
 
         # create texture from buffer
         texture = Texture.create(size=text_res, colorfmt="rgb")
@@ -557,6 +580,7 @@ class OSS_Licenses(RecycleView):
             }
             for line in lines
         ]
+
 
 class PrivacyPolicy(RecycleView):
     # shows the privacy policy using a recycling view widget for better performance
@@ -658,13 +682,15 @@ class Andromr(MDApp):
             set_bars_colors(
                 self.theme_cls.primary_color,  # status bar color
                 self.theme_cls.primary_color,  # navigation bar color
-                "Dark" if self.theme_cls.theme_style == "Light" else "Light"
+                "Dark" if self.theme_cls.theme_style == "Light" else "Light",
             )
         else:
             self.bottom_pad = 0
 
     def on_start(self):
         Window.bind(on_keyboard=self.on_custom_back)
+        if platform == "android":
+            activity_bind(on_activity_result=self.root.get_screen("landing").on_result)
         print("starting")
 
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
@@ -758,7 +784,11 @@ class Andromr(MDApp):
             print(f"Running inferene on {path}")
         else:
             path = path_to_image
-
+        if out_path is None:
+            out_path = os.path.join(
+                XML_PATH,
+                f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml",
+            )
         # set the progress bar to 0
         appdata.progress = 0
 
@@ -807,12 +837,14 @@ class Andromr(MDApp):
                 return
         else:
             self._homr_call(path, out_path, verify)
-        
+
         time = perf_counter() - t0
 
         if verify:
             try:
-                validation_metrics, n_errors = rate_folder("test_data/entertainer", compare_all=True)
+                validation_metrics, n_errors = rate_folder(
+                    "test_data/entertainer", compare_all=True
+                )
 
                 ser = validation_metrics.total_ser * 100
 
@@ -845,25 +877,20 @@ class Andromr(MDApp):
             Clock.schedule_once(lambda dt: self.change_screen("landing"))
 
     def _homr_call(self, path, out_path, verify):
-        return_path = homr(path)
+        return_path = homr(path, out_path)
         appdata.homr_running = False
         if out_path is not None:
             # if there's a given output path we use that
             new_path = out_path
 
         else:
-            title_text = str(self.root.get_screen("progress").ids.title.text)
-            if title_text:
-                music_title = safe_filename(title_text)
-                if os.path.exists(os.path.join(XML_PATH, f"{music_title}.musicxml")):
-                    music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-            else:
-                music_title = f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-            new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
+            music_title = safe_filename(str(self.root.get_screen("progress").ids.title.text))
+            if music_title:
+                new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
+                if not os.path.exists(new_path):
+                    os.rename(return_path, new_path)
 
-            # rename the file
-            os.rename(return_path, new_path)
-
+        # update xml paths for scrollview on landing page
         self.xml_paths.append(new_path)
 
     def start_download(self, camera_page=False):
@@ -878,7 +905,9 @@ class Andromr(MDApp):
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"), 0.1)
 
-    def check_download_assets(self, camera_page=False, validation=False):
+    def check_download_assets(
+        self, camera_page: bool = False, file_path: str = None, validation: bool = False
+    ):
         """
         If not all tflite models are downloaded it will create a Dialog informing the user
         that the App wants to download the models. If the user allows it, the app will switch
@@ -904,6 +933,8 @@ class Andromr(MDApp):
             return True
         elif camera_page:
             self.change_screen("camera")
+        elif file_path:  # file selected with file chooser
+            self.start_inference(file_path)
         elif not validation:
             self.show_toast("You already downloaded all assets")
         return False

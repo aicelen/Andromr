@@ -4,6 +4,7 @@ from training.architecture.segmentation.model import create_segnet
 from homr.transformer.configs import Config
 from torch2tflite.quantize import quant_int8
 
+
 def convert_segnet(model_name):
     # Use resnet18 with pre-trained weights.
     segnet = create_segnet()
@@ -17,5 +18,6 @@ def convert_segnet(model_name):
     edge_model.export(f"{model_name}.tflite")
 
     quant_int8(model_name)
+
 
 convert_segnet("segnet_308")

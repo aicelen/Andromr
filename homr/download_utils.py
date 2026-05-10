@@ -41,7 +41,7 @@ def download_file(url: str, filename: str, model_name: str) -> None:
         eprint(f"\rDownloaded {totalMb} of {totalMb} MB (100%)")
     else:
         eprint()  # Add newline after download progress
-    
+
     if validate_hash(filename, model_name):
         eprint(f"Validated {model_name}")
         return True
@@ -117,7 +117,7 @@ def validate_hash(filepath: str, model_name: str):
     h = hashlib.new("SHA256")
     with open(filepath, "rb") as f:
         h.update(f.read())
-    
+
     hash_is = h.hexdigest()
     if hash_is != appdata.hashes[model_name]:
         eprint(f"The hashes are not identical: is {hash_is} expected {appdata.hashes[model_name]}")
