@@ -4,6 +4,7 @@
 # Kivy imports
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.factory import Factory
 from kivymd.app import MDApp
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.label import MDLabel
@@ -21,6 +22,7 @@ from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
 from kivy.uix.camera import Camera
 from kivy.utils import get_color_from_hex
+from kivymd.uix.slider import MDSlider
 from kivymd.utils.set_bars_colors import set_bars_colors
 
 # Built-in imports
@@ -28,7 +30,7 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 import os
 from datetime import datetime
-from time import sleep
+from time import perf_counter
 from collections import deque
 
 # Package imports
@@ -103,6 +105,25 @@ else:
     def take_picture(widget, function, filename):
         path = filechooser.open_file(title="Select your document")
         function(path[0])
+
+
+class AlwaysHintSlider(MDSlider):
+    """MDSlider variant that keeps the value hint visible when not dragging."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        Clock.schedule_once(self._show_hint_box)
+
+    def on_active(self, *args):
+        super().on_active(*args)
+        Clock.schedule_once(self._show_hint_box)
+
+    def _show_hint_box(self, *args):
+        if self.hint and "hint_box" in self.ids:
+            self.ids.hint_box.opacity = 1
+
+
+Factory.register("AlwaysHintSlider", cls=AlwaysHintSlider)
 
 
 # Classes of Screens used by kivy
@@ -771,6 +792,7 @@ class Andromr(MDApp):
         """
         # run homr with try-except on android
         # else we run it without for easier debugging
+        t0 = perf_counter()
         if platform == "android":
             try:
                 self._homr_call(path, out_path, verify)
@@ -785,6 +807,8 @@ class Andromr(MDApp):
                 return
         else:
             self._homr_call(path, out_path, verify)
+        
+        time = perf_counter() - t0
 
         if verify:
             try:
@@ -793,9 +817,9 @@ class Andromr(MDApp):
                 ser = validation_metrics.total_ser * 100
 
                 if ser < 3:
-                    text = f"Results are great. The average difference was {ser} with a total of {n_errors} failures."
+                    text = f"Results are great. The average difference was {ser} with a total of {n_errors} failures. It took {round(time, 2)}s"
                 else:
-                    text = f"Results are bad. The average difference was {ser} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr."
+                    text = f"Results are bad. The average difference was {ser} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr. It took {round(time, 2)}s"
 
                 Clock.schedule_once(lambda dt: self.change_screen("settings"))
                 Clock.schedule_once(lambda dt: self.show_info(text=text, title="Results"))

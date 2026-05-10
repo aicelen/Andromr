@@ -41,7 +41,7 @@ source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 1.4.2
+version = 1.4.3
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -214,7 +214,7 @@ android.ndk = 28b
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = com.google.ai.edge.litert:litert:2.1.1, com.microsoft.onnxruntime:onnxruntime-android:1.23.2
+android.gradle_dependencies = com.google.ai.edge.litert:litert:2.1.4, com.microsoft.onnxruntime:onnxruntime-android:1.23.2
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
