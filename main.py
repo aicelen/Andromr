@@ -4,11 +4,18 @@
 # Kivy imports
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.animation import Animation
 from kivy.factory import Factory
+from kivy.properties import NumericProperty
 from kivymd.app import MDApp
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDIconButton
+from kivymd.uix.button import MDIconButton, MDFloatingActionButtonSpeedDial
+from kivymd.uix.button.button import (
+    MDFloatingBottomButton,
+    MDFloatingLabel,
+    MDFloatingRootButton,
+)
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
@@ -129,13 +136,97 @@ class AlwaysHintSlider(MDSlider):
             self.ids.hint_box.opacity = 1
 
 
+class MovableFloatingActionButtonSpeedDial(MDFloatingActionButtonSpeedDial):
+    bottom_pad = NumericProperty(0)
+
+    def on_bottom_pad(self, *args):
+        self._update_pos_buttons(None, Window.width, Window.height)
+
+    def set_pos_root_button(self, instance_floating_root_button) -> None:
+        def set_pos_root_button(*args):
+            if self.anchor == "right" and self.parent:
+                instance_floating_root_button.y = dp(20 + self.bottom_pad)
+                instance_floating_root_button.x = self.parent.width - (dp(56) + dp(20))
+
+        Clock.schedule_once(set_pos_root_button)
+
+    def open_stack(self, instance_floating_root_button) -> None:
+        for widget in self.children:
+            if isinstance(widget, MDFloatingLabel):
+                Animation.cancel_all(widget)
+
+        if self.state != "open":
+            y = 0
+            label_position = dp(54)
+            bottom_offset = dp(self.bottom_pad)
+            anim_buttons_data = {}
+            anim_labels_data = {}
+
+            for widget in self.children:
+                if isinstance(widget, MDFloatingBottomButton):
+                    y += dp(56)
+                    widget.y = widget.height + y + bottom_offset
+                    if not self._anim_buttons_data:
+                        anim_buttons_data[widget] = Animation(
+                            opacity=1,
+                            d=self.opening_time,
+                            t=self.opening_transition,
+                        )
+                elif isinstance(widget, MDFloatingLabel):
+                    label_position += dp(56)
+                    if not self._label_pos_y_set:
+                        widget.y = label_position + bottom_offset
+                        widget.x = Window.width - widget.width - dp(86)
+                    if not self._anim_labels_data:
+                        anim_labels_data[widget] = Animation(opacity=1, d=self.opening_time)
+                elif isinstance(widget, MDFloatingRootButton) and self.root_button_anim:
+                    Animation(
+                        rotate_value_angle=-45,
+                        d=self.opening_time_button_rotation,
+                        t=self.opening_transition_button_rotation,
+                    ).start(widget)
+
+            if anim_buttons_data:
+                self._anim_buttons_data = anim_buttons_data
+            if anim_labels_data and not self.hint_animation:
+                self._anim_labels_data = anim_labels_data
+
+            self.state = "open"
+            self.dispatch("on_open")
+            self.do_animation_open_stack(self._anim_buttons_data)
+            self.do_animation_open_stack(self._anim_labels_data)
+            if not self._label_pos_y_set:
+                self._label_pos_y_set = True
+        else:
+            self.close_stack()
+
+
 Factory.register("AlwaysHintSlider", cls=AlwaysHintSlider)
+Factory.register(
+    "MovableFloatingActionButtonSpeedDial",
+    cls=MovableFloatingActionButtonSpeedDial,
+)
 
 
 # Classes of Screens used by kivy
 class LandingPage(Screen):
-    def on_enter(self):
+    def __init__(self, **kw):
+        super().__init__(**kw)
         self.app = MDApp.get_running_app()
+        self.data = {
+            "Camera": [
+                "camera",
+                "on_release",
+                lambda x: self.app.check_download_assets(camera_page=True),
+            ],
+            "Open File": [
+                "file-upload",
+                "on_release",
+                lambda x: self.app.check_download_assets(file_chooser=True),
+            ],
+        }
+
+    def on_enter(self):
         self.app.img_paths = []  # clean up the image path list
         self.app.xml_paths = []  # clean up the xml list
 
@@ -256,21 +347,6 @@ class LandingPage(Screen):
         os.remove(path)
         self.dialog_delete.dismiss()
         self.update_scrollview()
-
-    def pick_file(self):
-        intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.setType("*/*")
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        PythonActivity.mActivity.startActivityForResult(intent, 42)
-
-    def on_result(self, request_code, result_code, data):
-        if request_code == 42 and result_code == -1 and data:  # -1 = RESULT_OK
-            uri = data.getData()
-            eprint(uri)
-            file_path = SharedStorage()._copy_uri_to_cache(uri)
-            eprint(file_path)
-            Clock.schedule_once(lambda dt: self.app.check_download_assets(file_path=file_path))
 
 
 class CameraPage(Screen):
@@ -499,33 +575,37 @@ class EditImagePage(Screen):
 
 
 class DownloadPage(Screen):
-    def update_download_bar(self, camera_page):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.app = MDApp.get_running_app()
+
+    def update_download_bar(self, camera_page, file_chooser):
         """
         Start the periodic update of the progress bar.
         """
         # Schedule the update function to run 10 times per second
         self.update_download_event = Clock.schedule_interval(
-            lambda dt: self._update_download_bar_status(camera_page), 0.1
+            lambda dt: self._update_download_bar_status(camera_page, file_chooser), 0.1
         )
 
-    def _update_download_bar_status(self, camera_page):
-        app = MDApp.get_running_app()
-
+    def _update_download_bar_status(self, camera_page, file_chooser):
         # Update the UI
         self.ids.download_bar.value = int(appdata.download_progress)
         self.ids.download_label.text = str(appdata.downloaded_assets)
 
         # Check if the thread is finished
-        if app.future.done():
+        if self.app.future.done():
             # Stop the scheduled updates
             Clock.unschedule(self.update_download_event)
-            if app.future.result()[0]:
-                app.show_info(text=app.future.result()[1], title="Error")
-                Clock.schedule_once(lambda dt: app.change_screen("landing"))
+            if self.app.future.result()[0]:
+                self.app.show_info(text=self.app.future.result()[1], title="Error")
+                Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
             elif camera_page:
-                app.change_screen("camera")
+                self.app.change_screen("camera")
+            elif file_chooser:
+                self.app.pick_file()
             else:
-                app.change_screen("settings")
+                self.app.change_screen("settings")
 
 
 class License(RecycleView):
@@ -690,7 +770,7 @@ class Andromr(MDApp):
     def on_start(self):
         Window.bind(on_keyboard=self.on_custom_back)
         if platform == "android":
-            activity_bind(on_activity_result=self.root.get_screen("landing").on_result)
+            activity_bind(on_activity_result=self.on_pick_file_result)
         print("starting")
 
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
@@ -893,20 +973,23 @@ class Andromr(MDApp):
         # update xml paths for scrollview on landing page
         self.xml_paths.append(new_path)
 
-    def start_download(self, camera_page=False):
+    def start_download(self, camera_page: bool = False, file_chooser: bool = False):
         self.dialog_download.dismiss()
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.future = self.executor.submit(download_weights)
         update = Thread(
             target=self.root.get_screen("downloadpage").update_download_bar,
-            args=(camera_page,),
+            args=(
+                camera_page,
+                file_chooser,
+            ),
             daemon=True,
         )
         update.start()
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"), 0.1)
 
     def check_download_assets(
-        self, camera_page: bool = False, file_path: str = None, validation: bool = False
+        self, camera_page: bool = False, file_chooser: bool = False, validation: bool = False
     ):
         """
         If not all tflite models are downloaded it will create a Dialog informing the user
@@ -925,7 +1008,7 @@ class Andromr(MDApp):
                     ),
                     MDFlatButton(
                         text="DOWNLOAD NOW",
-                        on_release=lambda dt: self.start_download(camera_page),
+                        on_release=lambda dt: self.start_download(camera_page, file_chooser),
                     ),
                 ],
             )
@@ -933,11 +1016,26 @@ class Andromr(MDApp):
             return True
         elif camera_page:
             self.change_screen("camera")
-        elif file_path:  # file selected with file chooser
-            self.start_inference(file_path)
+        elif file_chooser:
+            self.pick_file()
         elif not validation:
             self.show_toast("You already downloaded all assets")
         return False
+
+    def pick_file(self):
+        intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.setType("*/*")
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        PythonActivity.mActivity.startActivityForResult(intent, 42)
+
+    def on_pick_file_result(self, request_code, result_code, data):
+        if request_code == 42 and result_code == -1 and data:  # -1 = RESULT_OK
+            uri = data.getData()
+            eprint(uri)
+            file_path = SharedStorage()._copy_uri_to_cache(uri)
+            eprint(file_path)
+            Clock.schedule_once(lambda dt: self.start_inference(path_to_image=file_path))
 
     def on_resume(self):
         Clock.schedule_once(self._resume_camera, 0)

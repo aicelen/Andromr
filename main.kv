@@ -26,34 +26,34 @@ ScreenManager:
             md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (0.95, 0.95, 0.95, 1)
             specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
 
-        BoxLayout:
-            orientation: 'vertical'
-            padding: dp(20)
-            spacing: dp(10)
+        FloatLayout:
+            id: landing_body
             ScrollView:
                 id: scroll_view
-                size_hint_y: 0.75
+                size_hint: 1, None
+                height: max(0, landing_body.height - dp(96 + app.bottom_pad))
+                pos_hint: {"top": 1}
                 BoxLayout:
                     id: scroll_box
                     orientation: 'vertical'
                     size_hint_y: None
                     height: self.minimum_height
-                    padding: dp(10)
+                    padding: [dp(30), dp(8), dp(30), dp(16)]
                     spacing: dp(10)
 
-            BoxLayout:
-                orientation: "horizontal"
-                size_hint_y: 0.1
-                MDFloatingActionButton:
-                    icon: "cog"
-                    on_release: app.change_screen("settings")
+            MovableFloatingActionButtonSpeedDial:
+                id: gen_xml
+                icon: "plus-thick"
+                data: root.data
+                bottom_pad: app.bottom_pad
+                root_button_anim: True
+                size_hint: 1, 1
+                label_text_color: app.theme_cls.primary_color
 
-                Widget:
-
-                MDFloatingActionButton:
-                    id: gen_xml
-                    icon: "camera"
-                    on_release: root.pick_file() #app.check_download_assets(camera_page=True)
+            MDFloatingActionButton:
+                icon: "cog"
+                pos: dp(20), dp(20 + app.bottom_pad)
+                on_release: app.change_screen("settings")
 
 
 <CameraPage>:
