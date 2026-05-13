@@ -27,7 +27,6 @@ from kivy.metrics import dp, sp
 from kivy.uix.recycleview import RecycleView
 from kivy.graphics.texture import Texture
 from kivy.uix.image import Image
-from kivy.uix.camera import Camera
 from kivy.utils import get_color_from_hex
 from kivymd.uix.slider import MDSlider
 from kivymd.utils.set_bars_colors import set_bars_colors
@@ -39,10 +38,8 @@ import os
 from datetime import datetime
 from time import perf_counter
 from collections import deque
-
-# Package imports
-import numpy as np
-import cv2
+from itertools import zip_longest
+from pathlib import Path
 
 # Own imports
 from homr.main import download_weights, homr, check_for_missing_models
@@ -50,74 +47,21 @@ from homr.relieur import merge_xmls
 from homr.simple_logging import eprint
 from validation.rate_validation_result import rate_folder
 from globals import APP_PATH, XML_PATH, IMAGE_PATH, MODEL_STORAGE, appdata, APP_STORAGE
-from utils import get_sys_theme, downscale_cv2, safe_filename
-
+from utils import get_sys_theme, safe_filename, pdf_to_img, downscale_cv2
 
 if platform == "android":
-    from android_camera_api import take_picture
     from androidstorage4kivy import SharedStorage, ShareSheet  # type: ignore
     from jnius import autoclass  # type: ignore
-    from android.permissions import request_permissions, Permission, check_permission  # type: ignore
     from android.activity import bind as activity_bind  # type: ignore
+    from android_document_scanner import document_scan_result, start_document_scan
 
     Intent = autoclass("android.content.Intent")
     PythonActivity = autoclass("org.kivy.android.PythonActivity")
     BufferedInputStream = autoclass("java.io.BufferedInputStream")
     activity = PythonActivity.mActivity
 
-    required_permissions = [Permission.CAMERA]
-
-    # Custom camera widget for android
-    class KvCam(Camera):
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            CameraInfo = autoclass("android.hardware.Camera$CameraInfo")
-            self.resolution = (640, 480)  # 960, 720
-            self.index = CameraInfo.CAMERA_FACING_BACK
-
-        def on_tex(self, *l):
-            if self._camera._buffer is None:
-                return None
-
-            super(KvCam, self).on_tex(*l)
-            self.texture = Texture.create(size=np.flip(self.resolution), colorfmt="rgb")
-            frame = self.frame_from_buf()
-            self.frame_to_screen(frame)
-
-        def frame_from_buf(self):
-            w, h = self.resolution
-            frame = np.frombuffer(self._camera._buffer.tostring(), "uint8").reshape((h + h // 2, w))
-            frame_bgr = cv2.cvtColor(frame, 93)
-            if self.index:
-                return np.flip(np.rot90(frame_bgr, 1), 1)
-            else:
-                return np.rot90(frame_bgr, 3)
-
-        def frame_to_screen(self, frame):
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            flipped = np.flip(frame_rgb, 0)
-            buf = flipped.tobytes()
-            self.texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
-
 else:
     from plyer import filechooser
-
-    class KvCam(MDBoxLayout):
-        """A placeholder for the camera on desktop platforms."""
-
-        def __init__(self, fit_mode=None, play=None, **kwargs):
-            super().__init__(**kwargs)
-            # Add a label to indicate that the camera is not available
-            self.add_widget(
-                MDLabel(
-                    text="Camera not available on Desktop.\nPress capture to select a file.",
-                    halign="center",
-                )
-            )
-
-    def take_picture(widget, function, filename):
-        path = filechooser.open_file(title="Select your document")
-        function(path[0])
 
 
 class AlwaysHintSlider(MDSlider):
@@ -141,12 +85,29 @@ class MovableFloatingActionButtonSpeedDial(MDFloatingActionButtonSpeedDial):
 
     def on_bottom_pad(self, *args):
         self._update_pos_buttons(None, Window.width, Window.height)
+        Clock.schedule_once(self._position_root_button)
+
+    def on_anchor(self, *args):
+        Clock.schedule_once(self._position_root_button)
+
+    def on_parent(self, *args):
+        if self.parent:
+            self.parent.bind(size=self._position_root_button)
+        Clock.schedule_once(self._position_root_button)
+
+    def _position_root_button(self, root_button=None, *args):
+        root_buttons = [root_button] if isinstance(root_button, MDFloatingRootButton) else [
+            widget for widget in self.children if isinstance(widget, MDFloatingRootButton)
+        ]
+        for root_button in root_buttons:
+            root_button.y = dp(20 + self.bottom_pad)
+            if self.anchor == "right":
+                parent_width = self.parent.width if self.parent and self.parent.width else Window.width
+                root_button.x = parent_width - (root_button.width or dp(56)) - dp(20)
 
     def set_pos_root_button(self, instance_floating_root_button) -> None:
         def set_pos_root_button(*args):
-            if self.anchor == "right" and self.parent:
-                instance_floating_root_button.y = dp(20 + self.bottom_pad)
-                instance_floating_root_button.x = self.parent.width - (dp(56) + dp(20))
+            self._position_root_button(instance_floating_root_button)
 
         Clock.schedule_once(set_pos_root_button)
 
@@ -214,10 +175,10 @@ class LandingPage(Screen):
         super().__init__(**kw)
         self.app = MDApp.get_running_app()
         self.data = {
-            "Camera": [
+            "Scanner": [
                 "camera",
                 "on_release",
-                lambda x: self.app.check_download_assets(camera_page=True),
+                lambda x: self.app.check_download_assets(scanner=True),
             ],
             "Open File": [
                 "file-upload",
@@ -239,15 +200,6 @@ class LandingPage(Screen):
         Clock.schedule_once(self.update_scrollview, 0)
 
     def update_scrollview(self, *args):
-        # Unload camera
-        if platform == "android":
-            try:
-                self.app.root.get_screen("camera").ids.camera_pre._camera._release_camera()
-            except Exception as e:
-                print(f"Unloading camera failed update_scrollview: {e}")
-
-        self.app.root.get_screen("image_page").ids.image_box.clear_widgets()  # clean up widgets
-
         self.files = os.listdir(XML_PATH)
         text_lables = [os.path.splitext(file)[0] for file in self.files]
         scroll_box = self.ids.scroll_box
@@ -349,88 +301,13 @@ class LandingPage(Screen):
         self.update_scrollview()
 
 
-class CameraPage(Screen):
-    def on_enter(self):
-        """
-        Restores the camerawidget
-        """
-        self.app = MDApp.get_running_app()
-        if platform == "android" and not check_permission(Permission.CAMERA):
-            self.permission_dialog = MDDialog(
-                text="To take pictures, you need to permit Camera usage.",
-                buttons=[
-                    MDFlatButton(
-                        id="cancel",
-                        text="Cancel",
-                        on_release=lambda dt: self.on_permission_result(None, None),
-                    ),
-                    MDFlatButton(
-                        text="Request Permission",
-                        on_release=lambda dt: self.request_camera_permission(),
-                    ),
-                ],
-            )
-            self.permission_dialog.open()
-        else:
-            # Reload camera
-            if self.app.previous_screen != "image_page":
-                self.reload_camera()
-
-    def request_camera_permission(self):
-        request_permissions([Permission.CAMERA], self.on_permission_result)
-
-    def on_permission_result(self, permissions, grant_results):
-        Clock.schedule_once(lambda dt: self.permission_dialog.dismiss())
-        if check_permission(Permission.CAMERA):
-            # has permission
-            Clock.schedule_once(lambda dt: self.reload_camera())
-        else:
-            Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
-            self.app.show_info("Grant camera permission to use the Camera.")
-
-    def reload_camera(self):
-        try:
-            old_cam = self.ids.camera_pre
-            self.remove_widget(old_cam)
-        except ReferenceError:
-            print("Reference Error during reloading")  # already GC'd, nothing to remove
-        new_cam = KvCam(fit_mode="contain", play=True)
-        self.ids.camera_pre = new_cam
-        self.add_widget(new_cam, index=0)
-
-    def display_img(self, path):
-        """
-        displays the taken image in the image_box
-        """
-        # Schedule UI updates on the main thread
-        Clock.schedule_once(lambda dt: self.app.root.get_screen("image_page")._display_img(path), 0)
-
-    def take_picture(
-        self,
-        filename=None,
-    ):
-        """Take an image"""
-        if filename is None:
-            filename = os.path.join(
-                IMAGE_PATH, f"image-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-            )
-        if platform == "android":
-            print(f"Took picture named {filename}")
-        take_picture(self.ids.camera_pre, self.display_img, filename)
-
-
 class ProgressPage(Screen):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.app = MDApp.get_running_app()
+
     def on_enter(self):
-        app = MDApp.get_running_app()
         self.ids.title.text = ""
-        # Unload camera
-        if platform == "android":
-            try:
-                screen = app.root.get_screen("camera")
-                screen.ids.camera_pre._camera._release_camera()
-                screen.remove_widget(screen.ids.camera_pre)
-            except Exception as e:
-                print(f"Unloading camera failed on_enter: {e}")
 
     def update_progress_bar(self):
         """
@@ -441,14 +318,16 @@ class ProgressPage(Screen):
         )
 
     def _update_progress_bar_status(self):
-        app = MDApp.get_running_app()
         # Update the UI
         self.ids.progress_bar.value = int(appdata.homr_progress)
         self.ids.progress_label.text = str(appdata.homr_state)
         # Check if the thread is finished
-        if not app.ml_thread.is_alive():
+        if self.app.homr_future.done():
             # Stop the scheduled updates
             Clock.unschedule(self.update_progress_event)
+            if self.app.homr_future.result()[0]:
+                self.app.show_info(text=self.app.homr_future.result()[1])
+            Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
 
 
 class SettingsPage(Screen):
@@ -471,11 +350,11 @@ class SettingsPage(Screen):
     def verify_homr(self):
         app = MDApp.get_running_app()
         self.get_settings()
-        need_download = app.check_download_assets(camera_page=False, validation=True)
+        need_download = app.check_download_assets(file_chooser=False, validation=True)
         if not need_download:
             app.start_inference(
-                path_to_image="test_data/entertainer/entertainer.png",
-                out_path="test_data/entertainer/entertainer.musicxml",
+                path_to_images=["test_data/entertainer/entertainer.png"],
+                out_paths=["test_data/entertainer/entertainer.musicxml"],
                 verify=True,
             )
 
@@ -540,55 +419,21 @@ class PrivacyPolicyPageButton(Screen):
         app.change_screen("landing")
 
 
-class EditImagePage(Screen):
-    def delete_image(self, img_idx):
-        app = MDApp.get_running_app()
-        del app.img_paths[img_idx]
-        if not app.img_paths:
-            app.change_screen("camera")
-        else:
-            app.show_toast(f"Deleted Image {img_idx + 1}")
-        self.ids.image_box.remove_widget(self.ids.image_box.slides[img_idx])
-
-    def _display_img(self, path):
-        """
-        Internal method that actually performs the UI updates
-        """
-        # display screen to image_page
-        app = MDApp.get_running_app()
-        app.change_screen("image_page")
-        app.img_paths.append(path)
-
-        # downscale image to save time during rendering
-        buf, _, text_res = downscale_cv2(path, 0.25)
-
-        # create texture from buffer
-        texture = Texture.create(size=text_res, colorfmt="rgb")
-        texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
-
-        # create Image widget
-        img_widget = Image(fit_mode="contain")
-        self.ids.image_box.add_widget(img_widget)
-
-        # and set texture
-        img_widget.texture = texture
-
-
 class DownloadPage(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.app = MDApp.get_running_app()
 
-    def update_download_bar(self, camera_page, file_chooser):
+    def update_download_bar(self, scanner, file_chooser):
         """
         Start the periodic update of the progress bar.
         """
         # Schedule the update function to run 10 times per second
         self.update_download_event = Clock.schedule_interval(
-            lambda dt: self._update_download_bar_status(camera_page, file_chooser), 0.1
+            lambda dt: self._update_download_bar_status(scanner, file_chooser), 0.1
         )
 
-    def _update_download_bar_status(self, camera_page, file_chooser):
+    def _update_download_bar_status(self, scanner, file_chooser):
         # Update the UI
         self.ids.download_bar.value = int(appdata.download_progress)
         self.ids.download_label.text = str(appdata.downloaded_assets)
@@ -600,13 +445,70 @@ class DownloadPage(Screen):
             if self.app.future.result()[0]:
                 self.app.show_info(text=self.app.future.result()[1], title="Error")
                 Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
-            elif camera_page:
-                self.app.change_screen("camera")
+            elif scanner:
+                if platform == 'android':
+                    start_document_scan()
+                else:
+                    self.pick_file()
+
             elif file_chooser:
                 self.app.pick_file()
             else:
                 self.app.change_screen("settings")
 
+class EditFilePage(Screen):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.app = MDApp.get_running_app()
+        self.imgs_to_display = []
+        self.data = {
+            "Scanner": [
+                "camera",
+                "on_release",
+                lambda x: self.app.check_download_assets(scanner=True),
+            ],
+            "Open File": [
+                "file-upload",
+                "on_release",
+                lambda x: self.app.check_download_assets(file_chooser=True),
+            ],
+        }
+
+    def on_leave(self, *args):
+        self.imgs_to_display = []
+        self.ids.gen_xml.close_stack()
+        self.ids.image_box.clear_widgets()
+        return super().on_leave(*args)
+
+    def delete_image(self, img_idx):
+        print(f"Deleting image {img_idx} form {self.imgs_to_display}")
+        del self.imgs_to_display[img_idx]
+        if not self.imgs_to_display:
+            self.app.change_screen("landing")
+        else:
+            self.app.show_toast(f"Deleted Image {img_idx + 1}")
+        self.ids.image_box.remove_widget(self.ids.image_box.slides[img_idx])
+
+    def _display_imgs(self, paths):
+        """
+        Internal method that actually performs the UI updates
+        """
+        for path in paths:
+            self.imgs_to_display.append(path)
+
+            # downscale image to save time during rendering
+            buf, _, text_res = downscale_cv2(path, 0.25)
+
+            # create texture from buffer
+            texture = Texture.create(size=text_res, colorfmt="rgb")
+            texture.blit_buffer(buf, colorfmt="rgb", bufferfmt="ubyte")
+
+            # create Image widget
+            img_widget = Image(fit_mode="contain")
+            self.ids.image_box.add_widget(img_widget)
+
+            # and set texture
+            img_widget.texture = texture
 
 class License(RecycleView):
     # shows the license using a recycling view widget for better performance
@@ -741,16 +643,12 @@ class Andromr(MDApp):
         self.previous_screen = None
         self.returnables = [
             "landing",
-            "camera",
             "settings",
             "osslicensepage",
             "licensepage",
             "privacypolicypage",
-            "image_page",
+            "edit_file"
         ]
-
-        self.img_paths = []
-        self.xml_paths = []
 
         # themes
         self.theme_cls.primary_palette = "Orange"
@@ -770,7 +668,7 @@ class Andromr(MDApp):
     def on_start(self):
         Window.bind(on_keyboard=self.on_custom_back)
         if platform == "android":
-            activity_bind(on_activity_result=self.on_pick_file_result)
+            activity_bind(on_activity_result=self.activity_result)
         print("starting")
 
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
@@ -843,7 +741,7 @@ class Andromr(MDApp):
         Args:
             text(str): Text wanted to be displayed
         """
-        toast(text=text)
+        toast(text=text, length_long=True)
 
     def open_menu(self, button):
         self.menu.caller = button
@@ -854,69 +752,39 @@ class Andromr(MDApp):
 
     # Homr methods
     def start_inference(
-        self, path_to_image: str = None, out_path: str = None, verify: bool = False
+        self, path_to_images: list, out_paths: list = [], verify: bool = False
     ):
-        print(self.img_paths)
-        if path_to_image is None:
-            path = self.img_paths[0]
-            del self.img_paths[0]
-            print(f"New {self.img_paths}")
-            print(f"Running inferene on {path}")
-        else:
-            path = path_to_image
-        if out_path is None:
-            out_path = os.path.join(
-                XML_PATH,
-                f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml",
-            )
-        # set the progress bar to 0
-        appdata.progress = 0
-
         # go to progress page
         self.change_screen("progress")
+        executor = ThreadPoolExecutor(max_workers=1)
+        self.homr_future = executor.submit(self.run_homr, path_to_images, out_paths, verify)
 
-        appdata.homr_running = True
-
-        # start the ml thread and the progress thread seperatly from each other
-        self.ml_thread = Thread(
-            target=self.homr_call,
-            args=(
-                path,
-                out_path,
-                verify,
-            ),
-            daemon=True,
-        )
-        self.progress_thread = Thread(
+        update = Thread(
             target=self.root.get_screen("progress").update_progress_bar, daemon=True
         )
-        self.ml_thread.start()
-        self.progress_thread.start()
+        update.start()
 
-    def homr_call(self, path: str, out_path: str, verify: bool):
-        """
-        calls the homr (optical music recognition software) and returns when finished to the landing page
-        Args:
-            path(str): path to the image
-            output_path(str): path where the musicxml is stored
-        """
-        # run homr with try-except on android
-        # else we run it without for easier debugging
+    def run_homr(self, paths: list, out_paths: list, verify: bool):
         t0 = perf_counter()
-        if platform == "android":
-            try:
-                self._homr_call(path, out_path, verify)
-            except Exception as e:
-                if verify:
-                    Clock.schedule_once(lambda dt: self.change_screen("settings"))
-                else:
-                    Clock.schedule_once(lambda dt: self.change_screen("landing"))
-                error_msg = f"An error occured during inference: {e}"
-                Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
-                print(e)
-                return
-        else:
-            self._homr_call(path, out_path, verify)
+        out_paths_final = []
+        for path, out_path in zip_longest(paths, out_paths):
+            if out_path is None:
+                out_path = os.path.join(
+                    XML_PATH,
+                    f"transcribed-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml",
+                )
+
+            if platform == "android":
+                try:
+                    homr(path=path, output_path=out_path)
+                except Exception as e:
+                    eprint(e)
+                    text = f"An error occured during inference: {e}"
+                    return True, text
+            else:
+                homr(path=path, output_path=out_path)
+            os.remove(path) # remove images
+            out_paths_final.append(out_path) # used for merging xmls
 
         time = perf_counter() - t0
 
@@ -932,55 +800,46 @@ class Andromr(MDApp):
                     text = f"Results are great. The average difference was {ser} with a total of {n_errors} failures. It took {round(time, 2)}s"
                 else:
                     text = f"Results are bad. The average difference was {ser} with a total of {n_errors} failures. Please report this on Github: github.com/aicelen/Andromr. It took {round(time, 2)}s"
-
-                Clock.schedule_once(lambda dt: self.change_screen("settings"))
-                Clock.schedule_once(lambda dt: self.show_info(text=text, title="Results"))
+                return True, text
 
             except Exception as e:
-                error_msg = f"An error occured during inference: {e}"
-                Clock.schedule_once(lambda dt: self.show_info(text=error_msg))
-                print(e)
-
-        elif self.img_paths:
-            self.start_inference()
+                text = f"An error occured during validation: {e}"
+                return True, text
         else:
-            if len(self.xml_paths) >= 2:
+            # Merge xmls
+            if len(out_paths_final) >= 2:
                 out_path = os.path.join(
                     XML_PATH,
                     f"merged-music-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.musicxml",
                 )
 
-                merge_xmls(self.xml_paths, out_path)
+                merge_xmls(out_paths_final, out_path)
 
-                for file in self.xml_paths:
+                for file in out_paths_final:
                     os.remove(file)
-            Clock.schedule_once(lambda dt: self.change_screen("landing"))
+                
+                out_paths_final = [out_path]
 
-    def _homr_call(self, path, out_path, verify):
-        return_path = homr(path, out_path)
-        appdata.homr_running = False
-        if out_path is not None:
-            # if there's a given output path we use that
-            new_path = out_path
-
-        else:
+            # rename xml to user given name
             music_title = safe_filename(str(self.root.get_screen("progress").ids.title.text))
             if music_title:
                 new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
                 if not os.path.exists(new_path):
-                    os.rename(return_path, new_path)
+                    os.rename(out_paths_final[0], new_path)
 
-        # update xml paths for scrollview on landing page
-        self.xml_paths.append(new_path)
+            # and go back
+            Clock.schedule_once(lambda dt: self.change_screen("landing"))
+        
+        return False, ""
 
-    def start_download(self, camera_page: bool = False, file_chooser: bool = False):
+    def start_download(self, scanner: bool = False, file_chooser: bool = False):
         self.dialog_download.dismiss()
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.future = self.executor.submit(download_weights)
         update = Thread(
             target=self.root.get_screen("downloadpage").update_download_bar,
             args=(
-                camera_page,
+                scanner,
                 file_chooser,
             ),
             daemon=True,
@@ -989,14 +848,16 @@ class Andromr(MDApp):
         Clock.schedule_once(lambda dt: self.change_screen("downloadpage"), 0.1)
 
     def check_download_assets(
-        self, camera_page: bool = False, file_chooser: bool = False, validation: bool = False
+        self, scanner: bool = False, file_chooser: bool = False, validation: bool = False
     ):
         """
-        If not all tflite models are downloaded it will create a Dialog informing the user
+        If not all models are downloaded it will create a Dialog informing the user
         that the App wants to download the models. If the user allows it, the app will switch
         to the downloadpage (which displays a progress bar).
-        If all tflite models are downloaded it will directly switch to the camera screen.
+        If all models are downloaded it will directly switch the scanner/file_chooser.
         """
+        self.root.get_screen("landing").ids.gen_xml.close_stack()
+        self.root.get_screen("edit_file").ids.gen_xml.close_stack()
         if check_for_missing_models():
             self.dialog_download = MDDialog(
                 text="You need to download assets before converting an image to .musicxml. You can also download later in the settings tab.",
@@ -1008,14 +869,17 @@ class Andromr(MDApp):
                     ),
                     MDFlatButton(
                         text="DOWNLOAD NOW",
-                        on_release=lambda dt: self.start_download(camera_page, file_chooser),
+                        on_release=lambda dt: self.start_download(scanner, file_chooser),
                     ),
                 ],
             )
             self.dialog_download.open()
             return True
-        elif camera_page:
-            self.change_screen("camera")
+        elif scanner:
+            if platform == 'android':
+                start_document_scan()
+            else:
+                self.pick_file()
         elif file_chooser:
             self.pick_file()
         elif not validation:
@@ -1023,28 +887,59 @@ class Andromr(MDApp):
         return False
 
     def pick_file(self):
-        intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.setType("*/*")
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        PythonActivity.mActivity.startActivityForResult(intent, 42)
+        if platform == 'android':
+            intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.setType("*/*")
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, True)
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            PythonActivity.mActivity.startActivityForResult(intent, 42)
+        
+        else:
+            file_paths = filechooser.open_file(title="Select your document", multiple=True)
+            Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
+            Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
 
-    def on_pick_file_result(self, request_code, result_code, data):
-        if request_code == 42 and result_code == -1 and data:  # -1 = RESULT_OK
+    def activity_result(self, request_code, result_code, data):
+        if request_code == 42 and result_code == -1 and data:
+            self.pick_file_result(data)
+        elif request_code == 43 and result_code == -1 and data:
+            file_paths = document_scan_result(data)
+            Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
+            Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
+        else:
+            eprint(f"An error occured in activity result: {request_code} {result_code} {bool(data)}")
+
+    def pick_file_result(self, data):
+        storage = SharedStorage()
+        file_paths = []
+
+        def add_picked_path(path):
+            if Path(path).suffix.lower() == ".pdf":
+                timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+                file_paths.extend(pdf_to_img(path, f"converted-pdf-{timestamp}"))
+            else:
+                file_paths.append(path)
+
+        clip = data.getClipData()
+        if clip is not None:
+            # Multiple files selected
+            for i in range(clip.getItemCount()):
+                uri = clip.getItemAt(i).getUri()
+                path = storage._copy_uri_to_cache(uri)
+                if path:
+                    add_picked_path(path)
+        else:
+            # Single file selected
             uri = data.getData()
-            eprint(uri)
-            file_path = SharedStorage()._copy_uri_to_cache(uri)
-            eprint(file_path)
-            Clock.schedule_once(lambda dt: self.start_inference(path_to_image=file_path))
+            path = storage._copy_uri_to_cache(uri)
+            if path:
+                add_picked_path(path)
 
-    def on_resume(self):
-        Clock.schedule_once(self._resume_camera, 0)
 
-    def _resume_camera(self, dt):
-        if self.sm.current == "camera" or self.sm.current == "image_page":
-            print("Reload")
-            cam_screen = self.root.get_screen("camera")
-            cam_screen.reload_camera()
+        eprint(f"Picked files: {file_paths}")
+        Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
+        Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
 
 
 if __name__ == "__main__":

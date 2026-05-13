@@ -5,8 +5,6 @@ GitHub projects:
 - papoteur-mga/relieur: Apache 2.0
 - teticio/kivy-tensorflow-helloworld: MIT
 - Android-for-Python/androidstorage4kivy: MIT
-- kivy-garden/xcamera: MIT
-- aicelen/KvCam: MIT
 
 Libaries:
 - numpy: Custom

@@ -1,16 +1,14 @@
 ScreenManager:
     LandingPage:
-    CameraPage:
-    EditImagePage:
     ProgressPage:
     SettingsPage:
     DownloadPage:
+    EditFilePage:
     OSSLicensePage:
     LicensePageButton:
     LicensePage:
     PrivacyPolicyPage:
     PrivacyPolicyPageButton:
-
 <LandingPage>:
     name: "landing"
     BoxLayout:
@@ -54,88 +52,6 @@ ScreenManager:
                 icon: "cog"
                 pos: dp(20), dp(20 + app.bottom_pad)
                 on_release: app.change_screen("settings")
-
-
-<CameraPage>:
-    name: "camera"
-    orientation: 'vertical'
-    size: root.width, root.height
-    MDBoxLayout:
-        id: camera_pre
-
-    MDIconButton:
-        id: img_taker
-        icon: "circle-slice-8"
-        size_hint_x: None
-        pos_hint: {'center_x': 0.5, 'center_y': 0.125}
-        on_release: root.take_picture()
-        icon_size: "80dp"
-
-
-<EditImagePage>:
-    name: "image_page"
-
-    MDBoxLayout:
-        padding: 30
-        Carousel:
-            id: image_box
-            direction: 'right'
-            loop: False
-
-    MDBoxLayout:
-        padding: [dp(0), dp(0), dp(0), dp(84)]
-        size_hint_y: None
-        height: dp(40)
-        pos_hint: {"center_x": 0.5}
-
-        Widget:
-
-        MDBoxLayout:
-            size_hint: None, None
-            size: dp(36), dp(24)
-            md_bg_color: 0.4, 0.4, 0.4, 0.9
-            radius: [dp(14), dp(14), dp(14), dp(14)]
-
-            MDLabel:
-                text: f"{(image_box.index if image_box.index else 0) + 1}/{len(image_box.slides)}"
-                halign: "center"
-                valign: "middle"
-                theme_text_color: "Custom"
-                text_color: 1, 1, 1, 1
-                font_size: "12sp"
-
-        Widget:
-
-    MDBoxLayout:
-        id: btn_box
-        orientation: "horizontal"
-        padding: [dp(10), dp(20), dp(10), dp(app.bottom_pad)]
-        spacing: dp(10)
-
-        MDIconButton:
-            icon: "delete-outline"
-            pos_hint: {"center_x": 0.5}
-            size_hint: None, None
-            user_font_size: "32sp"
-            on_release: root.delete_image(image_box.index)
-
-        Widget:
-
-        MDIconButton:
-            icon: "play-circle-outline"
-            pos_hint: {"center_x": 0.5}
-            size_hint: None, None
-            user_font_size: "32sp"
-            on_release: app.start_inference()
-
-        Widget:
-
-        MDIconButton:
-            icon: "camera-plus"
-            pos_hint: {"center_x": 0.5}
-            size_hint: None, None
-            user_font_size: "32sp"
-            on_release: app.change_screen("camera")
 
 
 <ProgressPage>:
@@ -274,6 +190,69 @@ ScreenManager:
                 halign: 'center'
                 size_hint_y: None
                 height: self.texture_size[1]
+<EditFilePage>:
+    name: "edit_file"
+    BoxLayout:
+        orientation: 'vertical'
+        padding: [dp(0), dp(20), dp(0), dp(app.bottom_pad)]
+
+        MDTopAppBar:
+            id: toolbar_landing
+            title: "Home"
+            elevation: 0
+            type_height: 'small'
+            right_action_items: [['dots-vertical', lambda x: app.open_menu(x)]]
+            md_bg_color: (0, 0, 0, 1) if app.theme_cls.theme_style == 'Dark' else (0.95, 0.95, 0.95, 1)
+            specific_text_color: (1, 1, 1, 1) if app.theme_cls.theme_style == 'Dark' else (0, 0, 0, 1)
+
+        FloatLayout:
+            id: landing_body
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint: 1, None
+                height: max(0, landing_body.height - dp(96 + app.bottom_pad))
+                pos_hint: {"top": 1}
+                padding: [dp(30), dp(8), dp(30), dp(16)]
+                Carousel:
+                    id: image_box
+                    direction: 'right'
+                    loop: False
+
+                MDBoxLayout:
+                    size_hint: None, None
+                    size: dp(36), dp(24)
+                    md_bg_color: 0.4, 0.4, 0.4, 0.9
+                    radius: [dp(14), dp(14), dp(14), dp(14)]
+
+                    MDLabel:
+                        text: f"{(image_box.index if image_box.index else 0) + 1}/{len(image_box.slides)}"
+                        halign: "center"
+                        valign: "middle"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                        font_size: "12sp"
+
+            MovableFloatingActionButtonSpeedDial:
+                id: gen_xml
+                icon: "plus-thick"
+                anchor: "right"
+                data: root.data
+                bottom_pad: app.bottom_pad
+                root_button_anim: True
+                size_hint: 1, 1
+                label_text_color: app.theme_cls.primary_color
+
+            MDFloatingActionButton:
+                icon: "delete-outline"
+                pos: dp(20), dp(20 + app.bottom_pad)
+                on_release: root.delete_image(image_box.index)
+
+            MDFloatingActionButton:
+                icon: "play"
+                pos_hint: {"center_x": 0.5}
+                y: dp(20 + app.bottom_pad)
+                on_release: app.start_inference(path_to_images=root.imgs_to_display)
+
 
 <OSSLicensePage>:
     name: 'osslicensepage'
