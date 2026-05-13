@@ -96,13 +96,17 @@ class MovableFloatingActionButtonSpeedDial(MDFloatingActionButtonSpeedDial):
         Clock.schedule_once(self._position_root_button)
 
     def _position_root_button(self, root_button=None, *args):
-        root_buttons = [root_button] if isinstance(root_button, MDFloatingRootButton) else [
-            widget for widget in self.children if isinstance(widget, MDFloatingRootButton)
-        ]
+        root_buttons = (
+            [root_button]
+            if isinstance(root_button, MDFloatingRootButton)
+            else [widget for widget in self.children if isinstance(widget, MDFloatingRootButton)]
+        )
         for root_button in root_buttons:
             root_button.y = dp(20 + self.bottom_pad)
             if self.anchor == "right":
-                parent_width = self.parent.width if self.parent and self.parent.width else Window.width
+                parent_width = (
+                    self.parent.width if self.parent and self.parent.width else Window.width
+                )
                 root_button.x = parent_width - (root_button.width or dp(56)) - dp(20)
 
     def set_pos_root_button(self, instance_floating_root_button) -> None:
@@ -446,7 +450,7 @@ class DownloadPage(Screen):
                 self.app.show_info(text=self.app.future.result()[1], title="Error")
                 Clock.schedule_once(lambda dt: self.app.change_screen("landing"))
             elif scanner:
-                if platform == 'android':
+                if platform == "android":
                     start_document_scan()
                 else:
                     self.pick_file()
@@ -455,6 +459,7 @@ class DownloadPage(Screen):
                 self.app.pick_file()
             else:
                 self.app.change_screen("settings")
+
 
 class EditFilePage(Screen):
     def __init__(self, **kw):
@@ -509,6 +514,7 @@ class EditFilePage(Screen):
 
             # and set texture
             img_widget.texture = texture
+
 
 class License(RecycleView):
     # shows the license using a recycling view widget for better performance
@@ -647,7 +653,7 @@ class Andromr(MDApp):
             "osslicensepage",
             "licensepage",
             "privacypolicypage",
-            "edit_file"
+            "edit_file",
         ]
 
         # themes
@@ -751,17 +757,13 @@ class Andromr(MDApp):
         self.menu.dismiss()
 
     # Homr methods
-    def start_inference(
-        self, path_to_images: list, out_paths: list = [], verify: bool = False
-    ):
+    def start_inference(self, path_to_images: list, out_paths: list = [], verify: bool = False):
         # go to progress page
         self.change_screen("progress")
         executor = ThreadPoolExecutor(max_workers=1)
         self.homr_future = executor.submit(self.run_homr, path_to_images, out_paths, verify)
 
-        update = Thread(
-            target=self.root.get_screen("progress").update_progress_bar, daemon=True
-        )
+        update = Thread(target=self.root.get_screen("progress").update_progress_bar, daemon=True)
         update.start()
 
     def run_homr(self, paths: list, out_paths: list, verify: bool):
@@ -783,8 +785,10 @@ class Andromr(MDApp):
                     return True, text
             else:
                 homr(path=path, output_path=out_path)
-            os.remove(path) # remove images
-            out_paths_final.append(out_path) # used for merging xmls
+            
+            if not verify:
+                os.remove(path)  # remove images
+            out_paths_final.append(out_path)  # used for merging xmls
 
         time = perf_counter() - t0
 
@@ -817,7 +821,7 @@ class Andromr(MDApp):
 
                 for file in out_paths_final:
                     os.remove(file)
-                
+
                 out_paths_final = [out_path]
 
             # rename xml to user given name
@@ -829,7 +833,7 @@ class Andromr(MDApp):
 
             # and go back
             Clock.schedule_once(lambda dt: self.change_screen("landing"))
-        
+
         return False, ""
 
     def start_download(self, scanner: bool = False, file_chooser: bool = False):
@@ -876,7 +880,7 @@ class Andromr(MDApp):
             self.dialog_download.open()
             return True
         elif scanner:
-            if platform == 'android':
+            if platform == "android":
                 start_document_scan()
             else:
                 self.pick_file()
@@ -887,18 +891,20 @@ class Andromr(MDApp):
         return False
 
     def pick_file(self):
-        if platform == 'android':
+        if platform == "android":
             intent = Intent(Intent.ACTION_GET_CONTENT)
             intent.setType("*/*")
             intent.putExtra(Intent.EXTRA_MIME_TYPES, ["image/*", "application/pdf"])
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, True)
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             PythonActivity.mActivity.startActivityForResult(intent, 42)
-        
+
         else:
             file_paths = filechooser.open_file(title="Select your document", multiple=True)
             Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
-            Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
+            Clock.schedule_once(
+                lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0
+            )
 
     def activity_result(self, request_code, result_code, data):
         if request_code == 42 and result_code == -1 and data:
@@ -906,9 +912,13 @@ class Andromr(MDApp):
         elif request_code == 43 and result_code == -1 and data:
             file_paths = document_scan_result(data)
             Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
-            Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
+            Clock.schedule_once(
+                lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0
+            )
         else:
-            eprint(f"An error occured in activity result: {request_code} {result_code} {bool(data)}")
+            eprint(
+                f"An error occured in activity result: {request_code} {result_code} {bool(data)}"
+            )
 
     def pick_file_result(self, data):
         storage = SharedStorage()
@@ -936,10 +946,11 @@ class Andromr(MDApp):
             if path:
                 add_picked_path(path)
 
-
         eprint(f"Picked files: {file_paths}")
         Clock.schedule_once(lambda dt: self.change_screen("edit_file"))
-        Clock.schedule_once(lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0)
+        Clock.schedule_once(
+            lambda dt: self.root.get_screen("edit_file")._display_imgs(file_paths), 0
+        )
 
 
 if __name__ == "__main__":

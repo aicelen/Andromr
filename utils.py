@@ -66,6 +66,7 @@ def safe_filename(user_input: str) -> str:
 
     return name
 
+
 def pdf_to_img(
     pdf_path: str, output_path: str, page_index: int | None = None, render_scale: float = 3.0
 ) -> list[str]:
@@ -114,9 +115,7 @@ def pdf_to_img(
     rendered_paths: list[str] = []
 
     try:
-        file_descriptor = ParcelFileDescriptor.open(
-            pdf_file, ParcelFileDescriptor.MODE_READ_ONLY
-        )
+        file_descriptor = ParcelFileDescriptor.open(pdf_file, ParcelFileDescriptor.MODE_READ_ONLY)
         renderer = PdfRenderer(file_descriptor)
         page_count = renderer.getPageCount()
 
@@ -151,9 +150,7 @@ def pdf_to_img(
                 canvas.drawPaint(paint)
                 page.render(bitmap, None, matrix, PdfRendererPage.RENDER_MODE_FOR_DISPLAY)
 
-                rendered_path = str(
-                    output_dir / f"{safe_stem}-page-{current_page_index + 1}.png"
-                )
+                rendered_path = str(output_dir / f"{safe_stem}-page-{current_page_index + 1}.png")
                 stream = FileOutputStream(rendered_path)
                 if not bitmap.compress(CompressFormat.PNG, 100, stream):
                     raise RuntimeError(f"Failed to save rendered PDF page to {rendered_path}")
@@ -173,6 +170,7 @@ def pdf_to_img(
             file_descriptor.close()
 
     return rendered_paths
+
 
 def downscale_cv2(input_path: str, scale: float):
     """
