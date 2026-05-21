@@ -6,7 +6,7 @@ from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.factory import Factory
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty
 from kivymd.app import MDApp
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.label import MDLabel
@@ -20,6 +20,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.textfield import MDTextField
 from kivy.core.window import Window
 from kivy.utils import platform
 from kivymd.toast import toast
@@ -166,6 +167,31 @@ class MovableFloatingActionButtonSpeedDial(MDFloatingActionButtonSpeedDial):
             self.close_stack()
 
 
+class ClickableLabel(MDLabel):
+    handler = ObjectProperty(None)
+
+    def on_touch_up(self, touch):
+        if touch.is_touch and self.collide_point(*touch.pos):
+            self.handler(None)
+            return True
+        return super().on_touch_up(touch)
+
+
+class RenameDialogContent(MDBoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.orientation = "vertical"
+        self.spacing = "12dp"
+        self.padding = "12dp"
+        self.size_hint_y = None
+        self.height = "80dp"
+
+        self.text_input = MDTextField(
+            hint_text="Enter something", id="text_input", mode="rectangle"
+        )
+        self.add_widget(self.text_input)
+
+
 Factory.register("AlwaysHintSlider", cls=AlwaysHintSlider)
 Factory.register(
     "MovableFloatingActionButtonSpeedDial",
@@ -192,9 +218,6 @@ class LandingPage(Screen):
         }
 
     def on_enter(self):
-        self.app.img_paths = []  # clean up the image path list
-        self.app.xml_paths = []  # clean up the xml list
-
         # remove all images in the image folder
         image_paths = os.listdir(IMAGE_PATH)
         for path in image_paths:
@@ -218,12 +241,13 @@ class LandingPage(Screen):
                 spacing=10,  # Adjust spacing between label and button
             )
 
-            l_name = MDLabel(
+            l_name = ClickableLabel(
                 text=text,
                 size_hint_x=0.9,  # Make label take most space
                 size_hint_y=None,
                 height=dp(50),
                 halign="center",
+                handler=lambda func, path=os.path.join(XML_PATH, file): self.rename_dialog(path),
             )
 
             b_delete = MDIconButton(
@@ -250,6 +274,28 @@ class LandingPage(Screen):
             row.add_widget(b_export)
             row.add_widget(b_delete)
             scroll_box.add_widget(row)  # Add row instead of individual widgets
+
+    def rename_dialog(self, path):
+        self.dialog_rename = MDDialog(
+            title="Rename file",
+            type="custom",
+            content_cls=RenameDialogContent(),
+            buttons=[
+                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
+                MDFlatButton(text="CONFIRM", on_release=lambda func: self.rename(path)),
+            ],
+        )
+        self.dialog_rename.open()
+
+    def rename(self, path):
+        music_title = safe_filename(str(self.dialog_rename.content_cls.text_input.text))
+        if music_title:
+            new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
+            if not os.path.exists(new_path):
+                print(f"Renamed {path}")
+                os.rename(path, new_path)
+        Clock.schedule_once(lambda dt: self.dialog_rename.dismiss())
+        Clock.schedule_once(self.update_scrollview, 0)
 
     def export_file(self, path: str, btn=None):
         """
@@ -747,7 +793,7 @@ class Andromr(MDApp):
         Args:
             text(str): Text wanted to be displayed
         """
-        if platform == 'android':
+        if platform == "android":
             toast(text=text, length_long=True)
         else:
             toast(text=text)
@@ -788,7 +834,7 @@ class Andromr(MDApp):
                     return True, text
             else:
                 homr(path=path, output_path=out_path)
-            
+
             if not verify:
                 os.remove(path)  # remove images
             out_paths_final.append(out_path)  # used for merging xmls
