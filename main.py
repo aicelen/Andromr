@@ -747,7 +747,10 @@ class Andromr(MDApp):
         Args:
             text(str): Text wanted to be displayed
         """
-        toast(text=text, length_long=True)
+        if platform == 'android':
+            toast(text=text, length_long=True)
+        else:
+            toast(text=text)
 
     def open_menu(self, button):
         self.menu.caller = button
