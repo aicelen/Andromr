@@ -2,13 +2,18 @@ import os
 from time import perf_counter
 
 import numpy as np
+from kivy.utils import platform
 
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
-from homr.transformer.decoder_inference import get_decoder
 from homr.transformer.encoder_inference import Encoder
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
+
+if platform == 'android':
+    from homr.transformer.decoder_inference_android import get_decoder
+else:
+    from homr.transformer.decoder_inference import get_decoder
 
 
 class Staff2Score:
@@ -43,11 +48,7 @@ class Staff2Score:
 
         # Make a prediction using decoder
         out = self.decoder.generate(
-            start_token,
-            nonote_token,
-            seq_len=self.config.max_seq_len,
-            eos_token=self.config.eos_token,
-            context=context,
+            context=context
         )
 
         eprint(f"Inference Time Tromr: {perf_counter() - t0}")

@@ -57,6 +57,13 @@ class DecoderWrapper(torch.nn.Module):
             cache=cache,
             return_center_of_attention=False,
         )
+
+        out_rhythms = torch.argmax(out_rhythms, 2).squeeze(0)
+        out_pitchs = torch.argmax(out_pitchs, 2).squeeze(0)
+        out_lifts = torch.argmax(out_lifts, 2).squeeze(0)
+        out_positions = torch.argmax(out_positions, 2).squeeze(0)
+        out_articulations = torch.argmax(out_articulations, 2).squeeze(0)
+
         return (
             out_rhythms,
             out_pitchs,

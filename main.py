@@ -6,7 +6,7 @@ from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.animation import Animation
 from kivy.factory import Factory
-from kivy.properties import NumericProperty, StringProperty, ObjectProperty
+from kivy.properties import NumericProperty, ObjectProperty
 from kivymd.app import MDApp
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.label import MDLabel

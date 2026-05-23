@@ -2,8 +2,6 @@ import json
 import os
 from typing import Any
 
-from kivy.utils import platform
-
 from homr.transformer.vocabulary import Vocabulary
 from globals import APP_PATH, MODEL_STORAGE
 
@@ -16,7 +14,7 @@ class FilePaths:
 
         self.encoder_path = os.path.join(MODEL_STORAGE, f"encoder_{model_name}_int8.tflite")
 
-        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_int8.onnx")
+        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_java.onnx")
 
         self.checkpoint = os.path.join(
             root_dir,
