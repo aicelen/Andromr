@@ -9,11 +9,7 @@ from homr.transformer.configs import Config
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
-if platform == "android":
-    from homr.transformer.decoder_inference_android import get_decoder
-else:
-    from homr.transformer.decoder_inference import get_decoder
-    from homr.transformer.encoder_inference import Encoder
+from homr.transformer.tromr import get_tromr
 
 
 class Staff2Score:
@@ -23,8 +19,7 @@ class Staff2Score:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.encoder = None if platform == "android" else Encoder()
-        self.decoder = get_decoder(self.config)
+        self.model = get_tromr(config=config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
             raise RuntimeError(
@@ -38,20 +33,7 @@ class Staff2Score:
         x = _transform(image=image)
 
         t0 = perf_counter()
-
-        if platform == "android":
-            out = self.decoder.generate(image=x)
-        else:
-            # Generate context with encoder
-            if self.encoder is None:
-                raise RuntimeError("Encoder is not initialized")
-            context = self.encoder.generate(x)
-
-            # Make a prediction using decoder
-            out = self.decoder.generate(
-                context=context
-            )
-
+        out = self.model.run(x)
         eprint(f"Inference Time Tromr: {perf_counter() - t0}")
 
         return out

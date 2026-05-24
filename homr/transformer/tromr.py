@@ -1,17 +1,36 @@
 import numpy as np
-from jnius import autoclass  # type: ignore
 
 from globals import appdata
 from homr.transformer.configs import Config
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
+from homr.simple_logging import eprint
 
-Staff2Score = autoclass("com.aicelen.andromr.Staff2Score")
-ByteBuffer = autoclass("java.nio.ByteBuffer")
-ByteOrder = autoclass("java.nio.ByteOrder")
+from kivy.utils import platform
+
+if platform == "android":
+    from jnius import autoclass  # type: ignore
+
+    Staff2Score = autoclass("com.aicelen.andromr.Staff2Score")
+    ByteBuffer = autoclass("java.nio.ByteBuffer")
+    ByteOrder = autoclass("java.nio.ByteOrder")
+else:
+    from homr.transformer.decoder_inference import get_decoder
+    from homr.transformer.encoder_inference import Encoder
 
 
-class ScoreDecoder:
+model = None
+
+
+class TromrAndroid:
+    """
+    Wrapper around Staff2Score.java
+    How it works:
+    1. Run encoder (java)
+    2. Run decoder (still java)
+    3. Detokenize the result (python)
+    """
+
     def __init__(
         self,
         config: Config,
@@ -33,7 +52,7 @@ class ScoreDecoder:
             str(self.num_threads),
         )
 
-    def generate(self, image: NDArray):
+    def run(self, image: NDArray):
         image = np.ascontiguousarray(image)
         if image.dtype == np.float32:
             flat = image.ravel()
@@ -81,6 +100,16 @@ class ScoreDecoder:
         return symbols
 
 
+class TromrDesktop:
+    def __init__(self, config: Config):
+        self.encoder = Encoder()
+        self.decoder = get_decoder(config)
+
+    def run(self, image: NDArray):
+        ctx = self.encoder.generate(image)
+        return self.decoder.generate(ctx)
+
+
 def detokenize_single(token: np.integer | int, vocab: dict[int, str]) -> str | None:
     tok = vocab[int(token)]
     if tok in ("[BOS]", "[EOS]", "[PAD]"):
@@ -88,15 +117,15 @@ def detokenize_single(token: np.integer | int, vocab: dict[int, str]) -> str | N
     return tok
 
 
-decoder: ScoreDecoder | None = None
-
-def get_decoder(config: Config) -> ScoreDecoder:
+def get_tromr(config: Config) -> TromrAndroid | TromrDesktop:
     """
-    Returns Tromr's Decoder
+    Get Tromr model returns the correct model depending on the platform
     """
-    global decoder
-    if decoder is None or decoder.num_threads != appdata.threads:
-        decoder = ScoreDecoder(config=config)
-        return decoder
-    else:
-        return decoder
+    global model
+    if model is None or model.num_threads != appdata.threads:
+        eprint("Loaded Tromr")
+        if platform == "android":
+            model = TromrAndroid(config=config)
+        else:
+            model = TromrDesktop(config=config)
+    return model

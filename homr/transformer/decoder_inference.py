@@ -1,5 +1,3 @@
-from typing import Any
-
 import numpy as np
 import onnxruntime as ort
 
@@ -43,10 +41,7 @@ class ScoreDecoder:
             "out_articulations",
         ]
 
-    def generate(
-        self,
-        context: NDArray
-    ) -> list[EncodedSymbol]:
+    def generate(self, context: NDArray) -> list[EncodedSymbol]:
         start_tokens = np.array([[1]], dtype=np.int64)
         nonote_tokens = np.array([[0]], dtype=np.int64)
 
@@ -101,7 +96,6 @@ class ScoreDecoder:
             positionsp = outputs[3].numpy()
             articulationsp = outputs[4].numpy()
             attention = outputs[5].numpy()
-
 
             lift_token = detokenize_single(liftsp, self.inv_lift_vocab)
             pitch_token = detokenize_single(pitchsp, self.inv_pitch_vocab)
