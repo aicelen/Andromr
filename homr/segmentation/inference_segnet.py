@@ -12,8 +12,6 @@ from homr.segmentation.config import segnet_path_tflite
 from homr.simple_logging import eprint
 from homr.type_definitions import NDArray
 
-segnet = None
-
 if platform == "android":
     from jnius import autoclass  # type: ignore
 
@@ -22,6 +20,37 @@ if platform == "android":
     ByteOrder = autoclass("java.nio.ByteOrder")
 else:
     from homr.inference_engine.tflite_model import TensorFlowModel
+
+
+class SegnetHelper:
+    def __init__(self, num_threads):
+        self.num_threads = num_threads
+        self.segnet = None
+
+    def load(self):
+        eprint(f"Loaded Segnet with {self.num_threads} threads")
+        if platform == "android":
+            self.segnet = LiteRTModel()
+            self.segnet.load(str(segnet_path_tflite), self.num_threads)
+        else:
+            self.segnet = TensorFlowModel(segnet_path_tflite)
+
+    def run(self, image) -> NDArray:
+        if platform == "android":
+            image = np.ascontiguousarray(image)
+            flat = image.ravel()
+            buffer_bytes = flat.tobytes()
+            java_byte_buffer = ByteBuffer.wrap(buffer_bytes)
+            java_byte_buffer.order(ByteOrder.nativeOrder())
+            float_buffer = java_byte_buffer.asFloatBuffer()
+
+            result = self.segnet.runInt(float_buffer)
+            return np.array(result, dtype=np.int64).reshape((1, image.shape[2], image.shape[3]))
+        else:
+            return self.segnet.run(image)
+
+
+segnet: SegnetHelper = None
 
 
 class ExtractResult:
@@ -120,8 +149,10 @@ def inference(
     num_steps = ceil(image_org.shape[0] / step_size) * ceil(image_org.shape[1] / step_size)
     progress_increment = 100 / num_steps
 
-    model = SegnetHelper()
-    model.load()
+    global segnet
+    if segnet is None or segnet.num_threads != appdata.threads:
+        segnet = SegnetHelper(appdata.threads)
+        segnet.load()
 
     image_org = cv2.cvtColor(image_org, cv2.COLOR_GRAY2BGR)
     image = np.transpose(image_org, (2, 0, 1)).astype(np.float32)
@@ -136,7 +167,7 @@ def inference(
 
             hop = extract_patch(image, y, x, win_size)
             hop = np.expand_dims(hop, axis=0)
-            output = model.run(hop)
+            output = segnet.run(hop)
             data.append(np.squeeze(output, axis=0))
 
             appdata.homr_progress += progress_increment
@@ -183,33 +214,3 @@ def extract(
     return ExtractResult(
         img_path, original_image, staff, symbols, stems_rests, notehead, clefs_keys
     )
-
-
-class SegnetHelper:
-    def __init__(self):
-        pass
-
-    def load(self):
-        global segnet
-        if segnet is None:
-            eprint("Loaded Segnet")
-            if platform == "android":
-                segnet = LiteRTModel()
-                segnet.load(str(segnet_path_tflite), appdata.threads)
-            else:
-                segnet = TensorFlowModel(segnet_path_tflite)
-
-    def run(self, image) -> NDArray:
-        global segnet
-        if platform == "android":
-            image = np.ascontiguousarray(image)
-            flat = image.ravel()
-            buffer_bytes = flat.tobytes()
-            java_byte_buffer = ByteBuffer.wrap(buffer_bytes)
-            java_byte_buffer.order(ByteOrder.nativeOrder())
-            float_buffer = java_byte_buffer.asFloatBuffer()
-
-            result = segnet.runInt(float_buffer)
-            return np.array(result, dtype=np.int64).reshape((1, image.shape[2], image.shape[3]))
-        else:
-            return segnet.run(image)

@@ -104,6 +104,7 @@ class TromrDesktop:
     def __init__(self, config: Config):
         self.encoder = Encoder()
         self.decoder = get_decoder(config)
+        self.num_threads = appdata.threads
 
     def run(self, image: NDArray):
         ctx = self.encoder.generate(image)
@@ -123,7 +124,7 @@ def get_tromr(config: Config) -> TromrAndroid | TromrDesktop:
     """
     global model
     if model is None or model.num_threads != appdata.threads:
-        eprint("Loaded Tromr")
+        eprint(f"Loaded Tromr runnning on {model.num_threads} threads")
         if platform == "android":
             model = TromrAndroid(config=config)
         else:

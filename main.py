@@ -400,6 +400,7 @@ class SettingsPage(Screen):
     def verify_homr(self):
         app = MDApp.get_running_app()
         self.get_settings()
+        appdata.save_settings()
         need_download = app.check_download_assets(file_chooser=False, validation=True)
         if not need_download:
             app.start_inference(
