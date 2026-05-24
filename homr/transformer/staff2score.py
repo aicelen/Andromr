@@ -6,14 +6,14 @@ from kivy.utils import platform
 
 from homr.simple_logging import eprint
 from homr.transformer.configs import Config
-from homr.transformer.encoder_inference import Encoder
 from homr.transformer.vocabulary import EncodedSymbol
 from homr.type_definitions import NDArray
 
-if platform == 'android':
+if platform == "android":
     from homr.transformer.decoder_inference_android import get_decoder
 else:
     from homr.transformer.decoder_inference import get_decoder
+    from homr.transformer.encoder_inference import Encoder
 
 
 class Staff2Score:
@@ -23,7 +23,7 @@ class Staff2Score:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.encoder = Encoder()
+        self.encoder = None if platform == "android" else Encoder()
         self.decoder = get_decoder(self.config)
 
         if not os.path.exists(self.config.filepaths.rhythmtokenizer):
@@ -39,17 +39,18 @@ class Staff2Score:
 
         t0 = perf_counter()
 
-        # Create special tokens
-        start_token = np.array([[1]], dtype=np.int64)
-        nonote_token = np.array([[0]], dtype=np.int64)
+        if platform == "android":
+            out = self.decoder.generate(image=x)
+        else:
+            # Generate context with encoder
+            if self.encoder is None:
+                raise RuntimeError("Encoder is not initialized")
+            context = self.encoder.generate(x)
 
-        # Generate context with encoder
-        context = self.encoder.generate(x)
-
-        # Make a prediction using decoder
-        out = self.decoder.generate(
-            context=context
-        )
+            # Make a prediction using decoder
+            out = self.decoder.generate(
+                context=context
+            )
 
         eprint(f"Inference Time Tromr: {perf_counter() - t0}")
 
@@ -79,7 +80,7 @@ def test_transformer_on_image(path_to_img: str) -> None:
     Args:
         path_to_img(str): Path to the image to test
     """
-    from PIL import Image
+    from PIL import Image  # noqa: PLC0415
 
     model = Staff2Score(Config())
     image = Image.open(path_to_img)
