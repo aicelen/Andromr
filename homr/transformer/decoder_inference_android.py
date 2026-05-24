@@ -31,7 +31,7 @@ class ScoreDecoder:
         self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
 
         self.decoder = JavaDecoder()
-        self.decoder.load(str(config.filepaths.decoder_path))
+        self.decoder.load(str(config.filepaths.decoder_path), str(self.num_threads))
 
     def generate(self, context: NDArray):
         context = np.ascontiguousarray(context)

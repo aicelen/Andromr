@@ -16,10 +16,14 @@ public class Decoder {
     private static final int CACHE_DIM = 64;
     private static final int MAX_SEQ_LEN = 608;
 
-    public void load(String Path) throws OrtException{
+    public void load(String Path, String Threads) throws OrtException{
         this.env = OrtEnvironment.getEnvironment();
 
         SessionOptions options = new SessionOptions();
+
+        HashMap<String, String> xnnpack = new HashMap<String, String>();
+        xnnpack.put("intra_op_num_threads", Threads);
+        options.addXnnpack(xnnpack);
 
         this.session = env.createSession(Path, options);    
     }
