@@ -102,6 +102,7 @@ class TromrAndroid:
     def unload_model(self):
         self.model.unload_model()
 
+
 class TromrDesktop:
     def __init__(self, config: Config):
         self.encoder = Encoder()
