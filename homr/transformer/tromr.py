@@ -99,6 +99,8 @@ class TromrAndroid:
 
         return symbols
 
+    def unload_model(self):
+        self.model.unload_model()
 
 class TromrDesktop:
     def __init__(self, config: Config):
@@ -124,9 +126,12 @@ def get_tromr(config: Config) -> TromrAndroid | TromrDesktop:
     """
     global model
     if model is None or model.num_threads != appdata.threads:
-        eprint(f"Loaded Tromr runnning on {model.num_threads} threads")
         if platform == "android":
+            if model is not None:
+                model.unload_model()
+                model = None
             model = TromrAndroid(config=config)
         else:
             model = TromrDesktop(config=config)
+        eprint(f"Loaded Tromr runnning on {model.num_threads} threads")
     return model

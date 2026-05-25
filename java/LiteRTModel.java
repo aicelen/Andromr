@@ -43,4 +43,12 @@ public class LiteRTModel {
         writeInput(image);
         return this.output_buffers.get(0).readFloat();
     }
+
+    public void close() {
+        if (this.model != null) {
+            this.model.close();
+        }
+        if (this.input_buffers != null) this.input_buffers.clear();
+        if (this.output_buffers != null) this.output_buffers.clear();
+    }
 }

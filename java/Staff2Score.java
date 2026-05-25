@@ -33,6 +33,7 @@ public class Staff2Score {
         options.addXnnpack(xnnpack);
 
         this.decoder = env.createSession(path_decoder, options); 
+        options.close();
     }
 
     public long[][] run(FloatBuffer image) throws Exception{
@@ -48,6 +49,11 @@ public class Staff2Score {
         long out_pos = 0;
 
         OnnxTensor context = OnnxTensor.createTensor(env, FloatBuffer.wrap(context_fb), new long[]{1, 1280, 512});
+        OnnxTensor empty_context = OnnxTensor.createTensor(
+                    env, 
+                    FloatBuffer.wrap(new float[0]), 
+                    new long[]{1, 0, 512}
+                );
 
         String[] kvInputNames = new String[NUM_CACHE_LAYERS];
         String[] kvOutputNames = new String[NUM_CACHE_LAYERS];
@@ -68,36 +74,45 @@ public class Staff2Score {
         
         // Create array to save symbol results
         long[][] token_output = new long[5][MAX_SEQ_LEN];
+        OrtSession.Result previousResult = null;
 
         // Inference Loop
         for (int step = 0; step < MAX_SEQ_LEN; step++) {
-            long[][] x_rhythm = {{out_rhythm}};
-            long[][] x_lift = {{out_lift}};
-            long[][] x_pitch = {{out_pitch}};
-            long[][] x_articulations ={{out_articulations}};
-
+            OnnxTensor x_rhythm = OnnxTensor.createTensor(this.env, new long[][] {{out_rhythm}});
+            OnnxTensor x_lift = OnnxTensor.createTensor(this.env, new long[][] {{out_lift}});
+            OnnxTensor x_pitch = OnnxTensor.createTensor(this.env, new long[][] {{out_pitch}});
+            OnnxTensor x_articulations =OnnxTensor.createTensor(this.env, new long[][] {{out_articulations}});
+            OnnxTensor x_step = OnnxTensor.createTensor(env, new long[]{step});
             HashMap<String, OnnxTensor> inputs = new HashMap<String, OnnxTensor>();
 
             if (step == 0){
                 inputs.put("context", context);
             }
             else {
-                inputs.put("context", OnnxTensor.createTensor(
-                    this.env, 
-                    FloatBuffer.wrap(new float[0]), 
-                    new long[]{1, 0, 512}
-                ));
+                inputs.put("context", empty_context);
             }
-            inputs.put("lifts", OnnxTensor.createTensor(this.env, x_lift));
-            inputs.put("pitchs", OnnxTensor.createTensor(this.env, x_pitch));
-            inputs.put("rhythms", OnnxTensor.createTensor(this.env, x_rhythm));
-            inputs.put("articulations", OnnxTensor.createTensor(this.env, x_articulations));
-            inputs.put("cache_len", OnnxTensor.createTensor(env, new long[]{step}));
+            inputs.put("lifts", x_lift);
+            inputs.put("pitchs", x_pitch);
+            inputs.put("rhythms", x_rhythm);
+            inputs.put("articulations", x_articulations);
+            inputs.put("cache_len", x_step);
 
             for (int i = 0; i < NUM_CACHE_LAYERS; i++) {
                     inputs.put(kvInputNames[i], cache[i]);
                 }
             OrtSession.Result result = decoder.run(inputs);
+
+            // Free the memory of the previous result
+            // This is done now because the kv cache input
+            // uses the tensors within the result
+
+            if (previousResult != null) {
+                previousResult.close();
+                previousResult = null;
+                for (int i = 0; i < NUM_CACHE_LAYERS; i++) {
+                    cache[i] = null;
+                }
+            }
 
             // Convert Results to individual OnnxTensors
             OnnxTensor rhythmsp = (OnnxTensor) result.get("out_rhythms").get();
@@ -122,10 +137,18 @@ public class Staff2Score {
             token_output[3][step] = out_articulations + 1;
             token_output[4][step] = out_pos + 1;
 
+            // Close tensors
+            x_lift.close();
+            x_rhythm.close();
+            x_articulations.close();
+            x_pitch.close();
+            x_step.close();
+
+            // EOS Token
             if (out_rhythm == 2) {
+                result.close();
                 break;
             }
-            System.out.println(out_rhythm);
 
             // Update KV Cache
             for (int i = 0; i < NUM_CACHE_LAYERS; i++) {
@@ -137,7 +160,26 @@ public class Staff2Score {
                 OnnxTensor newCacheLayer = (OnnxTensor) result.get(kvOutputNames[i]).get();
                 cache[i] = newCacheLayer; 
             }
+            previousResult = result;
+        }
+
+        // After finishing we can close all tensors
+        context.close();
+        empty_context.close();
+
+        if (previousResult != null) {
+            previousResult.close();
+        }
+        else {
+            for (OnnxTensor c : cache) {
+                if (c != null) c.close();
+            }
         }
         return token_output;
+    }
+
+    public void unload_model() throws OrtException {
+        this.encoder.close();
+        this.decoder.close();
     }
 }
