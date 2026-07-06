@@ -98,7 +98,7 @@ def center_image_on_canvas(
             dtype=np.uint8,
         )
     else:
-        new_image = np.full(  # type: ignore
+        new_image = np.full(
             (tr_omr_max_height, tr_omr_max_width, 3),
             255,
             dtype=np.uint8,

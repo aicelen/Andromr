@@ -22,4 +22,4 @@ def convert_encoder(model_version: int):
 
 
 if __name__ == "__main__":
-    convert_encoder(331)
+    convert_encoder(396)

@@ -179,6 +179,11 @@ def process_image(
             multi_staffs = load_staff_positions(
                 debug, image, staff_position_files, config.selected_staff
             )
+            # parse_staffs() expects a grayscale image (cv2.findContours requires it),
+            # matching what the normal detect_staffs_in_image() path hands it
+            # (predictions.preprocessed). Apply the same CLAHE preprocessing here so the
+            # two code paths feed the symbol-recognition encoder consistent input.
+            image = color_adjust.apply_clahe(image)
         else:
             multi_staffs, image, debug = detect_staffs_in_image(image_path, config)
         debug_cleanup = debug

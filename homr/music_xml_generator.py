@@ -1,668 +1,527 @@
-import math
-from collections import defaultdict
-from fractions import Fraction
+from abc import abstractmethod
+from collections.abc import Callable
+from enum import Enum
 
-import musicxml.xmlelement.xmlelement as mxl
+import cv2
 import numpy as np
+from typing_extensions import Self
 
 from homr import constants
-from homr.simple_logging import eprint
-from homr.transformer.vocabulary import EncodedSymbol, empty, nonote, sort_token_chords
+from homr.bounding_boxes import (
+    AngledBoundingBox,
+    BoundingBox,
+    BoundingEllipse,
+    DebugDrawable,
+    RotatedBoundingBox,
+)
+from homr.type_definitions import NDArray
 
 
-class ConversionState:
-    def __init__(self, division: int, nominator: Fraction):
-        self.beats = 4 * constants.duration_of_quarter
-        self.division = division
-        self.nominator = nominator
-        self.tremolo_state = "stop"
-        self.volta_number = 1
-        self.last_volta_measure = -10
-
-    def start_volta(self, measure_no: int) -> int:
-        if measure_no == self.last_volta_measure + 1:
-            self.volta_number += 1
-        else:
-            self.volta_number = 1
-        return self.volta_number
-
-    def stop_volta(self, measure_no: int) -> int:
-        self.last_volta_measure = measure_no
-        return self.volta_number
-
-    def toggle_tremolo_state(self) -> str:
-        if self.tremolo_state == "start":
-            self.tremolo_state = "stop"
-        else:
-            self.tremolo_state = "start"
-        return self.tremolo_state
-
-
-class SymbolChord:
-    def __init__(self, symbols: list[EncodedSymbol], tuplet_mark: str = "") -> None:
+class InputPredictions:
+    def __init__(
+        self,
+        original: NDArray,
+        preprocessed: NDArray,
+        notehead: NDArray,
+        symbols: NDArray,
+        staff: NDArray,
+        clefs_keys: NDArray,
+        stems_rest: NDArray,
+    ) -> None:
+        self.original = original
+        self.preprocessed = preprocessed
+        self.notehead = notehead
         self.symbols = symbols
-        self.tuplet_mark = tuplet_mark
+        self.staff = staff
+        self.stems_rest = stems_rest
+        self.clefs_keys = clefs_keys
+
+
+class SymbolOnStaff(DebugDrawable):
+    def __init__(self, center: tuple[float, float]) -> None:
+        self.center = center
+
+    @abstractmethod
+    def copy(self) -> Self:
+        pass
+
+    def transform_coordinates(
+        self, transformation: Callable[[tuple[float, float]], tuple[float, float]]
+    ) -> Self:
+        copy = self.copy()
+        copy.center = transformation(self.center)
+        return copy
+
+
+class Accidental(SymbolOnStaff):
+    def __init__(self, box: BoundingBox, position: int) -> None:
+        super().__init__(box.center)
+        self.box = box
+        self.position = position
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        self.box.draw_onto_image(img, color)
+        cv2.putText(
+            img,
+            "accidental-" + str(self.position),
+            (int(self.box.box[0]), int(self.box.box[1])),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+            cv2.LINE_AA,
+        )
 
     def __str__(self) -> str:
-        return str.join("&", [str(s) for s in self.symbols])
+        return "Accidental(" + str(self.center) + ")"
 
     def __repr__(self) -> str:
         return str(self)
 
-    def is_barline(self) -> bool:
-        if len(self.symbols) == 0:
-            return False
-        first_rhythm = self.symbols[0].rhythm
-        return "barline" in first_rhythm or "repeat" in first_rhythm
+    def copy(self) -> "Accidental":
+        return Accidental(self.box, self.position)
 
-    def get_duration(self) -> Fraction:
-        notes_rests = [
-            s.get_duration().fraction for s in self.symbols if s.rhythm.startswith(("note", "rest"))
-        ]
-        if len(notes_rests) == 0:
-            return Fraction(0)
-        return min(notes_rests)
 
-    def into_positions(self) -> list["SymbolChord"]:
-        upper = []
-        lower = []
-        lower_is_only_rest = True
-        for symbol in self.symbols:
-            if symbol.position == "upper":
-                upper.append(symbol)
-            else:
-                lower.append(symbol)
-                lower_is_only_rest = lower_is_only_rest and symbol.rhythm.startswith("rest")
-        chords = (
-            SymbolChord(upper, self.tuplet_mark),
-            SymbolChord(lower, self.tuplet_mark),
+class Rest(SymbolOnStaff):
+    def __init__(self, box: BoundingBox) -> None:
+        super().__init__(box.center)
+        self.box = box
+        self.has_dot = False
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        self.box.draw_onto_image(img, color)
+        cv2.putText(
+            img,
+            "rest",
+            (int(self.box.box[0]), int(self.box.box[1])),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+            cv2.LINE_AA,
         )
-        if lower_is_only_rest:
-            chords = (chords[1], chords[0])
-        return [chord for chord in chords if len(chord.symbols) > 0]
 
-    def strip_slur_ties(self) -> tuple[list[str], "SymbolChord"]:
-        slurs_ties = set()
+    def __str__(self) -> str:
+        return "Rest(" + str(self.center) + ")"
 
+    def __repr__(self) -> str:
+        return str(self)
+
+    def copy(self) -> "Rest":
+        return Rest(self.box)
+
+
+class StemDirection(Enum):
+    UP = 1
+    DOWN = 2
+
+
+class NoteHeadType(Enum):
+    HOLLOW = 1
+    SOLID = 2
+
+    def __str__(self) -> str:
+        if self == NoteHeadType.HOLLOW:
+            return "O"
+        elif self == NoteHeadType.SOLID:
+            return "*"
+        else:
+            raise Exception("Unknown NoteHeadType")
+
+
+note_names = ["C", "D", "E", "F", "G", "A", "B"]
+
+
+class Note(SymbolOnStaff):
+    def __init__(
+        self,
+        box: BoundingEllipse,
+        position: int,
+        stem: RotatedBoundingBox | None,
+        stem_direction: StemDirection | None,
+    ):
+        super().__init__(box.center)
+        self.box = box
+        self.position = position
+        self.has_dot = False
+        self.stem = stem
+        self.circle_of_fifth = 0
+        self.stem_direction = stem_direction
+        self.beams: list[RotatedBoundingBox] = []
+        self.flags: list[RotatedBoundingBox] = []
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        self.box.draw_onto_image(img, color)
+        dot_string = "." if self.has_dot else ""
+        cv2.putText(
+            img,
+            "note" + dot_string + str(self.position),
+            (int(self.box.center[0]), int(self.box.center[1])),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+        if self.stem is not None:
+            self.stem.draw_onto_image(img, color)
+        for beam in self.beams:
+            beam.draw_onto_image(img, color)
+        for flag in self.flags:
+            flag.draw_onto_image(img, color)
+
+    def __str__(self) -> str:
+        return "Note(" + str(self.center) + ", " + str(self.position) + ")"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def copy(self) -> "Note":
+        return Note(self.box, self.position, self.stem, self.stem_direction)
+
+
+class BarLine(SymbolOnStaff):
+    def __init__(self, box: RotatedBoundingBox):
+        super().__init__(box.center)
+        self.box = box
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        self.box.draw_onto_image(img, color)
+
+    def __str__(self) -> str:
+        return "BarLine(" + str(self.center) + ")"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def copy(self) -> "BarLine":
+        return BarLine(self.box)
+
+
+class Clef(SymbolOnStaff):
+    def __init__(self, box: BoundingBox):
+        super().__init__(box.center)
+        self.box = box
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        self.box.draw_onto_image(img, color)
+        cv2.putText(
+            img,
+            "clef",
+            (self.box.box[0], self.box.box[1]),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+
+    def __str__(self) -> str:
+        return "Clef(" + str(self.center) + ")"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def copy(self) -> "Clef":
+        return Clef(self.box)
+
+
+class StaffPoint:
+    def __init__(self, x: float, y: list[float], angle: float):
+        if len(y) % constants.number_of_lines_on_a_staff != 0:
+            raise Exception("A staff must consist of 5, 10, ... lines")
+        self.x = x
+        self.y = y
+        self.angle = angle
+        self.average_unit_size = np.mean(np.diff(y))
+
+    def merge(self, other: "StaffPoint") -> "StaffPoint":
+        if abs(self.x - other.x) > 1e-3:
+            raise ValueError("Can't merge points at different positions")
+        y = []
+        y.extend(self.y)
+        y.extend(other.y)
+        angle = (self.angle + other.angle) / 2
+        return StaffPoint(self.x, sorted(y), angle)
+
+    def find_position_in_unit_sizes(self, box: AngledBoundingBox) -> int:
+        center = box.center
+        idx_of_closest_y = int(np.argmin(np.abs([y_value - center[1] for y_value in self.y])))
+        distance = self.y[idx_of_closest_y] - center[1]
+        distance_in_unit_sizes = round(2 * distance / self.average_unit_size)
+        position = 2 * (len(self.y) - idx_of_closest_y) + distance_in_unit_sizes - 1
+        return position
+
+    def transform_coordinates(
+        self, transformation: Callable[[tuple[float, float]], tuple[float, float]]
+    ) -> "StaffPoint":
+        xy = [transformation((self.x, y_value)) for y_value in self.y]
+        average_x = np.mean([x for x, _ in xy])
+        return StaffPoint(float(average_x), [y for _, y in xy], self.angle)
+
+    def to_bounding_box(self) -> BoundingBox:
+        return BoundingBox(
+            [int(self.x), int(self.y[0]), int(self.x), int(self.y[-1])], np.array([]), -2
+        )
+
+    def __str__(self) -> str:
+        return "P(" + str(self.x) + "," + str(self.y[2]) + ")"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class Staff(DebugDrawable):
+    def __init__(self, grid: list[StaffPoint]):
+        self.grid = grid
+        self.min_x = grid[0].x
+        self.max_x = grid[-1].x
+        self.min_y = min([min(p.y) for p in grid])
+        self.max_y = max([max(p.y) for p in grid])
+        self.average_unit_size = np.median([p.average_unit_size for p in grid])
+        self.symbols: list[SymbolOnStaff] = []
+        self.is_grandstaff = False
+        self._y_tolerance = constants.max_number_of_ledger_lines * self.average_unit_size
+
+    def is_on_staff_zone(self, item: AngledBoundingBox) -> bool:
+        point = self.get_at(item.center[0])
+        if point is None:
+            return False
+        if (
+            item.center[1] > point.y[-1] + self._y_tolerance
+            or item.center[1] < point.y[0] - self._y_tolerance
+        ):
+            return False
+        return True
+
+    def merge(self, other: "Staff") -> "Staff":
+        grid_a: dict[int, StaffPoint] = {}
+        for p in self.grid:
+            grid_a[int(round(p.x))] = p
+        grid_b: dict[int, StaffPoint] = {}
+        for p in other.grid:
+            grid_b[int(round(p.x))] = p
+        x_positions = set(grid_a.keys()).intersection(grid_b.keys())
+
+        grid = [grid_a[x].merge(grid_b[x]) for x in sorted(x_positions)]
+        result = Staff(grid)
+        result.symbols.extend(self.symbols)
+        result.symbols.extend(other.symbols)
+        result.is_grandstaff = True
+        return result
+
+    def add_symbol(self, symbol: SymbolOnStaff) -> None:
+        self.symbols.append(symbol)
+
+    def get_at(self, x: float) -> StaffPoint | None:
+        closest_point = min(self.grid, key=lambda p: abs(p.x - x))
+        if abs(closest_point.x - x) > constants.staff_position_tolerance:
+            return None
+        return closest_point
+
+    def y_distance_to(self, point: tuple[float, float]) -> float:
+        staff_point = self.get_at(point[0])
+        if staff_point is None:
+            return 1e10  # Something large to mimic infinity
+        return min([abs(y - point[1]) for y in staff_point.y])
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        if len(self.grid) == 0:
+            return
+        for i in range(len(self.grid[0].y)):
+            for j in range(len(self.grid) - 1):
+                p1 = self.grid[j]
+                p2 = self.grid[j + 1]
+                cv2.line(
+                    img, (int(p1.x), int(p1.y[i])), (int(p2.x), int(p2.y[i])), color, thickness=2
+                )
+
+    def get_bar_lines(self) -> list[BarLine]:
         result = []
         for symbol in self.symbols:
-            stripped, result_symbol = symbol.strip_articulations(
-                ["slurStart", "slurStop", "tieStart", "tieStop"]
+            if isinstance(symbol, BarLine):
+                result.append(symbol)
+        return result
+
+    def get_clefs(self) -> list[Clef]:
+        result = []
+        for symbol in self.symbols:
+            if isinstance(symbol, Clef):
+                result.append(symbol)
+        return result
+
+    def get_notes(self) -> list[Note]:
+        result = []
+        for symbol in self.symbols:
+            if isinstance(symbol, Note):
+                result.append(symbol)
+        return result
+
+    def extend_to_x_range(self, min_x: int, max_x: int) -> "Staff":
+        grid = self.grid.copy()
+
+        if min_x >= 0 and min_x < grid[0].x:
+            grid.insert(0, StaffPoint(min_x, grid[0].y, grid[0].angle))
+        if max_x >= 0 and max_x > grid[-1].x:
+            grid.append(StaffPoint(max_x, grid[-1].y, grid[-1].angle))
+
+        return Staff(grid)
+
+    def get_number_of_notes(self) -> int:
+        result = 0
+        for symbol in self.symbols:
+            if isinstance(symbol, Note):
+                result += 1
+        return result
+
+    def get_all_except_notes(self) -> list[SymbolOnStaff]:
+        result = []
+        for symbol in self.symbols:
+            if not isinstance(symbol, Note):
+                result.append(symbol)
+        return result
+
+    def __str__(self) -> str:
+        return "Staff(" + str.join(", ", [str(s) for s in self.symbols]) + ")"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def copy(self) -> "Staff":
+        return Staff(self.grid)
+
+    def transform_coordinates(
+        self, transformation: Callable[[tuple[float, float]], tuple[float, float]]
+    ) -> "Staff":
+        copy = Staff([point.transform_coordinates(transformation) for point in self.grid])
+        copy.symbols = [symbol.transform_coordinates(transformation) for symbol in self.symbols]
+        copy.is_grandstaff = self.is_grandstaff
+        return copy
+
+
+class MultiStaff(DebugDrawable):
+    """
+    A grand staff or a staff with multiple voices.
+    """
+
+    def __init__(self, staffs: list[Staff], connections: list[RotatedBoundingBox]) -> None:
+        self.staffs = sorted(staffs, key=lambda s: s.min_y)
+        self.connections = connections
+
+    def merge(self, other: "MultiStaff") -> "MultiStaff":
+        unique_staffs = []
+        unique_connections = []
+        for staff in self.staffs + other.staffs:
+            if staff not in unique_staffs:
+                unique_staffs.append(staff)
+        for connection in self.connections + other.connections:
+            if connection not in unique_connections:
+                unique_connections.append(connection)
+        return MultiStaff(unique_staffs, unique_connections)
+
+    """
+    rules to determain whether two staffs should be merged into a grandstaff by current brace:
+    1. x_distance: the left side of staff should be close enough
+       (within 5* the average unit size) to the brace symbol
+    2. y_overlap: the top and bottom of the brace symbol should overlap (at least 50% of) the staffs
+    return scores = y_overlap(higher the better) - x_distance(lower the better)
+    """
+
+    def _score_brace_with_staff_pair(
+        self, symbol: RotatedBoundingBox, upper_staff: Staff, lower_staff: Staff
+    ) -> float:
+        unit_size = float(np.median([upper_staff.average_unit_size, lower_staff.average_unit_size]))
+        x_distance_threshold = constants.grandstaff_x_distance_threshold_factor * unit_size
+        y_overlap_threshold = constants.grandstaff_y_overlap_threshold_factor * symbol.size[1]
+
+        symbol_min_x = symbol.center[0]
+        staff_min_x = min(upper_staff.min_x, lower_staff.min_x)
+        x_distance = abs(staff_min_x - symbol_min_x)
+
+        symbol_min_y = symbol.center[1] - symbol.size[1] / 2
+        symbol_max_y = symbol.center[1] + symbol.size[1] / 2
+        y_overlap = min(symbol_max_y, lower_staff.max_y) - max(symbol_min_y, upper_staff.min_y)
+
+        if (
+            x_distance < x_distance_threshold
+            and y_overlap > y_overlap_threshold
+            and y_overlap > x_distance
+        ):
+            return y_overlap - x_distance
+        else:
+            return 0
+
+    class GrandStaffPair:
+        def __init__(self, pair_index: list[int], score: float):
+            self.pair_index = pair_index
+            self.score = score
+
+        def get_score(self) -> float:
+            return self.score
+
+        def get_index(self) -> list[int]:
+            return self.pair_index
+
+        def __repr__(self) -> str:
+            return f"staff pair: {self.pair_index} with score: {self.score})"
+
+    def _select_grandstaffs(
+        self, brace_dot: list[RotatedBoundingBox]
+    ) -> list["MultiStaff.GrandStaffPair"]:
+        pair_scores: list[MultiStaff.GrandStaffPair] = []
+        # step1: we try each two staffs combination, like (0,1), (1,2), (2,3), ...
+        for i in range(len(self.staffs) - 1):
+            best_score = max(
+                (
+                    self._score_brace_with_staff_pair(symbol, self.staffs[i], self.staffs[i + 1])
+                    for symbol in brace_dot
+                ),
             )
-            result.append(result_symbol)
-            for articulation in stripped:
-                slurs_ties.add(articulation)
-
-        return sorted(slurs_ties), SymbolChord(result, tuplet_mark=self.tuplet_mark)
-
-
-class XmlGeneratorArguments:
-    def __init__(
-        self, large_page: bool | None = None, metronome: int | None = None, tempo: int | None = None
-    ):
-        self.large_page = large_page
-        self.metronome = metronome
-        self.tempo = tempo
-
-
-def generate_xml(
-    args: XmlGeneratorArguments, staffs: list[list[EncodedSymbol]], title: str
-) -> mxl.XMLElement:
-    root = mxl.XMLScorePartwise()
-    root.add_child(build_work(title))
-    root.add_child(build_defaults(args))
-    root.add_child(build_part_list(len(staffs)))
-    for index, staff in enumerate(staffs):
-        root.add_child(build_part(args, staff, index))
-    return root
-
-
-def build_part(args: XmlGeneratorArguments, voice: list[EncodedSymbol], index: int) -> mxl.XMLPart:
-    part = mxl.XMLPart(id=get_part_id(index))
-    is_first_part = index == 0
-    measures = build_measures(args, voice, is_first_part)
-    for measure in measures:
-        part.add_child(measure)
-    return part
-
-
-def build_measures(
-    args: XmlGeneratorArguments, voice: list[EncodedSymbol], is_first_part: bool
-) -> list[mxl.XMLMeasure]:
-    measure_number = 1
-    groups = add_tuplet_start_stop(group_into_chords(voice))
-    division, nominator = find_division_and_time_signature_nominator(groups)
-    state = ConversionState(division, nominator)
-    measures: list[mxl.XMLMeasure] = []
-    current_measure = mxl.XMLMeasure(number=str(measure_number))
-    first_attributes = build_or_get_attributes(current_measure, None)
-    first_attributes.add_child(build_divisions(division))
-    if is_first_part:
-        direction = build_add_time_direction(args)
-        if direction:
-            current_measure.add_child(direction)
-    attributes: mxl.XMLAttributes | None = first_attributes
-    for group_no, group in enumerate(groups):
-        symbol = group.symbols[0]
-        rhythm = symbol.rhythm
-        last_attributes = attributes
-        attributes = None
-        if rhythm.startswith(("note", "rest")):
-            if len(group.symbols) == 1 and rhythm.endswith("m"):
-                attributes = build_or_get_attributes(current_measure, last_attributes)
-                build_multi_measure_rest(symbol, attributes)
-            else:
-                staff_positions = group.into_positions()
-                for pos_no, staff_pos in enumerate(staff_positions):
-                    chord_duration = (
-                        group.get_duration() if pos_no == len(staff_positions) - 1 else Fraction(0)
-                    )
-                    for note_xml in build_note_chord(staff_pos, state, chord_duration):
-                        current_measure.add_child(note_xml)
-            continue
-        if rhythm == "newline":
-            is_last_measure = group_no == len(groups) - 1
-            if not is_last_measure:
-                current_measure.add_child(mxl.XMLPrint(new_system="yes"))
-        elif rhythm.startswith("clef"):
-            attributes = build_or_get_attributes(current_measure, last_attributes, force_new=True)
-            for should_be_clef in group.symbols:
-                if should_be_clef.rhythm.startswith("clef"):
-                    build_clef(should_be_clef, attributes)
-        elif rhythm.startswith("keySignature"):
-            attributes = build_or_get_attributes(current_measure, last_attributes)
-            build_key(symbol, attributes)
-        elif rhythm.startswith("timeSignature"):
-            attributes = build_or_get_attributes(current_measure, last_attributes)
-            build_time_signature(symbol, attributes, state)
-        elif "barline" in rhythm:
-            if rhythm != "barline":
-                # Standard barlines don't need extra handling
-                barline = build_or_get_barline(current_measure, "right")
-                build_barline_style(symbol, barline)
-
-            measures.append(current_measure)
-            measure_number += 1
-            current_measure = mxl.XMLMeasure(number=str(measure_number))
-        elif rhythm == "repeatStart":
-            measures.append(current_measure)
-            measure_number += 1
-            current_measure = mxl.XMLMeasure(number=str(measure_number))
-
-            barline = build_or_get_barline(current_measure, "right")
-            build_repeat(symbol, barline)
-        elif rhythm == "repeatEnd":
-            barline = build_or_get_barline(current_measure, "right")
-            build_repeat(symbol, barline)
-
-            measures.append(current_measure)
-            measure_number += 1
-            current_measure = mxl.XMLMeasure(number=str(measure_number))
-        elif rhythm == "repeatEndStart":
-            barline = build_or_get_barline(current_measure, "right")
-            build_repeat(EncodedSymbol("repeatEnd"), barline)
-
-            measures.append(current_measure)
-            measure_number += 1
-            current_measure = mxl.XMLMeasure(number=str(measure_number))
-            barline = build_or_get_barline(current_measure, "right")
-            build_repeat(EncodedSymbol("repeatStart"), barline)
-        elif rhythm.startswith("voltaStart"):
-            volta_number = state.start_volta(measure_number)
-            barline = build_or_get_barline(current_measure, "left")
-            build_barline_ending(symbol, barline, volta_number)
-        elif rhythm.startswith(("voltaStop", "voltaDiscontinue")):
-            volta_number = state.stop_volta(measure_number)
-            barline = build_or_get_barline(current_measure, "right")
-            build_barline_ending(symbol, barline, volta_number)
-        else:
-            eprint("Symbol isn't supported yet ", symbol)
-
-    if len(current_measure.get_children()) > 0:
-        measures.append(current_measure)
-    return measures
-
-
-def build_work(title_text: str) -> mxl.XMLWork:
-    work = mxl.XMLWork()
-    title = mxl.XMLWorkTitle()
-    title._value = title_text
-    work.add_child(title)
-    return work
-
-
-def build_defaults(args: XmlGeneratorArguments) -> mxl.XMLDefaults:
-    if not args.large_page:
-        return mxl.XMLDefaults()
-    # These values are larger than a letter or A4 format so that
-    # we only have to break staffs with every new detected staff
-    # This works well for electronic formats, if the results are supposed
-    # to get printed then they might need to be scaled down to fit the page
-    page_width = 110  # Unit is in tenths: https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/page-height/
-    page_height = 300
-    defaults = mxl.XMLDefaults()
-    page_layout = mxl.XMLPageLayout()
-    page_height = mxl.XMLPageHeight(value_=page_height)
-    page_width = mxl.XMLPageWidth(value_=page_width)
-    page_layout.add_child(page_height)
-    page_layout.add_child(page_width)
-    defaults.add_child(page_layout)
-    return defaults
-
-
-def get_part_id(index: int) -> str:
-    return "P" + str(index + 1)
-
-
-def build_part_list(staffs: int) -> mxl.XMLPartList:
-    part_list = mxl.XMLPartList()
-    for part in range(staffs):
-        part_id = get_part_id(part)
-        score_part = mxl.XMLScorePart(id=part_id)
-        part_name = mxl.XMLPartName(value_="")
-        score_part.add_child(part_name)
-        score_instrument = mxl.XMLScoreInstrument(id=part_id + "-I1")
-        instrument_name = mxl.XMLInstrumentName(value_="Piano")
-        score_instrument.add_child(instrument_name)
-        instrument_sound = mxl.XMLInstrumentSound(value_="keyboard.piano")
-        score_instrument.add_child(instrument_sound)
-        score_part.add_child(score_instrument)
-        midi_instrument = mxl.XMLMidiInstrument(id=part_id + "-I1")
-        midi_instrument.add_child(mxl.XMLMidiChannel(value_=1))
-        midi_instrument.add_child(mxl.XMLMidiProgram(value_=1))
-        midi_instrument.add_child(mxl.XMLVolume(value_=100))
-        midi_instrument.add_child(mxl.XMLPan(value_=0))
-        score_part.add_child(midi_instrument)
-        part_list.add_child(score_part)
-    return part_list
-
-
-def build_or_get_attributes(
-    measure: mxl.XMLMeasure, last_attributes: mxl.XMLAttributes | None, force_new: bool = False
-) -> mxl.XMLAttributes:
-    if last_attributes is not None and not force_new:
-        return last_attributes
-
-    attributes = mxl.XMLAttributes()
-    measure.add_child(attributes)
-    return attributes
-
-
-def build_or_get_barline(measure: mxl.XMLMeasure, location: str) -> mxl.XMLBarline:
-    children = measure.get_children_of_type(mxl.XMLBarline)
-    for child in children:
-        if child.location == location:
-            return child
-
-    barline = mxl.XMLBarline(location=location)
-    measure.add_child(barline)
-    return barline
-
-
-def build_key(model_key: EncodedSymbol, attributes: mxl.XMLAttributes) -> None:
-    key = mxl.XMLKey()
-    circle_of_fifth = model_key.rhythm.split("_")[1]
-    fifth = mxl.XMLFifths(value_=int(circle_of_fifth))
-    attributes.add_child(key)
-    key.add_child(fifth)
-
-
-def get_staff(symbol: EncodedSymbol) -> int:
-    return 2 if symbol.position == "lower" else 1
-
-
-def build_clef(model_clef: EncodedSymbol, attributes: mxl.XMLAttributes) -> None:
-    sign_and_line = model_clef.rhythm.split("_")[1]
-    sign = sign_and_line[0]
-    line = sign_and_line[1]
-    clef = mxl.XMLClef(number=get_staff(model_clef))
-    attributes.add_child(clef)
-    clef.add_child(mxl.XMLSign(value_=sign))
-    clef.add_child(mxl.XMLLine(value_=int(line)))
-
-
-def build_time_signature(
-    model_time_signature: EncodedSymbol, attributes: mxl.XMLAttributes, state: ConversionState
-) -> None:
-    time = mxl.XMLTime()
-
-    denominator = model_time_signature.rhythm.split("/")[1]
-    attributes.add_child(time)
-    beats = max(int(state.nominator * int(denominator)), 1)
-    time.add_child(mxl.XMLBeats(value_=str(beats)))
-    time.add_child(mxl.XMLBeatType(value_=denominator))
-    state.beats = beats
-
-
-def build_barline_style(barline: EncodedSymbol, xml: mxl.XMLBarline) -> None:
-    style_value = "heavy-heavy" if barline.rhythm == "bolddoublebarline" else "light-light"
-    style = mxl.XMLBarStyle(value_=style_value)
-    xml.add_child(style)
-
-
-def build_barline_ending(volta: EncodedSymbol, xml: mxl.XMLBarline, volta_number: int) -> None:
-    if volta.rhythm.startswith("voltaStart"):
-        ending = mxl.XMLEnding(type="start", number=str(volta_number))
-    elif volta.rhythm.startswith("voltaStop"):
-        ending = mxl.XMLEnding(type="stop", number=str(volta_number))
-    elif volta.rhythm.startswith("voltaDiscontinue"):
-        ending = mxl.XMLEnding(type="discontinue", number=str(volta_number))
-    else:
-        raise ValueError("Unknown ending " + str(volta))
-    xml.add_child(ending)
-
-
-def build_repeat(barline: EncodedSymbol, xml: mxl.XMLBarline) -> None:
-    if len(xml.get_children_of_type(mxl.XMLRepeat)) > 0:
-        eprint("barline already has a repeat")
-        return
-
-    repeat = mxl.XMLRepeat()
-    direction = "forward" if barline.rhythm == "repeatStart" else "backward"
-    repeat._set_attributes({"direction": direction})
-    xml.add_child(repeat)
-
-
-LIFT_TO_ALTER = {
-    "N": 0,
-    "#": 1,
-    "##": 2,
-    "b": -1,
-    "bb": -2,
-}
-
-DURATION_NAMES = {
-    0: "breve",
-    1: "whole",
-    2: "half",
-    4: "quarter",
-    8: "eighth",
-    16: "16th",
-    32: "32nd",
-    64: "64th",
-    128: "128th",
-}
-
-
-def build_articulations(
-    note: mxl.XMLNote, articualations: str, tuplet_mark: str, state: ConversionState
-) -> None:
-    notation = mxl.XMLNotations()
-    note.add_child(notation)
-
-    xml_articulations = []
-    xml_ornaments = []
-
-    for articulation in articualations.split("_"):
-        if articulation == "":
-            continue
-        elif articulation == nonote:
-            eprint("WARNING note without valid articulation", articualations)
-        elif articulation == "fermata":
-            notation.add_child(mxl.XMLFermata())
-        elif articulation == "arpeggiate":
-            notation.add_child(mxl.XMLArpeggiate())
-        elif articulation == "accent":
-            xml_articulations.append(mxl.XMLAccent())
-        elif articulation == "arpeggiate":
-            notation.add_child(mxl.XMLArpeggiate())
-        elif articulation == "fermata":
-            xml_articulations.append(mxl.XMLFermata())
-        elif articulation == "staccato":
-            xml_articulations.append(mxl.XMLStaccato())
-        elif articulation == "staccatissimo":
-            xml_articulations.append(mxl.XMLStaccatissimo())
-        elif articulation == "tenuto":
-            xml_articulations.append(mxl.XMLTenuto())
-        elif articulation == "tremolo":
-            xml_ornaments.append(mxl.XMLTremolo(value_=3, type=state.toggle_tremolo_state()))
-        elif articulation == "trill":
-            xml_ornaments.append(mxl.XMLTrillMark())
-        elif articulation == "breathMark":
-            xml_articulations.append(mxl.XMLBreathMark())
-        elif articulation == "turn":
-            xml_ornaments.append(mxl.XMLInvertedTurn())
-        elif articulation == "caesura":
-            xml_articulations.append(mxl.XMLCaesura())
-        elif articulation == "doit":
-            xml_articulations.append(mxl.XMLDoit())
-        elif articulation == "slurStart":
-            notation.add_child(mxl.XMLSlur(type="start"))
-        elif articulation == "slurStop":
-            notation.add_child(mxl.XMLSlur(type="stop"))
-        elif articulation == "tieStart":
-            notation.add_child(mxl.XMLTied(type="start"))
-        elif articulation == "tieStop":
-            notation.add_child(mxl.XMLTied(type="stop"))
-        else:
-            raise ValueError("Unsupported articulation " + articulation)
-
-    if tuplet_mark != "":
-        tuplet_xml = mxl.XMLTuplet(type=tuplet_mark)
-        notation.add_child(tuplet_xml)
-
-    if len(xml_articulations) > 0:
-        parent = mxl.XMLArticulations()
-        for child in xml_articulations:
-            parent.add_child(child)
-        notation.add_child(parent)
-
-    if len(xml_ornaments) > 0:
-        parent = mxl.XMLOrnaments()
-        for child in xml_ornaments:
-            parent.add_child(child)
-        notation.add_child(parent)
-
-
-def build_note_or_rest(
-    model_note: EncodedSymbol, voice: int, is_chord: bool, state: ConversionState, tuplet_mark: str
-) -> mxl.XMLNote:
-    note = mxl.XMLNote()
-    if is_chord:
-        note.add_child(mxl.XMLChord())
-    model_pitch = model_note.pitch
-    model_duration = model_note.get_duration()
-    if model_pitch == empty:
-        if model_duration.fraction.numerator == 0:
-            note.add_child(mxl.XMLRest(measure="yes"))
-        else:
-            note.add_child(mxl.XMLRest())
-    elif model_pitch == nonote:
-        eprint("WARNING note without pitch", model_note)
-        note.add_child(mxl.XMLRest())
-    else:
-        pitch = mxl.XMLPitch()
-        pitch.add_child(mxl.XMLStep(value_=model_pitch[0]))
-        pitch.add_child(mxl.XMLOctave(value_=int(model_pitch[1])))
-        if model_note.lift == nonote:
-            eprint("WARNING note with invalid lift", model_note)
-        elif model_note.lift != empty:
-            pitch.add_child(mxl.XMLAlter(value_=LIFT_TO_ALTER[model_note.lift]))
-        note.add_child(pitch)
-
-    if "G" in model_note.rhythm:
-        note.add_child(mxl.XMLGrace())
-        base_duration = model_duration.kern
-        duration_name = DURATION_NAMES[base_duration]
-        note.add_child(mxl.XMLType(value_=duration_name))
-    elif model_duration.fraction.numerator > 0:
-        base_duration = 1 if model_duration.kern == 0 else model_duration.kern
-        duration_name = DURATION_NAMES[base_duration]
-        note.add_child(mxl.XMLType(value_=duration_name))
-        note.add_child(mxl.XMLDuration(value_=int(model_duration.fraction * state.division)))
-    else:
-        duration_name = DURATION_NAMES[0]
-        note.add_child(mxl.XMLType(value_=duration_name))
-        note.add_child(mxl.XMLDuration(value_=state.beats))
-
-    note.add_child(mxl.XMLStaff(value_=get_staff(model_note)))
-    note.add_child(mxl.XMLVoice(value_=(str(voice + 1))))
-    for _ in range(model_duration.dots):
-        note.add_child(mxl.XMLDot())
-    if model_duration.actual_notes != model_duration.normal_notes:
-        time_modification = mxl.XMLTimeModification()
-        time_modification.add_child(mxl.XMLActualNotes(value_=model_duration.actual_notes))
-        time_modification.add_child(mxl.XMLNormalNotes(value_=model_duration.normal_notes))
-        note.add_child(time_modification)
-        build_articulations(note, model_note.articulation, tuplet_mark, state)
-    else:
-        build_articulations(note, model_note.articulation, "", state)
-
-    return note
-
-
-def build_multi_measure_rest(
-    symbol: EncodedSymbol, attributes: mxl.XMLAttributes
-) -> mxl.XMLMeasureStyle:
-    other_styles = attributes.get_children_of_type(mxl.XMLMeasureStyle)
-    if len(other_styles) > 0:
-        eprint("Measure already has a multi rest")
-        return
-    duration = int(symbol.rhythm.split("_")[1].replace("m", ""))
-    style = mxl.XMLMeasureStyle()
-    rest = mxl.XMLMultipleRest(value_=duration)
-    style.add_child(rest)
-    attributes.add_child(style)
-
-
-def build_note_chord(
-    note_chord: SymbolChord, state: ConversionState, chord_duration: Fraction
-) -> list[mxl.XMLNote]:
-    _slurs_ties, note_chord = note_chord.strip_slur_ties()
-    by_duration = _group_notes(note_chord.symbols)
-    result = []
-    final_duration = Fraction(0)
-    for i, group_duration in enumerate(sorted(by_duration)):
-        is_first = True
-        for note_loop in by_duration[group_duration]:
-            note = note_loop
-            # Disabled slurs and ties until the detection is more robust
-            # if i == 0 and is_first:
-            #    note = note.add_articulations(slurs_ties)
-            result.append(build_note_or_rest(note, i, not is_first, state, note_chord.tuplet_mark))
-            is_first = False
-        if i != len(by_duration) - 1 and group_duration > Fraction(0):
-            backup = mxl.XMLBackup()
-            backup.add_child(mxl.XMLDuration(value_=int(group_duration * state.division)))
-            result.append(backup)
-
-        final_duration = group_duration
-
-    # Reset the position to match the chord position
-    if chord_duration < final_duration:
-        backup = mxl.XMLBackup()
-        backup.add_child(
-            mxl.XMLDuration(value_=int((final_duration - chord_duration) * state.division))
-        )
-        result.append(backup)
-    return result
-
-
-def _group_notes(notes: list[EncodedSymbol]) -> dict[Fraction, list[EncodedSymbol]]:
-    groups_by_duration = defaultdict(list)
-    max_duration = max([n.get_duration().fraction for n in notes])
-    for note in notes:
-        duration = note.get_duration()
-        is_grace = "G" in note.rhythm
-        if is_grace:
-            fraction = Fraction(0)
-        elif duration.fraction.numerator == 0:
-            # Whole measure rest
-            fraction = max_duration
-        else:
-            fraction = duration.fraction
-        groups_by_duration[fraction].append(note)
-    return groups_by_duration
-
-
-def build_add_time_direction(args: XmlGeneratorArguments) -> mxl.XMLDirection | None:
-    if not args.metronome:
-        return None
-    direction = mxl.XMLDirection()
-    direction_type = mxl.XMLDirectionType()
-    direction.add_child(direction_type)
-    metronome = mxl.XMLMetronome()
-    direction_type.add_child(metronome)
-    beat_unit = mxl.XMLBeatUnit(value_="quarter")
-    metronome.add_child(beat_unit)
-    per_minute = mxl.XMLPerMinute(value_=str(args.metronome))
-    metronome.add_child(per_minute)
-    if args.tempo:
-        direction.add_child(mxl.XMLSound(tempo=args.tempo))
-    else:
-        direction.add_child(mxl.XMLSound(tempo=args.metronome))
-    return direction
-
-
-def find_common_division(durations: list[Fraction]) -> int:
-    """
-    Find the smallest division (denominator) so that all durations
-    can be expressed as integer multiples.
-    """
-
-    def lcm(a: int, b: int) -> int:
-        return abs(a * b) // math.gcd(a, b)
-
-    denominators = [d.denominator for d in durations if d > 0]
-    if not denominators:
-        return 1
-    common = denominators[0]
-    for d in denominators[1:]:
-        common = lcm(common, d)
-    return common
-
-
-def find_division_and_time_signature_nominator(voice: list[SymbolChord]) -> tuple[int, Fraction]:
-    durations = [Fraction(1, 4)]
-    duration_in_measure = Fraction(0)
-    measure_duration = []
-    for chord in voice:
-        if chord.is_barline() and duration_in_measure > Fraction(0):
-            measure_duration.append(duration_in_measure)
-            duration_in_measure = Fraction(0)
-        else:
-            duration = chord.get_duration()
-            if duration > Fraction(0):
-                durations.append(duration)
-                duration_in_measure += duration
-
-    if duration_in_measure > Fraction(0):
-        measure_duration.append(duration_in_measure)
-        duration_in_measure = Fraction(0)
-
-    if len(measure_duration) == 0:
-        return find_common_division(durations), Fraction(1)
-
-    nominator: Fraction = np.median(measure_duration)  # type: ignore
-
-    return find_common_division(durations), nominator
-
-
-def group_into_chords(voice: list[EncodedSymbol]) -> list[SymbolChord]:
-    return [SymbolChord(s) for s in sort_token_chords(voice)]
-
-
-def add_tuplet_start_stop(groups: list[SymbolChord]) -> list[SymbolChord]:
-    has_tuplet_mark = False
-    for group in groups:
-        is_tuplet = False
-        for symbol in group.symbols:
-            if symbol.rhythm.startswith(("note", "rest")):
-                duration = symbol.get_duration()
-                is_tuplet = is_tuplet or duration.normal_notes != duration.actual_notes
-
-        if is_tuplet != has_tuplet_mark:
-            if has_tuplet_mark:
-                group.tuplet_mark = "stop"
-            else:
-                group.tuplet_mark = "start"
-            has_tuplet_mark = is_tuplet
-
-    return groups
-
-
-def build_divisions(division: int) -> mxl.XMLDivisions:
-    # The divisions element indicates how many divisions per quarter(!) note are
-    # used to indicate a note's duration
-    # https://usermanuals.musicxml.com/MusicXML/Content/EL-MusicXML-divisions.htm
-    return mxl.XMLDivisions(value_=division // 4)
+            # step2: we try all braces for the current staff pair to see if there is a good match
+            if best_score > 0:
+                pair_scores.append(MultiStaff.GrandStaffPair([i, i + 1], best_score))
+
+        # step3: we can't simply return pair_scores, because some staff may be used more than once,
+        # like ([0,1], score=0.5), ([1,2], score=0.8)
+        # in this case, we only select highest score pair, which is ([1,2], score=0.8)
+        result: list[MultiStaff.GrandStaffPair] = []
+        used_staff_index: set[int] = set()
+        for pair in sorted(pair_scores, key=lambda pair: pair.get_score(), reverse=True):
+            if any(index in used_staff_index for index in pair.get_index()):
+                continue
+
+            result.append(pair)
+            used_staff_index.update(pair.get_index())
+
+        return result
+
+    def _merge_selected_pairs(self, pairs: list["MultiStaff.GrandStaffPair"]) -> list[Staff]:
+        result: list[Staff] = []
+        i = 0
+        while i < len(self.staffs):
+            if any(i in pair.get_index() for pair in pairs):
+                result.append(self.staffs[i].merge(self.staffs[i + 1]))
+                i += 2
+                continue
+            # not grandstaff
+            result.append(self.staffs[i])
+            i += 1
+        return result
+
+    def create_grandstaffs(self, brace_dot: list[RotatedBoundingBox]) -> "MultiStaff":
+        if len(self.staffs) < 2:
+            return self
+        pairs = self._select_grandstaffs(brace_dot)
+        if not pairs:
+            return self
+        merged_staffs = self._merge_selected_pairs(pairs)
+        return MultiStaff(merged_staffs, self.connections)
+
+    def break_apart(self) -> list["MultiStaff"]:
+        return [MultiStaff([staff], []) for staff in self.staffs]
+
+    def draw_onto_image(self, img: NDArray, color: tuple[int, int, int] = (255, 0, 0)) -> None:
+        for staff in self.staffs:
+            staff.draw_onto_image(img, color)
+        for connection in self.connections:
+            connection.draw_onto_image(img, color)

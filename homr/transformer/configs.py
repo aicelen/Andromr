@@ -10,11 +10,11 @@ root_dir = os.getcwd()
 
 class FilePaths:
     def __init__(self) -> None:
-        model_name = "331"
+        model_name = "396"
 
         self.encoder_path = os.path.join(MODEL_STORAGE, f"encoder_{model_name}_int8.tflite")
 
-        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_java.onnx")
+        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_int8.onnx")
 
         self.checkpoint = os.path.join(
             root_dir,
