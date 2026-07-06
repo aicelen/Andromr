@@ -88,7 +88,7 @@ class TromrAndroid:
             pitch_token = detokenize_single(pitch, self.inv_pitch_vocab)
             articulation_token = detokenize_single(articulation, self.inv_articulation_vocab)
             position_token = detokenize_single(pos, self.inv_position_vocab)
-            slur_token = detokenize_single(pos, self.inv_slur_vocab)
+            slur_token = detokenize_single(slur, self.inv_slur_vocab)
 
             symbol = EncodedSymbol(
                 rhythm=rhythm_token,
