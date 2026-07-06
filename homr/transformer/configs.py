@@ -89,6 +89,7 @@ class Config:
         self.num_lift_tokens = len(self.vocab.lift)
         self.num_articulation_tokens = len(self.vocab.articulation)
         self.num_position_tokens = len(self.vocab.position)
+        self.num_slur_tokens = len(self.vocab.slur)
         self.encoder_structure = "convnext"
         self.encoder_depth = 8
         self.backbone_layers = [3, 4, 6, 3]
@@ -106,6 +107,7 @@ class Config:
         self.rhythm_vocab = self.vocab.rhythm
         self.articulation_vocab = self.vocab.articulation
         self.position_vocab = self.vocab.position
+        self.slur_vocab = self.vocab.slur
         self.use_gpu_inference = False
 
         # Scheduled Sampling parameters

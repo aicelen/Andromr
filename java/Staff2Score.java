@@ -47,6 +47,7 @@ public class Staff2Score {
         long out_lift = 0;
         long out_articulations = 0;
         long out_pos = 0;
+        long out_slur = 0;
 
         OnnxTensor context = OnnxTensor.createTensor(env, FloatBuffer.wrap(context_fb), new long[]{1, 1280, 512});
         OnnxTensor empty_context = OnnxTensor.createTensor(
@@ -82,6 +83,7 @@ public class Staff2Score {
             OnnxTensor x_lift = OnnxTensor.createTensor(this.env, new long[][] {{out_lift}});
             OnnxTensor x_pitch = OnnxTensor.createTensor(this.env, new long[][] {{out_pitch}});
             OnnxTensor x_articulations =OnnxTensor.createTensor(this.env, new long[][] {{out_articulations}});
+            OnnxTensor x_slur = OnnxTensor.createTensor(this.env, new long[][] {{out_slur}});
             OnnxTensor x_step = OnnxTensor.createTensor(env, new long[]{step});
             HashMap<String, OnnxTensor> inputs = new HashMap<String, OnnxTensor>();
 
@@ -95,6 +97,7 @@ public class Staff2Score {
             inputs.put("pitchs", x_pitch);
             inputs.put("rhythms", x_rhythm);
             inputs.put("articulations", x_articulations);
+            inputs.put("slurs", x_slur);
             inputs.put("cache_len", x_step);
 
             for (int i = 0; i < NUM_CACHE_LAYERS; i++) {
@@ -120,6 +123,7 @@ public class Staff2Score {
             OnnxTensor pitchsp = (OnnxTensor) result.get("out_pitchs").get();
             OnnxTensor articulationsp = (OnnxTensor) result.get("out_articulations").get();
             OnnxTensor positionsp = (OnnxTensor) result.get("out_positions").get();
+            OnnxTensor slursp = (OnnxTensor) result.get("out_slurs").get();
 
             // Convert OnnxTesnor to long Values
             out_rhythm = ((long[]) rhythmsp.getValue())[0];
@@ -127,6 +131,7 @@ public class Staff2Score {
             out_pitch = ((long[]) pitchsp.getValue())[0];
             out_articulations = ((long[]) articulationsp.getValue())[0];
             out_pos = ((long[]) positionsp.getValue())[0];
+            out_slur = ((long[]) slursp.getValue())[0];
 
             // Add result to result arrays
             // We use +1 because of the model outputs 0, it would not be possible to find 
@@ -136,12 +141,14 @@ public class Staff2Score {
             token_output[2][step] = out_pitch + 1;
             token_output[3][step] = out_articulations + 1;
             token_output[4][step] = out_pos + 1;
+            token_output[5][step] = out_slur + 1;
 
             // Close tensors
             x_lift.close();
             x_rhythm.close();
             x_articulations.close();
             x_pitch.close();
+            x_slur.close();
             x_step.close();
 
             // EOS Token
