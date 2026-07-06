@@ -74,7 +74,7 @@ public class Staff2Score {
         }
         
         // Create array to save symbol results
-        long[][] token_output = new long[5][MAX_SEQ_LEN];
+        long[][] token_output = new long[6][MAX_SEQ_LEN];
         OrtSession.Result previousResult = null;
 
         // Inference Loop
