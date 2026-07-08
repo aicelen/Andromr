@@ -42,7 +42,7 @@ source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .
 
 # (str) Application versioning (method 1)
 # This needs to consist of 3 number
-version = 1.6.0
+version = 1.7.0
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]

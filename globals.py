@@ -74,8 +74,8 @@ class AppData:
         # Hashes
         self.hashes = {
             "segnet_308_int8.zip": "2c7ba2ad87a20f11b5122ce76cb244167ba67c2d0be962ac55f746f6ef03f377",
-            "encoder_331_int8.zip": "75ddeefb4402cb95f0454e2cc1e31305463020598cd16fdf48b2461c7388a796",
-            "decoder_331_java.zip": "b7b2df1bd82ac0999af4421ab57bff2a6c91e2fae82c9497b0a7028411f6f4c5",
+            "encoder_414_int8.zip": "69e2c54bf46bb8d48ee23bd8e8b90edb0da699c79a3ec118b310177ae6c48332",
+            "decoder_414_int8.zip": "1d0c29a5be7b52a35dc6a1d1d43282e95ce1297e8de656540eecd3ee99201060",
         }
 
         # Load data

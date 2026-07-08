@@ -44,6 +44,7 @@ class TromrAndroid:
         self.inv_lift_vocab = {v: k for k, v in config.lift_vocab.items()}
         self.inv_articulation_vocab = {v: k for k, v in config.articulation_vocab.items()}
         self.inv_position_vocab = {v: k for k, v in config.position_vocab.items()}
+        self.inv_slur_vocab = {v: k for k, v in config.slur_vocab.items()}
 
         self.model = Staff2Score()
         self.model.load(
@@ -65,7 +66,7 @@ class TromrAndroid:
             raise TypeError(f"Expected np.float32 array but got {image.dtype}")
 
         result = self.model.run(float_buffer)
-        tokens = np.array(result, dtype=np.int64).reshape([5, self.config.max_seq_len])
+        tokens = np.array(result, dtype=np.int64).reshape([6, self.config.max_seq_len])
 
         symbols: list[EncodedSymbol] = []
         for i in range(self.config.max_seq_len):
@@ -74,6 +75,7 @@ class TromrAndroid:
             pitch = tokens[2][i] - 1
             articulation = tokens[3][i] - 1
             pos = tokens[4][i] - 1
+            slur = tokens[5][i] - 1
 
             # Java Array was filled with 0, we did +1 to every generated
             # token (starting from 0). Therefore -1 indicates that this
@@ -86,6 +88,7 @@ class TromrAndroid:
             pitch_token = detokenize_single(pitch, self.inv_pitch_vocab)
             articulation_token = detokenize_single(articulation, self.inv_articulation_vocab)
             position_token = detokenize_single(pos, self.inv_position_vocab)
+            slur_token = detokenize_single(slur, self.inv_slur_vocab)
 
             symbol = EncodedSymbol(
                 rhythm=rhythm_token,
@@ -93,6 +96,7 @@ class TromrAndroid:
                 lift=lift_token,
                 articulation=articulation_token,
                 position=position_token,
+                slur=slur_token,
                 coordinates=None,
             )
             symbols.append(symbol)
