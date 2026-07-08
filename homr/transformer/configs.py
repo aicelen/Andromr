@@ -10,18 +10,18 @@ root_dir = os.getcwd()
 
 class FilePaths:
     def __init__(self) -> None:
-        model_name = "396"
+        self.model_name = "414"
 
-        self.encoder_path = os.path.join(MODEL_STORAGE, f"encoder_{model_name}_int8.tflite")
+        self.encoder_path = os.path.join(MODEL_STORAGE, f"encoder_{self.model_name}_int8.tflite")
 
-        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{model_name}_int8.onnx")
+        self.decoder_path = os.path.join(MODEL_STORAGE, f"decoder_{self.model_name}_int8.onnx")
 
         self.checkpoint = os.path.join(
             root_dir,
             "training",
             "architecture",
             "transformer",
-            f"{model_name}.pth",
+            f"{self.model_name}.pth",
         )
 
         self.rhythmtokenizer = os.path.join(
