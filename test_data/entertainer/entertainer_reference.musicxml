@@ -49,17 +49,6 @@
         </clef>
       </attributes>
       <note>
-        <rest />
-        <duration>8</duration>
-        <voice>5</voice>
-        <type>half</type>
-        <staff>2</staff>
-        <notations />
-      </note>
-      <backup>
-        <duration>8</duration>
-      </backup>
-      <note>
         <pitch>
           <step>D</step>
           <octave>6</octave>
@@ -2945,7 +2934,10 @@
         <voice>1</voice>
         <type>quarter</type>
         <staff>1</staff>
-        <notations />
+        <notations>
+          <slur type="stop" number="1" />
+          <slur type="start" number="1" />
+        </notations>
       </note>
       <backup>
         <duration>4</duration>
