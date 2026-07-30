@@ -281,7 +281,7 @@ class LandingPage(Screen):
             type="custom",
             content_cls=RenameDialogContent(),
             buttons=[
-                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_delete.dismiss()),
+                MDFlatButton(text="CANCEL", on_release=lambda dt: self.dialog_rename.dismiss()),
                 MDFlatButton(text="CONFIRM", on_release=lambda func: self.rename(path)),
             ],
         )
