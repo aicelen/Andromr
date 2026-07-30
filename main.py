@@ -874,15 +874,21 @@ class Andromr(MDApp):
 
                 out_paths_final = [out_path]
 
-            # rename xml to user given name
-            music_title = safe_filename(str(self.root.get_screen("progress").ids.title.text))
-            if music_title:
-                new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
-                if not os.path.exists(new_path):
-                    os.rename(out_paths_final[0], new_path)
+            # rename xml to user given name and go back to landing page.
+            # This must run on the main thread because it accesses Kivy
+            # widget properties (ids.title.text) which are not thread-safe.
+            def _finish_on_main_thread(dt):
+                music_title = safe_filename(
+                    str(self.root.get_screen("progress").ids.title.text)
+                )
+                if music_title:
+                    new_path = os.path.join(XML_PATH, f"{music_title}.musicxml")
+                    if not os.path.exists(new_path):
+                        os.rename(out_paths_final[0], new_path)
 
-            # and go back
-            Clock.schedule_once(lambda dt: self.change_screen("landing"))
+                self.change_screen("landing")
+
+            Clock.schedule_once(_finish_on_main_thread)
 
         return False, ""
 
