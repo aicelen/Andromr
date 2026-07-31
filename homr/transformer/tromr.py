@@ -105,6 +105,7 @@ class TromrAndroid:
 
     def unload_model(self):
         self.model.unload_model()
+        self.model = None
 
 
 class TromrDesktop:
@@ -140,3 +141,12 @@ def get_tromr(config: Config) -> TromrAndroid | TromrDesktop:
             model = TromrDesktop(config=config)
         eprint(f"Loaded Tromr runnning on {model.num_threads} threads")
     return model
+
+
+def cleanup_tromr():
+    """Unload and null the global tromr model. Call before app/interpreter shutdown."""
+    global model
+    if model is not None:
+        if platform == "android":
+            model.unload_model()
+        model = None

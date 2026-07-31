@@ -186,7 +186,11 @@ public class Staff2Score {
     }
 
     public void unload_model() throws OrtException {
-        this.encoder.close();
-        this.decoder.close();
+        if (this.encoder != null) {
+            this.encoder.close();
+        }
+        if (this.decoder != null) {
+            this.decoder.close();
+        }
     }
 }

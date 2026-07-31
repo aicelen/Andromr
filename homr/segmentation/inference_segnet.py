@@ -49,8 +49,23 @@ class SegnetHelper:
         else:
             return self.segnet.run(image)
 
+    def close(self):
+        """Release native model resources to prevent memory corruption during shutdown."""
+        if self.segnet is not None:
+            if platform == "android":
+                self.segnet.close() # call close in LiteRTModel.java
+            self.segnet = None
+
 
 segnet: SegnetHelper = None
+
+
+def cleanup_segnet():
+    """Close and null the global segnet model. Call before app/interpreter shutdown."""
+    global segnet
+    if segnet is not None:
+        segnet.close()
+        segnet = None
 
 
 class ExtractResult:
@@ -151,6 +166,8 @@ def inference(
 
     global segnet
     if segnet is None or segnet.num_threads != appdata.threads:
+        if segnet is not None:
+            segnet.close()
         segnet = SegnetHelper(appdata.threads)
         segnet.load()
 

@@ -46,6 +46,8 @@ from pathlib import Path
 from homr.main import download_weights, homr, check_for_missing_models
 from homr.relieur import merge_xmls
 from homr.simple_logging import eprint
+from homr.segmentation.inference_segnet import cleanup_segnet
+from homr.transformer.tromr import cleanup_tromr
 from validation.rate_validation_result import rate_folder
 from globals import APP_PATH, XML_PATH, IMAGE_PATH, MODEL_STORAGE, appdata, APP_STORAGE
 from utils import get_sys_theme, safe_filename, pdf_to_img, downscale_cv2
@@ -724,6 +726,22 @@ class Andromr(MDApp):
             activity_bind(on_activity_result=self.activity_result)
         print("starting")
 
+    def on_stop(self):
+        """
+        Clean up native model resources and shut down thread pools before
+        the Python interpreter is destroyed. This prevents the Scudo
+        "invalid chunk state" crash during PyInterpreterState_Delete.
+        """
+        # Shut down any running ThreadPoolExecutors so worker threads don't
+        # race with interpreter teardown.
+        for executor_attr in ("inference_executor", "executor"):
+            executor = getattr(self, executor_attr, None)
+            if executor is not None:
+                executor.shutdown(wait=False, cancel_futures=True)
+                setattr(self, executor_attr, None)
+        cleanup_segnet()
+        cleanup_tromr()
+
     def nav_bar_height_dp(self, offset=0, default=32) -> float:
         """
         Return navigation-bar height in *dp*.
@@ -810,8 +828,10 @@ class Andromr(MDApp):
     def start_inference(self, path_to_images: list, out_paths: list = [], verify: bool = False):
         # go to progress page
         self.change_screen("progress")
-        executor = ThreadPoolExecutor(max_workers=1)
-        self.homr_future = executor.submit(self.run_homr, path_to_images, out_paths, verify)
+        self.inference_executor = ThreadPoolExecutor(max_workers=1)
+        self.homr_future = self.inference_executor.submit(
+            self.run_homr, path_to_images, out_paths, verify
+        )
 
         update = Thread(target=self.root.get_screen("progress").update_progress_bar, daemon=True)
         update.start()
