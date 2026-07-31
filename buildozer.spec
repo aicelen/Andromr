@@ -215,7 +215,7 @@ android.add_src = java
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-android.gradle_dependencies = com.google.ai.edge.litert:litert:2.1.4, com.microsoft.onnxruntime:onnxruntime-android:1.23.2, com.google.android.gms:play-services-mlkit-document-scanner:16.0.0
+android.gradle_dependencies = com.google.ai.edge.litert:litert:2.1.6, com.microsoft.onnxruntime:onnxruntime-android:1.27.0, com.google.android.gms:play-services-mlkit-document-scanner:16.0.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
