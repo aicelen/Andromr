@@ -3,13 +3,6 @@
 # It largely follows the syntax of an .ini file.
 # See the end of the file for more details and warnings about common mistakes.
 
-# to modify templates go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\common\build\templates
-# to reduce apk size put:
-# ndk {abiFilters 'arm64-v8a'} 
-# to make gestures work go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\sdl2\build\templates
-# or go to andromr\.buildozer\android\platform\python-for-android\pythonforandroid\bootstraps\_sdl_common\build\templates
-# and set in the AndroidManifest.tmpl android:enableOnBackInvokedCallback="false" under application
-
 [app]
 
 # (str) Title of your application
@@ -42,7 +35,7 @@ source.exclude_dirs = __pycache__, .buildozer, .gradle, .recipes, .ruff_cache, .
 
 # (str) Application versioning (method 1)
 # This needs to consist of 3 number
-version = 1.7.0
+version = 1.7.1
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
